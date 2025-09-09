@@ -1,0 +1,14 @@
+{
+  "/api/news/[symbol]/route": "app/api/news/[symbol]/route.js",
+  "/api/market/fundamentals/[symbol]/route": "app/api/market/fundamentals/[symbol]/route.js",
+  "/api/portfolio/positions/[ticker]/route": "app/api/portfolio/positions/[ticker]/route.js",
+  "/api/market/chart/[symbol]/route": "app/api/market/chart/[symbol]/route.js",
+  "/api/market/quote/[symbol]/route": "app/api/market/quote/[symbol]/route.js",
+  "/api/portfolio/route": "app/api/portfolio/route.js",
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/api/portfolio/sync-prices/route": "app/api/portfolio/sync-prices/route.js",
+  "/api/insights/portfolio/route": "app/api/insights/portfolio/route.js",
+  "/api/portfolio/transactions/route": "app/api/portfolio/transactions/route.js",
+  "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
+  "/(dashboard)/portfolio/[ticker]/page": "app/(dashboard)/portfolio/[ticker]/page.js"
+}
