@@ -4,7 +4,7 @@ const attempts = new Map<string, { count: number; resetTime: number }>();
 
 export function rateLimit(maxAttempts: number, windowMs: number) {
   return async function(request: NextRequest) {
-    const ip = request.ip || request.headers.get("x-forwarded-for") || "unknown";
+    const ip = request.headers.get("x-forwarded-for") || "unknown";
     const now = Date.now();
     
     const userAttempts = attempts.get(ip);

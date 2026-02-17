@@ -1,31 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { getAuthenticatedUserWithPortfolio } from "@/lib/utils/auth";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { exchangeRateService } from "@/lib/services/exchange-rate.service";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { ticker: string } }
+  { params }: { params: Promise<{ ticker: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const portfolio = await prisma.portfolio.findUnique({
-      where: { userId: session.user.id },
-    });
-
-    if (!portfolio) {
-      return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
-    }
+    const auth = await getAuthenticatedUserWithPortfolio();
+    if (auth.error) return auth.error;
+    const { portfolio } = auth;
+    const { ticker } = await params;
 
     const position = await prisma.position.findUnique({
       where: {
         portfolioId_ticker: {
           portfolioId: portfolio.id,
-          ticker: params.ticker,
+          ticker,
         },
       },
       include: {
@@ -39,21 +31,38 @@ export async function GET(
       return NextResponse.json({ error: "Position not found" }, { status: 404 });
     }
 
-    // Convert Decimal to number for JSON serialization
+    // Get base currency and conversion rate
+    const baseCurrency = portfolio.baseCurrency || 'EUR';
+    const positionCurrency = position.currency;
+    let conversionRate = 1;
+
+    if (positionCurrency !== baseCurrency) {
+      try {
+        conversionRate = await exchangeRateService.getRate(positionCurrency, baseCurrency);
+      } catch (error) {
+        console.error(`Failed to get rate ${positionCurrency} -> ${baseCurrency}:`, error);
+      }
+    }
+
+    // Convert Decimal to number and apply currency conversion
     const serializedPosition = {
       ...position,
       quantity: position.quantity.toNumber(),
-      avgCostBasis: position.avgCostBasis.toNumber(),
-      currentPrice: position.currentPrice.toNumber(),
-      marketValue: position.marketValue.toNumber(),
-      unrealizedPL: position.unrealizedPL.toNumber(),
+      avgCostBasis: position.avgCostBasis.toNumber() * conversionRate,
+      currentPrice: position.currentPrice.toNumber() * conversionRate,
+      marketValue: position.marketValue.toNumber() * conversionRate,
+      unrealizedPL: position.unrealizedPL.toNumber() * conversionRate,
       unrealizedPLPercent: position.unrealizedPLPercent.toNumber(),
+      baseCurrency,
+      originalCurrency: positionCurrency,
+      conversionRate,
+      realizedPL: 0, // Add realizedPL field (not yet implemented in schema, default to 0)
       transactions: position.transactions.map(tx => ({
         ...tx,
         quantity: tx.quantity.toNumber(),
-        price: tx.price.toNumber(),
-        totalAmount: tx.totalAmount.toNumber(),
-        fees: tx.fees.toNumber(),
+        price: tx.price.toNumber() * conversionRate,
+        totalAmount: tx.totalAmount.toNumber() * conversionRate,
+        fees: tx.fees.toNumber() * conversionRate,
       })),
     };
 
@@ -69,28 +78,20 @@ export async function GET(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { ticker: string } }
+  { params }: { params: Promise<{ ticker: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const portfolio = await prisma.portfolio.findUnique({
-      where: { userId: session.user.id },
-    });
-
-    if (!portfolio) {
-      return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
-    }
+    const auth = await getAuthenticatedUserWithPortfolio();
+    if (auth.error) return auth.error;
+    const { portfolio } = auth;
+    const { ticker } = await params;
 
     // Delete the position (transactions will be cascade deleted)
     await prisma.position.delete({
       where: {
         portfolioId_ticker: {
           portfolioId: portfolio.id,
-          ticker: params.ticker,
+          ticker,
         },
       },
     });

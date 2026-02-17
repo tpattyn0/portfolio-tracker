@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { z } from "zod";
+import { getAuthenticatedUserWithPortfolio } from "@/lib/utils/auth";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { Decimal } from "@prisma/client/runtime/library";
+import { marketDataService } from "@/lib/services/market-data.service";
 
 const addPositionSchema = z.object({
   ticker: z.string(),
@@ -16,31 +16,12 @@ const addPositionSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    const auth = await getAuthenticatedUserWithPortfolio();
+    if (auth.error) return auth.error;
+    const { portfolio } = auth;
 
     const body = await request.json();
-    console.log("Request body:", body); // Debug log
-    
     const data = addPositionSchema.parse(body);
-
-    // Get user's portfolio
-    const portfolio = await prisma.portfolio.findUnique({
-      where: { userId: session.user.id },
-    });
-
-    if (!portfolio) {
-      return NextResponse.json(
-        { error: "Portfolio not found" },
-        { status: 404 }
-      );
-    }
 
     // Check if position already exists
     const existingPosition = await prisma.position.findUnique({
@@ -98,6 +79,21 @@ export async function POST(request: NextRequest) {
         message: "Position updated successfully" 
       });
     } else {
+      // Fetch stock info to get the correct currency
+      let stockCurrency = "USD"; // Default to USD
+      let exchange = "NASDAQ";
+      try {
+        const quote = await marketDataService.getQuote(data.ticker);
+        if (quote?.currency) {
+          stockCurrency = quote.currency;
+        }
+        if (quote?.exchange) {
+          exchange = quote.exchange;
+        }
+      } catch (error) {
+        console.error(`Failed to get quote for ${data.ticker}, using defaults:`, error);
+      }
+
       // Create new position and transaction in a transaction
       const result = await prisma.$transaction(async (tx) => {
         // Create position
@@ -106,7 +102,8 @@ export async function POST(request: NextRequest) {
             portfolioId: portfolio.id,
             ticker: data.ticker,
             name: data.name,
-            exchange: "NASDAQ", // TODO: Get from market data
+            exchange: exchange,
+            currency: stockCurrency, // Use the currency from market data
             quantity: new Decimal(data.quantity),
             avgCostBasis: new Decimal(avgCostWithFees),
             currentPrice: new Decimal(data.price), // TODO: Get current price

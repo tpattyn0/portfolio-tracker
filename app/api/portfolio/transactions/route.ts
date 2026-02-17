@@ -1,26 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { getAuthenticatedUserWithPortfolio } from "@/lib/utils/auth";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { exchangeRateService } from "@/lib/services/exchange-rate.service";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await getAuthenticatedUserWithPortfolio();
+    if (auth.error) return auth.error;
+    const { portfolio } = auth;
 
     const { searchParams } = new URL(request.url);
     const positionId = searchParams.get("positionId");
     const ticker = searchParams.get("ticker");
-
-    const portfolio = await prisma.portfolio.findUnique({
-      where: { userId: session.user.id },
-    });
-
-    if (!portfolio) {
-      return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
-    }
 
     const whereClause: any = {
       portfolioId: portfolio.id,
@@ -38,16 +29,48 @@ export async function GET(request: NextRequest) {
       where: whereClause,
       orderBy: { executedAt: "desc" },
       take: 50, // Limit to last 50 transactions
+      include: {
+        position: {
+          select: { currency: true }
+        }
+      }
     });
 
-    // Convert Decimal to number for JSON serialization
-    const serializedTransactions = transactions.map(tx => ({
-      ...tx,
-      quantity: tx.quantity.toNumber(),
-      price: tx.price.toNumber(),
-      totalAmount: tx.totalAmount.toNumber(),
-      fees: tx.fees.toNumber(),
-    }));
+    // Get base currency for conversion
+    const baseCurrency = portfolio.baseCurrency || 'EUR';
+
+    // Convert Decimal to number and apply currency conversion
+    const serializedTransactions = await Promise.all(
+      transactions.map(async (tx) => {
+        const transactionCurrency = tx.position?.currency || 'USD';
+        let conversionRate = 1;
+
+        // Get conversion rate if currencies differ
+        if (transactionCurrency !== baseCurrency) {
+          try {
+            conversionRate = await exchangeRateService.getRate(transactionCurrency, baseCurrency);
+          } catch (error) {
+            console.error(`Failed to get rate ${transactionCurrency} -> ${baseCurrency}:`, error);
+          }
+        }
+
+        return {
+          id: tx.id,
+          portfolioId: tx.portfolioId,
+          positionId: tx.positionId,
+          ticker: tx.ticker,
+          type: tx.type,
+          quantity: tx.quantity.toNumber(),
+          price: tx.price.toNumber() * conversionRate,
+          totalAmount: tx.totalAmount.toNumber() * conversionRate,
+          fees: tx.fees.toNumber() * conversionRate,
+          executedAt: tx.executedAt,
+          createdAt: tx.createdAt,
+          originalCurrency: transactionCurrency,
+          conversionRate,
+        };
+      })
+    );
 
     return NextResponse.json(serializedTransactions);
   } catch (error) {

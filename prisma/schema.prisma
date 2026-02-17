@@ -77,6 +77,7 @@ model Transaction {
   createdAt   DateTime        @default(now())
   portfolio   Portfolio       @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
   position    Position?       @relation(fields: [positionId], references: [id])
+  notes       String?
 
   @@index([portfolioId])
   @@index([ticker])

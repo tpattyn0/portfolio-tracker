@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { getAuthenticatedUser } from "@/lib/utils/auth";
 import { prisma } from "@/lib/prisma";
 import { marketDataService } from "@/lib/services/market-data.service";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { Decimal } from "@prisma/client/runtime/library";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await getAuthenticatedUser();
+    if (auth.error) return auth.error;
 
-    // Get user's portfolio with positions
+    // Get user's portfolio with positions (need include, so can't use getAuthenticatedUserWithPortfolio)
     const portfolio = await prisma.portfolio.findUnique({
-      where: { userId: session.user.id },
+      where: { userId: auth.userId },
       include: { positions: true },
     });
 

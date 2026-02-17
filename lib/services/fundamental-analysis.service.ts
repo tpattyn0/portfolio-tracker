@@ -1,14 +1,31 @@
 import yahooFinance from 'yahoo-finance2';
 import { prisma } from '@/lib/prisma';
 
+interface AnalystRatings {
+  targetPrice: number | null;
+  strongBuy: number;
+  buy: number;
+  hold: number;
+  sell: number;
+  strongSell: number;
+  totalAnalysts: number;
+  averageRating: number | null;
+  lastUpdated: string;
+}
+
 interface FundamentalMetrics {
   valuation: {
     peRatio: number | null;
+    forwardPE: number | null;
     pegRatio: number | null;
     psRatio: number | null;
     pbRatio: number | null;
+    pfcfRatio: number | null;
     evToEbitda: number | null;
     marketCap: number | null;
+    eps: number | null;
+    forwardEps: number | null;
+    bookValue: number | null;
   };
   profitability: {
     profitMargin: number | null;
@@ -54,10 +71,28 @@ export class FundamentalAnalysisService {
         where: { symbol }
       });
 
-      // If data is less than 24 hours old, use cached
-      if (cached && cached.lastUpdated > new Date(Date.now() - 24 * 60 * 60 * 1000)) {
+      // Force refresh for old data - check if cache is older than when we improved calculations
+      // Or if cache doesn't have forward PE/PEG calculated yet
+      const latestMigrationDate = new Date('2025-10-14'); // Date when we added forward PE and improved PEG
+      const isCacheFresh = cached && cached.lastUpdated > latestMigrationDate;
+      const isWithin24Hours = cached && cached.lastUpdated > new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+      console.log(`Cache check for ${symbol}:`, {
+        hasCached: !!cached,
+        isCacheFresh,
+        isWithin24Hours,
+        forwardPE: cached?.forwardPE,
+        pegRatio: cached?.pegRatio,
+        lastUpdated: cached?.lastUpdated
+      });
+
+      // Only use cache if it's fresh AND within 24 hours
+      if (cached && isCacheFresh && isWithin24Hours) {
+        console.log(`Using cached data for ${symbol}`);
         return this.formatCachedData(cached);
       }
+
+      console.log(`Fetching fresh data for ${symbol} (cache invalidated)`);
 
       // Fetch fresh data from Yahoo Finance
       const quoteSummary = await yahooFinance.quoteSummary(symbol, {
@@ -66,51 +101,116 @@ export class FundamentalAnalysisService {
           'summaryDetail',
           'defaultKeyStatistics',
           'financialData',
+          'cashflowStatementHistory',
           'earningsHistory',
-          'earningsTrend'
+          'earningsTrend',
+          'upgradeDowngradeHistory',
+          'recommendationTrend'
         ]
       });
 
-      console.log('Yahoo Finance data for', symbol, quoteSummary);
+      console.log('Yahoo Finance data for', symbol, { quoteSummary });
 
-      // Extract metrics
+      // Extract metrics and analyst ratings
       const metrics = this.extractMetrics(quoteSummary);
       
       // Calculate scores
       const score = this.calculateFundamentalScore(metrics);
-      metrics.score = score;
+      
+      // Create the complete metrics object with score
+      const completeMetrics: FundamentalMetrics = {
+        ...metrics,
+        score
+      };
 
       // Save to database
-      await this.saveToDatabase(symbol, metrics);
+      await this.saveToDatabase(symbol, completeMetrics);
 
-      return metrics;
+      return completeMetrics;
     } catch (error) {
       console.error(`Failed to fetch fundamentals for ${symbol}:`, error);
       throw error;
     }
   }
 
-  private extractMetrics(data: any): FundamentalMetrics {
+
+  private extractMetrics(data: any): Omit<FundamentalMetrics, 'score'> {
     const price = data.price || {};
     const summaryDetail = data.summaryDetail || {};
     const defaultKeyStatistics = data.defaultKeyStatistics || {};
     const financialData = data.financialData || {};
+    const earningsTrend = data.earningsTrend?.trend?.[0]?.earningsEstimate;
 
     console.log('Extracting metrics from:', {
       price,
       summaryDetail,
       defaultKeyStatistics,
-      financialData
+      financialData,
+      earningsTrend
     });
+
+    // Calculate EPS (Earnings Per Share)
+    const trailingEps = defaultKeyStatistics.trailingEps;
+    const forwardEps = defaultKeyStatistics.forwardEps || null;
+    const eps = trailingEps || forwardEps || null;
+
+    // Calculate Book Value
+    const bookValue = defaultKeyStatistics.bookValue || null;
+
+    // Calculate Forward P/E
+    const currentPrice = price.regularMarketPrice || summaryDetail.regularMarketPrice || null;
+    const forwardPE = summaryDetail.forwardPE ||
+                     (currentPrice && forwardEps && forwardEps > 0 ? currentPrice / forwardEps : null);
+
+    // Calculate P/FCF (Price to Free Cash Flow)
+    // Try multiple sources for free cash flow data
+    const freeCashFlow = financialData.freeCashflow ||
+                        financialData.operatingCashflow ||
+                        null;
+    const marketCap = price.marketCap || summaryDetail.marketCap || null;
+
+    console.log('Free Cash Flow calculation:', {
+      freeCashFlow,
+      freeCashflowFromFinancialData: financialData.freeCashflow,
+      operatingCashflow: financialData.operatingCashflow,
+      marketCap
+    });
+
+    const pfcfRatio = (marketCap && freeCashFlow && freeCashFlow > 0)
+      ? marketCap / freeCashFlow
+      : null;
+
+    console.log('Calculated P/FCF Ratio:', pfcfRatio);
+
+    // Calculate P/E Ratio
+    const peRatio = summaryDetail.trailingPE || (price.regularMarketPrice && eps ? price.regularMarketPrice / eps : null);
+
+    // Calculate PEG Ratio
+    // PEG = P/E / (Earnings Growth Rate * 100)
+    // Try to get it from Yahoo first, otherwise calculate it
+    let pegRatio = defaultKeyStatistics.pegRatio || null;
+
+    if (!pegRatio && peRatio && financialData.earningsGrowth) {
+      const earningsGrowthPercent = financialData.earningsGrowth * 100; // Convert to percentage
+      if (earningsGrowthPercent > 0 && peRatio > 0) {
+        pegRatio = peRatio / earningsGrowthPercent;
+        console.log('Calculated PEG Ratio:', { peRatio, earningsGrowthPercent, pegRatio });
+      }
+    }
 
     return {
       valuation: {
-        peRatio: summaryDetail.trailingPE || price.regularMarketPrice / financialData.revenuePerShare || null,
-        pegRatio: defaultKeyStatistics.pegRatio || null,
+        peRatio,
+        forwardPE,
+        pegRatio,
         psRatio: summaryDetail.priceToSalesTrailing12Months || null,
         pbRatio: price.priceToBook || defaultKeyStatistics.priceToBook || null,
+        pfcfRatio,
         evToEbitda: defaultKeyStatistics.enterpriseToEbitda || null,
-        marketCap: price.marketCap || summaryDetail.marketCap || null,
+        marketCap,
+        eps,
+        forwardEps,
+        bookValue,
       },
       profitability: {
         profitMargin: financialData.profitMargins || null,
@@ -135,49 +235,52 @@ export class FundamentalAnalysisService {
         payoutRatio: summaryDetail.payoutRatio || null,
         growthRate: summaryDetail.fiveYearAvgDividendYield || null,
       },
-      score: {
-        total: 0,
-        breakdown: {
-          valuation: 0,
-          profitability: 0,
-          growth: 0,
-          financial: 0,
-          dividend: 0,
-        },
-        interpretation: '',
-      },
     };
   }
 
-  private calculateFundamentalScore(metrics: FundamentalMetrics): FundamentalMetrics['score'] {
+
+  private calculateFundamentalScore(metrics: Omit<FundamentalMetrics, 'score'>): { total: number; breakdown: { valuation: number; profitability: number; growth: number; financial: number; dividend: number; }; interpretation: string; } {
     const breakdown = {
       valuation: 0,
       profitability: 0,
       growth: 0,
       financial: 0,
-      dividend: 0,
+      dividend: 0
     };
 
-    // Valuation Score (average of available metrics)
-    let valuationScores = [];
-    if (metrics.valuation.peRatio !== null) {
-      valuationScores.push(this.scorePE(metrics.valuation.peRatio));
+    // Valuation Score (weighted average of available metrics)
+    // Forward-looking metrics (Forward P/E, PEG, P/FCF) are weighted higher as they are more reliable
+    const valuationScores: { score: number; weight: number }[] = [];
+
+    // Prefer forward P/E over trailing P/E
+    if (metrics.valuation.forwardPE !== null && metrics.valuation.forwardPE > 0) {
+      valuationScores.push({ score: this.scoreForwardPE(metrics.valuation.forwardPE), weight: 1.5 });
+    } else if (metrics.valuation.peRatio !== null) {
+      valuationScores.push({ score: this.scorePE(metrics.valuation.peRatio), weight: 1 });
     }
     if (metrics.valuation.pbRatio !== null) {
-      valuationScores.push(this.scorePB(metrics.valuation.pbRatio));
+      valuationScores.push({ score: this.scorePB(metrics.valuation.pbRatio), weight: 1 });
     }
     if (metrics.valuation.pegRatio !== null && metrics.valuation.pegRatio > 0) {
-      valuationScores.push(this.scorePEG(metrics.valuation.pegRatio));
+      valuationScores.push({ score: this.scorePEG(metrics.valuation.pegRatio), weight: 1.5 });
+    }
+    if (metrics.valuation.psRatio !== null && metrics.valuation.psRatio > 0) {
+      valuationScores.push({ score: this.scorePS(metrics.valuation.psRatio), weight: 1 });
+    }
+    if (metrics.valuation.pfcfRatio !== null && metrics.valuation.pfcfRatio > 0) {
+      valuationScores.push({ score: this.scorePFCF(metrics.valuation.pfcfRatio), weight: 1.5 });
     }
     if (metrics.valuation.evToEbitda !== null) {
-      valuationScores.push(this.scoreEVToEbitda(metrics.valuation.evToEbitda));
+      valuationScores.push({ score: this.scoreEVToEbitda(metrics.valuation.evToEbitda), weight: 1 });
     }
-    breakdown.valuation = valuationScores.length > 0 
-      ? valuationScores.reduce((a, b) => a + b, 0) / valuationScores.length 
+
+    breakdown.valuation = valuationScores.length > 0
+      ? valuationScores.reduce((acc, item) => acc + item.score * item.weight, 0) /
+        valuationScores.reduce((acc, item) => acc + item.weight, 0)
       : 5;
 
     // Profitability Score (average of available metrics)
-    let profitabilityScores = [];
+    const profitabilityScores = [];
     if (metrics.profitability.roe !== null) {
       profitabilityScores.push(this.scoreROE(metrics.profitability.roe));
     }
@@ -192,7 +295,7 @@ export class FundamentalAnalysisService {
       : 5;
 
     // Growth Score (average of available metrics)
-    let growthScores = [];
+    const growthScores = [];
     if (metrics.growth.revenueGrowth !== null) {
       growthScores.push(this.scoreGrowth(metrics.growth.revenueGrowth));
     }
@@ -204,7 +307,7 @@ export class FundamentalAnalysisService {
       : 5;
 
     // Financial Health Score (average of available metrics)
-    let financialScores = [];
+    const financialScores = [];
     if (metrics.financial.currentRatio !== null) {
       financialScores.push(this.scoreCurrentRatio(metrics.financial.currentRatio));
     }
@@ -219,7 +322,7 @@ export class FundamentalAnalysisService {
       : 5;
 
     // Dividend Score
-    let dividendScores = [];
+    const dividendScores = [];
     if (metrics.dividend.yield !== null && metrics.dividend.yield > 0) {
       dividendScores.push(this.scoreDividendYield(metrics.dividend.yield));
     }
@@ -232,25 +335,26 @@ export class FundamentalAnalysisService {
 
     // Calculate total score (weighted average)
     const weights = {
-      valuation: 0.25,
-      profitability: 0.25,
-      growth: 0.20,
-      financial: 0.20,
-      dividend: 0.10
+      valuation: 0.3,
+      profitability: 0.3,
+      growth: 0.2,
+      financial: 0.15,
+      dividend: 0.05,
     };
 
-    const total = 
+    const totalScore = (
       breakdown.valuation * weights.valuation +
       breakdown.profitability * weights.profitability +
       breakdown.growth * weights.growth +
       breakdown.financial * weights.financial +
-      breakdown.dividend * weights.dividend;
+      breakdown.dividend * weights.dividend
+    ) / (weights.valuation + weights.profitability + weights.growth + weights.financial + weights.dividend);
 
     // Generate interpretation
-    const interpretation = this.generateInterpretation(total, breakdown, metrics);
+    const interpretation = this.generateInterpretation(totalScore, breakdown, metrics);
 
     return {
-      total: Math.round(total * 10) / 10,
+      total: Math.round(totalScore * 10) / 10,
       breakdown: {
         valuation: Math.round(breakdown.valuation * 10) / 10,
         profitability: Math.round(breakdown.profitability * 10) / 10,
@@ -274,6 +378,18 @@ export class FundamentalAnalysisService {
     return 3;
   }
 
+  private scoreForwardPE(forwardPE: number): number {
+    // Forward P/E scoring - slightly more optimistic thresholds as it reflects future expectations
+    if (forwardPE < 0) return 3;
+    if (forwardPE < 12) return 9;
+    if (forwardPE < 18) return 8;
+    if (forwardPE < 22) return 7;
+    if (forwardPE < 28) return 6;
+    if (forwardPE < 35) return 5;
+    if (forwardPE < 45) return 4;
+    return 3;
+  }
+
   private scorePB(pb: number): number {
     if (pb < 1) return 9;
     if (pb < 2) return 8;
@@ -288,6 +404,26 @@ export class FundamentalAnalysisService {
     if (peg < 1) return 9;
     if (peg < 1.5) return 7;
     if (peg < 2) return 5;
+    return 3;
+  }
+
+  private scorePS(ps: number): number {
+    if (ps < 1) return 9;
+    if (ps < 2) return 8;
+    if (ps < 3) return 7;
+    if (ps < 5) return 6;
+    if (ps < 7) return 5;
+    if (ps < 10) return 4;
+    return 3;
+  }
+
+  private scorePFCF(pfcf: number): number {
+    if (pfcf < 15) return 9;
+    if (pfcf < 20) return 8;
+    if (pfcf < 25) return 7;
+    if (pfcf < 30) return 6;
+    if (pfcf < 40) return 5;
+    if (pfcf < 50) return 4;
     return 3;
   }
 
@@ -385,14 +521,10 @@ export class FundamentalAnalysisService {
     return 3;
   }
 
-  private generateInterpretation(
-    total: number,
-    breakdown: any,
-    metrics: FundamentalMetrics
-  ): string {
-    if (total >= 7) {
+  private generateInterpretation(score: number, breakdown: any, metrics: Omit<FundamentalMetrics, 'score'>): string {
+    if (score >= 7) {
       return "Strong fundamentals across multiple metrics. The company shows solid profitability, reasonable valuation, and healthy financial position.";
-    } else if (total >= 5) {
+    } else if (score >= 5) {
       return "Mixed fundamentals with some strong points. Consider analyzing specific areas of concern before making investment decisions.";
     } else {
       return "Weak fundamentals detected. The company may face challenges in profitability, growth, or financial health. Proceed with caution.";
@@ -404,11 +536,16 @@ export class FundamentalAnalysisService {
       where: { symbol },
       update: {
         peRatio: metrics.valuation.peRatio,
+        forwardPE: metrics.valuation.forwardPE,
         pegRatio: metrics.valuation.pegRatio,
         psRatio: metrics.valuation.psRatio,
         pbRatio: metrics.valuation.pbRatio,
+        pfcfRatio: metrics.valuation.pfcfRatio,
         evToEbitda: metrics.valuation.evToEbitda,
         marketCap: metrics.valuation.marketCap,
+        eps: metrics.valuation.eps,
+        forwardEps: metrics.valuation.forwardEps,
+        bookValue: metrics.valuation.bookValue,
         profitMargin: metrics.profitability.profitMargin,
         operatingMargin: metrics.profitability.operatingMargin,
         roe: metrics.profitability.roe,
@@ -430,11 +567,16 @@ export class FundamentalAnalysisService {
       create: {
         symbol,
         peRatio: metrics.valuation.peRatio,
+        forwardPE: metrics.valuation.forwardPE,
         pegRatio: metrics.valuation.pegRatio,
         psRatio: metrics.valuation.psRatio,
         pbRatio: metrics.valuation.pbRatio,
+        pfcfRatio: metrics.valuation.pfcfRatio,
         evToEbitda: metrics.valuation.evToEbitda,
         marketCap: metrics.valuation.marketCap,
+        eps: metrics.valuation.eps,
+        forwardEps: metrics.valuation.forwardEps,
+        bookValue: metrics.valuation.bookValue,
         profitMargin: metrics.profitability.profitMargin,
         operatingMargin: metrics.profitability.operatingMargin,
         roe: metrics.profitability.roe,
@@ -456,26 +598,33 @@ export class FundamentalAnalysisService {
   }
 
   private formatCachedData(cached: any): FundamentalMetrics {
-    const score = cached.scoreDetails || { 
-      total: 5, 
+    // Ensure the cached data has the correct structure
+    const metrics = typeof cached.data === 'string' ? JSON.parse(cached.data) : cached.data;
+    const score = cached.scoreDetails || {
+      total: 5,
       breakdown: {
         valuation: 5,
         profitability: 5,
         growth: 5,
         financial: 5,
         dividend: 0
-      }, 
-      interpretation: 'No analysis available' 
+      },
+      interpretation: 'No analysis available'
     };
-    
+
     return {
       valuation: {
         peRatio: cached.peRatio,
+        forwardPE: cached.forwardPE || null,
         pegRatio: cached.pegRatio,
         psRatio: cached.psRatio,
         pbRatio: cached.pbRatio,
+        pfcfRatio: cached.pfcfRatio || null,
         evToEbitda: cached.evToEbitda,
         marketCap: cached.marketCap,
+        eps: cached.eps || null,
+        forwardEps: cached.forwardEps || null,
+        bookValue: cached.bookValue || null,
       },
       profitability: {
         profitMargin: cached.profitMargin,

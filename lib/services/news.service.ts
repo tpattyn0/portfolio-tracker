@@ -34,7 +34,7 @@ export class NewsAggregationService {
     try {
         // For Belgian/European stocks, clean the symbol
         const cleanSymbol = symbol.split('.')[0]; // BTLS.BR -> BTLS
-        let searchTerms = [cleanSymbol];
+        const searchTerms = [cleanSymbol];
         
         // Add company name variations
         if (companyName) {
