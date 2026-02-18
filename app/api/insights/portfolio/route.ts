@@ -1,24 +1,17 @@
-// app/api/insights/portfolio/route.ts
-// Add detailed logging version
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-export async function GET(request: NextRequest) {
-  console.log('=== Portfolio Insights API Called ===');
-  
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    console.log('Session:', session?.user?.email);
-    
+
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
-    // Get user with their portfolio
+
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: {
@@ -29,19 +22,15 @@ export async function GET(request: NextRequest) {
         }
       }
     });
-    
+
     if (!user) {
-      console.log('User not found');
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
-    
-    console.log('User found:', user.id);
-    console.log('Portfolio positions:', user.portfolio?.positions?.length || 0);
-    
+
     // Check for existing insight today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const existingInsight = await prisma.portfolioInsight.findUnique({
       where: {
         userId_date: {
@@ -50,17 +39,14 @@ export async function GET(request: NextRequest) {
         },
       },
     });
-    
+
     if (existingInsight) {
-      console.log('Returning existing insight from today');
       return NextResponse.json(existingInsight);
     }
-    
-    // Get positions from user's portfolio
+
     const positions = user.portfolio?.positions || [];
-    
+
     if (positions.length === 0) {
-      console.log('No positions found');
       return NextResponse.json({
         marketSummary: 'No positions in portfolio to analyze',
         marketSentiment: 0,
@@ -70,14 +56,10 @@ export async function GET(request: NextRequest) {
         recommendations: ['Add stocks to your portfolio to get started'],
       });
     }
-    
-    // Check Gemini API key
+
     const geminiKey = process.env.GEMINI_API_KEY;
-    console.log('GEMINI_API_KEY exists:', !!geminiKey);
-    console.log('GEMINI_API_KEY length:', geminiKey?.length || 0);
-    
+
     if (!geminiKey) {
-      console.log('GEMINI_API_KEY not configured');
       const basicInsight = await prisma.portfolioInsight.create({
         data: {
           userId: user.id,
@@ -92,37 +74,30 @@ export async function GET(request: NextRequest) {
       });
       return NextResponse.json(basicInsight);
     }
-    
+
     try {
-      console.log('Initializing Gemini AI...');
       const genAI = new GoogleGenerativeAI(geminiKey);
-      
+
       // Try different model names
       let model;
-      let modelName = "gemini-1.5-flash";
-      
+      const modelName = "gemini-1.5-flash";
+
       try {
         model = genAI.getGenerativeModel({ model: modelName });
-        console.log(`Using model: ${modelName}`);
-      } catch (modelError) {
-        console.log(`Failed with ${modelName}, trying gemini-1.5-pro`);
-        modelName = "gemini-1.5-pro";
+      } catch {
         try {
-          model = genAI.getGenerativeModel({ model: modelName });
-        } catch (modelError2) {
-          console.log(`Failed with ${modelName}, trying gemini-pro`);
-          modelName = "gemini-pro";
-          model = genAI.getGenerativeModel({ model: modelName });
+          model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+        } catch {
+          model = genAI.getGenerativeModel({ model: "gemini-pro" });
         }
       }
-      
-      // Simplified prompt
+
       const prompt = `
         You are a financial analyst. Analyze this portfolio and provide brief insights.
-        
+
         Portfolio: ${positions.length} positions
         Symbols: ${positions.map(p => p.ticker).join(', ')}
-        
+
         Respond with this exact JSON structure (no other text):
         {
           "marketSummary": "One sentence about market conditions",
@@ -133,23 +108,17 @@ export async function GET(request: NextRequest) {
           "recommendations": ["recommendation 1"]
         }
       `;
-      
-      console.log('Sending prompt to Gemini...');
+
       const result = await model.generateContent(prompt);
       const response = result.response.text();
-      console.log('Gemini response received, length:', response.length);
-      
-      // Extract JSON
+
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        console.error('No JSON found in response:', response.substring(0, 200));
         throw new Error('Invalid AI response format');
       }
-      
+
       const insights = JSON.parse(jsonMatch[0]);
-      console.log('Parsed insights successfully');
-      
-      // Save insight
+
       const savedInsight = await prisma.portfolioInsight.create({
         data: {
           userId: user.id,
@@ -162,18 +131,12 @@ export async function GET(request: NextRequest) {
           recommendations: insights.recommendations || ['Review positions'],
         },
       });
-      
-      console.log('Insight saved successfully');
+
       return NextResponse.json(savedInsight);
-      
+
     } catch (aiError: unknown) {
-      const err = aiError instanceof Error ? aiError : new Error(String(aiError));
-      console.error('AI generation error details:', {
-        message: err.message,
-        name: err.name
-      });
-      
-      // Create fallback with more specific error info
+      console.error('AI generation error:', aiError instanceof Error ? aiError.message : aiError);
+
       const fallbackInsight = await prisma.portfolioInsight.create({
         data: {
           userId: user.id,
@@ -186,11 +149,11 @@ export async function GET(request: NextRequest) {
           recommendations: ['Try again later for AI-powered insights'],
         },
       });
-      
+
       return NextResponse.json(fallbackInsight);
     }
   } catch (error: unknown) {
-    console.error('Main error in insights API:', error);
+    console.error('Insights API error:', error);
     return NextResponse.json(
       { error: 'Failed to generate insights', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

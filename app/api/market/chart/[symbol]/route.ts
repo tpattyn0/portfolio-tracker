@@ -25,27 +25,9 @@ export async function GET(
       marketDataService.getHistoricalData(symbol, "1Y")
     ]);
 
-    console.log(`Chart data for ${symbol}:`, {
-      displayPeriod: period,
-      displayPoints: chartData.length,
-      analysisPoints: historicalForAnalysis.length
-    });
-
     const prices = historicalForAnalysis.map(d => d.value);
     const volumes = historicalForAnalysis.map(d => d.volume);
     const indicators = technicalAnalysisService.calculateIndicators(prices, volumes);
-
-    console.log(`Technical indicators for ${symbol}:`, {
-      signal: indicators.signal,
-      confidence: indicators.confidence,
-      indicatorsUsed: indicators.indicatorsUsed,
-      hasRSI: indicators.rsi14 !== null,
-      hasSMA20: indicators.sma20 !== null,
-      hasSMA50: indicators.sma50 !== null,
-      hasSMA200: indicators.sma200 !== null,
-      hasMACD: indicators.macd.value !== null,
-      hasVolume: indicators.volumeTrend !== undefined
-    });
 
     return NextResponse.json({
       chart: chartData,

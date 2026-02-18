@@ -47,8 +47,6 @@ export class NewsAggregationService {
         }
         }
         
-        console.log(`Searching news for: ${searchTerms.join(', ')}`);
-        
         // Try to get news from multiple sources
         const [yahooNews, newsApiArticles] = await Promise.all([
         this.fetchYahooFinanceNews(symbol),
@@ -67,7 +65,6 @@ export class NewsAggregationService {
         
         // If no relevant news found, return empty array instead of generic news
         if (relevantNews.length === 0) {
-        console.log(`No relevant news found for ${symbol} (${companyName})`);
         this.cache.set(cacheKey, []); // Cache empty result
         return [];
         }

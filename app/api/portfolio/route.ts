@@ -62,21 +62,27 @@ export async function GET(request: NextRequest) {
     const symbolCurrency = new Map<string, string>();
     const exchangeRates = new Map<string, number>();
 
+    // Collect unique currencies and fetch exchange rates in parallel
     for (const pos of portfolio.positions) {
       symbolCurrency.set(pos.ticker, pos.currency);
-
-      if (pos.currency !== baseCurrency && !exchangeRates.has(pos.currency)) {
-        try {
-          const rate = await exchangeRateService.getRate(pos.currency, baseCurrency);
-          exchangeRates.set(pos.currency, rate);
-        } catch (error) {
-          console.error(`Failed to get rate ${pos.currency} -> ${baseCurrency}:`, error);
-          exchangeRates.set(pos.currency, 1);
-        }
-      } else {
-        exchangeRates.set(pos.currency, 1);
-      }
     }
+
+    const uniqueCurrencies = Array.from(new Set(portfolio.positions.map(p => p.currency)));
+    await Promise.all(
+      uniqueCurrencies.map(async (currency) => {
+        if (currency !== baseCurrency) {
+          try {
+            const rate = await exchangeRateService.getRate(currency, baseCurrency);
+            exchangeRates.set(currency, rate);
+          } catch (error) {
+            console.error(`Failed to get rate ${currency} -> ${baseCurrency}:`, error);
+            exchangeRates.set(currency, 1);
+          }
+        } else {
+          exchangeRates.set(currency, 1);
+        }
+      })
+    );
 
     // Convert positions to base currency
     const positionsPromises = portfolio.positions.map(async (pos) => {

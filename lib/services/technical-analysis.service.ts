@@ -89,7 +89,6 @@ export class TechnicalAnalysisService {
     prices: number[] | PriceData[],
     volumes?: number[]
   ): TechnicalIndicators {
-    console.log(`Calculating indicators for ${prices.length} data points`);
 
     // Handle both simple number array and PriceData array
     const closePrices = Array.isArray(prices) && typeof prices[0] === 'object'
@@ -111,7 +110,6 @@ export class TechnicalAnalysisService {
 
     // Minimum requirement: 20 price points
     if (!closePrices || closePrices.length < 20) {
-      console.log('Not enough data for indicators, need at least 20 points');
       return this.getInsufficientDataResponse();
     }
 
@@ -176,7 +174,6 @@ export class TechnicalAnalysisService {
         const rsiArray = RSI.calculate({ period: 14, values: closePrices });
         indicatorData.rsi14 = rsiArray.length > 0 ? rsiArray[rsiArray.length - 1] : null;
         if (indicatorData.rsi14 !== null) indicatorsAvailable++;
-        console.log('RSI calculated:', indicatorData.rsi14);
       } else {
         indicatorData.rsi14 = null;
       }
@@ -199,7 +196,6 @@ export class TechnicalAnalysisService {
           histogram: lastMACD?.histogram ?? null,
         };
         if (indicatorData.macd.value !== null) indicatorsAvailable++;
-        console.log('MACD calculated:', indicatorData.macd);
       } else {
         indicatorData.macd = { value: null, signal: null, histogram: null };
       }
@@ -225,7 +221,6 @@ export class TechnicalAnalysisService {
               d: lastStochastic.d ?? null,
             };
             if (indicatorData.stochastic.k !== null) indicatorsAvailable++;
-            console.log('Stochastic calculated:', indicatorData.stochastic);
           }
         } catch (error) {
           console.error('Stochastic calculation error:', error);
@@ -253,7 +248,6 @@ export class TechnicalAnalysisService {
             lower: lastBB.lower,
           };
           indicatorsAvailable++;
-          console.log('Bollinger Bands calculated:', indicatorData.bollingerBands);
         }
       }
 
@@ -272,20 +266,16 @@ export class TechnicalAnalysisService {
           changePercent,
         };
         indicatorsAvailable++;
-        console.log('Volume Trend calculated:', indicatorData.volumeTrend);
       }
 
       // Insufficient indicators check (need at least 2)
       if (indicatorsAvailable < 2) {
-        console.log('Insufficient indicators available:', indicatorsAvailable);
         return this.getInsufficientDataResponse();
       }
 
       // Generate enhanced signal with breakdown
       const analysis = this.generateEnhancedSignal(currentPrice, indicatorData, closePrices);
 
-      console.log('Final signal:', analysis.signal);
-      console.log('Indicators used:', indicatorsAvailable, '/ 9');
 
       return {
         ...indicatorData,
@@ -316,7 +306,6 @@ export class TechnicalAnalysisService {
       volume: {}
     };
 
-    console.log('Generating enhanced signal for price:', currentPrice);
 
     // === TREND INDICATORS ===
 
@@ -339,7 +328,6 @@ export class TechnicalAnalysisService {
         points: weight,
         value: indicators.sma20,
       };
-      console.log(`SMA20: ${isBullish ? 'bullish' : 'bearish'} (+${weight})`);
     }
 
     // SMA 50 vs Price (weight: 3)
@@ -361,7 +349,6 @@ export class TechnicalAnalysisService {
         points: weight,
         value: indicators.sma50,
       };
-      console.log(`SMA50: ${isBullish ? 'bullish' : 'bearish'} (+${weight})`);
     }
 
     // SMA 200 vs Price (weight: 2)
@@ -383,7 +370,6 @@ export class TechnicalAnalysisService {
         points: weight,
         value: indicators.sma200,
       };
-      console.log(`SMA200: ${isBullish ? 'bullish' : 'bearish'} (+${weight})`);
     }
 
     // Golden Cross/Death Cross (weight: 5)
@@ -405,7 +391,6 @@ export class TechnicalAnalysisService {
         points: weight,
         details: { active: isGoldenCross ? 'Golden Cross' : 'Death Cross' },
       };
-      console.log(`${isGoldenCross ? 'Golden Cross' : 'Death Cross'}: (+${weight})`);
     }
 
     // === MOMENTUM INDICATORS ===
@@ -455,7 +440,6 @@ export class TechnicalAnalysisService {
         value: rsi,
         details: { category },
       };
-      console.log(`RSI (${rsi.toFixed(2)}): ${category} - ${rsiSignal} (+${rsiPoints})`);
     }
 
     // MACD Analysis (weight: 3) - v2.0: histogram removed
@@ -480,7 +464,6 @@ export class TechnicalAnalysisService {
           signalValue: indicators.macd.signal,
         },
       };
-      console.log(`MACD: ${isBullish ? 'bullish' : 'bearish'} (+${weight})`);
     }
 
     // Stochastic Oscillator (weight: 3)
@@ -523,7 +506,6 @@ export class TechnicalAnalysisService {
         points: stochPoints,
         details: { kValue: k, dValue: d },
       };
-      console.log(`Stochastic (%K:${k.toFixed(1)}, %D:${d.toFixed(1)}): ${stochSignal} (+${stochPoints})`);
     }
 
     // === VOLATILITY INDICATORS ===
@@ -572,7 +554,6 @@ export class TechnicalAnalysisService {
         points: bbPoints,
         details: { position, upper: bb.upper, middle: bb.middle, lower: bb.lower },
       };
-      console.log(`Bollinger Bands (${position}): ${bbSignal} (+${bbPoints})`);
     }
 
     // === VOLUME INDICATORS ===
@@ -624,13 +605,11 @@ export class TechnicalAnalysisService {
           changePercent: `${changePercent > 0 ? '+' : ''}${changePercent.toFixed(1)}%`,
         },
       };
-      console.log(`Volume Trend (${changePercent.toFixed(1)}%): ${volSignal} (+${volPoints})`);
     }
 
     // === CALCULATE FINAL SCORE ===
 
     if (totalWeight === 0 || indicatorsUsed < 2) {
-      console.log('Insufficient indicators for scoring');
       return {
         signal: 'INSUFFICIENT_DATA',
         score: 0,
@@ -695,9 +674,6 @@ export class TechnicalAnalysisService {
     // Convert finalScore from -1..+1 range to 0..10 scale
     const scoreOutOf10 = Math.round(((finalScore + 1) / 2) * 10 * 10) / 10;
 
-    console.log(`Score: base=${baseScore.toFixed(3)}, final=${finalScore.toFixed(3)}, out of 10=${scoreOutOf10}, confidence=${confidence}`);
-    console.log(`Points: bullish=${bullishPoints}, bearish=${bearishPoints}, weight=${totalWeight}`);
-    console.log(`Agreement: ${agreement.toFixed(1)}%`);
 
     return {
       signal,

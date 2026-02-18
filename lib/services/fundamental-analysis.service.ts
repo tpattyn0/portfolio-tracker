@@ -78,22 +78,12 @@ export class FundamentalAnalysisService {
       const isCacheFresh = cached && cached.lastUpdated > latestMigrationDate;
       const isWithin24Hours = cached && cached.lastUpdated > new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-      console.log(`Cache check for ${symbol}:`, {
-        hasCached: !!cached,
-        isCacheFresh,
-        isWithin24Hours,
-        forwardPE: cached?.forwardPE,
-        pegRatio: cached?.pegRatio,
-        lastUpdated: cached?.lastUpdated
-      });
 
       // Only use cache if it's fresh AND within 24 hours
       if (cached && isCacheFresh && isWithin24Hours) {
-        console.log(`Using cached data for ${symbol}`);
         return this.formatCachedData(cached);
       }
 
-      console.log(`Fetching fresh data for ${symbol} (cache invalidated)`);
 
       // Fetch fresh data from Yahoo Finance
       const quoteSummary = await yahooFinance.quoteSummary(symbol, {
@@ -110,7 +100,6 @@ export class FundamentalAnalysisService {
         ]
       });
 
-      console.log('Yahoo Finance data for', symbol, { quoteSummary });
 
       // Extract metrics and analyst ratings
       const metrics = this.extractMetrics(quoteSummary);
@@ -143,13 +132,6 @@ export class FundamentalAnalysisService {
     const financialData = data.financialData || {};
     const earningsTrend = data.earningsTrend?.trend?.[0]?.earningsEstimate;
 
-    console.log('Extracting metrics from:', {
-      price,
-      summaryDetail,
-      defaultKeyStatistics,
-      financialData,
-      earningsTrend
-    });
 
     // Calculate EPS (Earnings Per Share)
     const trailingEps = defaultKeyStatistics.trailingEps;
@@ -171,18 +153,11 @@ export class FundamentalAnalysisService {
                         null;
     const marketCap = price.marketCap || summaryDetail.marketCap || null;
 
-    console.log('Free Cash Flow calculation:', {
-      freeCashFlow,
-      freeCashflowFromFinancialData: financialData.freeCashflow,
-      operatingCashflow: financialData.operatingCashflow,
-      marketCap
-    });
 
     const pfcfRatio = (marketCap && freeCashFlow && freeCashFlow > 0)
       ? marketCap / freeCashFlow
       : null;
 
-    console.log('Calculated P/FCF Ratio:', pfcfRatio);
 
     // Calculate P/E Ratio
     const peRatio = summaryDetail.trailingPE || (price.regularMarketPrice && eps ? price.regularMarketPrice / eps : null);
@@ -196,7 +171,6 @@ export class FundamentalAnalysisService {
       const earningsGrowthPercent = financialData.earningsGrowth * 100; // Convert to percentage
       if (earningsGrowthPercent > 0 && peRatio > 0) {
         pegRatio = peRatio / earningsGrowthPercent;
-        console.log('Calculated PEG Ratio:', { peRatio, earningsGrowthPercent, pegRatio });
       }
     }
 

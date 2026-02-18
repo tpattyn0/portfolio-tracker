@@ -14,9 +14,7 @@ export async function GET(
     const limit = parseInt(searchParams.get('limit') || '20');
     const companyName = searchParams.get('name') || undefined;
     const analyze = searchParams.get('analyze') !== 'false';
-    
-    console.log(`Fetching news for ${symbol} (${companyName})`);
-    
+
     // Try to get company-specific news first
     let articles = await prisma.newsArticle.findMany({
       where: {
@@ -33,23 +31,20 @@ export async function GET(
       ],
       take: limit,
     });
-    
+
     // If we have very few relevant articles, fetch fresh
     if (articles.length < 2) {
-      console.log(`Only ${articles.length} relevant articles found, fetching fresh news...`);
       const freshNews = await newsService.fetchNewsForSymbol(symbol, companyName);
-      
+
       // Only save articles with good relevance
-      const relevantNews = freshNews.filter(article => 
+      const relevantNews = freshNews.filter(article =>
         (article.relevanceScore || 0) >= 0.4
       );
-      
+
       if (relevantNews.length > 0) {
         await newsService.saveArticlesToDatabase(relevantNews);
-      } else {
-        console.log(`No relevant news found for ${symbol} - this may be a small company`);
       }
-      
+
       // Re-fetch from database
       articles = await prisma.newsArticle.findMany({
         where: {
@@ -63,22 +58,19 @@ export async function GET(
         take: limit,
       });
     }
-    
+
     // For small companies with no news, return empty array instead of generic news
     if (articles.length === 0) {
-      console.log(`No relevant news available for ${symbol}`);
       return NextResponse.json([]);
     }
-    
+
     // Analyze sentiment for unanalyzed articles
     if (analyze && process.env.GEMINI_API_KEY && articles.length > 0) {
       const unanalyzedArticles = articles.filter(a => a.sentiment === null);
-      
+
       if (unanalyzedArticles.length > 0) {
-        console.log(`Analyzing sentiment for ${unanalyzedArticles.length} articles...`);
-        
         const articlesToAnalyze = unanalyzedArticles.slice(0, 3);
-        
+
         for (const article of articlesToAnalyze) {
           try {
             await sentimentService.analyzeAndUpdateArticle(article.id);
@@ -86,7 +78,7 @@ export async function GET(
             console.error(`Failed to analyze article ${article.id}:`, error);
           }
         }
-        
+
         // Re-fetch to get updated articles
         articles = await prisma.newsArticle.findMany({
           where: {
@@ -101,7 +93,7 @@ export async function GET(
         });
       }
     }
-    
+
     return NextResponse.json(articles);
   } catch (error) {
     console.error('Error in news API:', error);
