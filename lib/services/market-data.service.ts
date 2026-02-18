@@ -1,4 +1,4 @@
-import yahooFinance from 'yahoo-finance2';
+import yahooFinance from '@/lib/yahoo-finance';
 import { addDays, subDays, startOfDay } from 'date-fns';
 
 interface MarketQuote {
@@ -9,6 +9,10 @@ interface MarketQuote {
   changePercent: number;
   high: number;
   low: number;
+  dayHigh: number;
+  dayLow: number;
+  yearHigh: number;
+  yearLow: number;
   open: number;
   previousClose: number;
   volume: number;
@@ -46,7 +50,7 @@ export class MarketDataService {
 
     try {
       const quote = await yahooFinance.quoteSummary(symbol, {
-        modules: ['price']
+        modules: ['price', 'summaryDetail']
       });
 
       // Add null checks for TypeScript
@@ -55,6 +59,7 @@ export class MarketDataService {
       }
 
       const priceData = quote.price;
+      const summaryDetail = quote.summaryDetail;
       
       const marketQuote: MarketQuote = {
         symbol: priceData.symbol || symbol,
@@ -64,6 +69,10 @@ export class MarketDataService {
         changePercent: priceData.regularMarketChangePercent || 0,
         high: priceData.regularMarketDayHigh || 0,
         low: priceData.regularMarketDayLow || 0,
+        dayHigh: priceData.regularMarketDayHigh || 0,
+        dayLow: priceData.regularMarketDayLow || 0,
+        yearHigh: summaryDetail?.fiftyTwoWeekHigh || 0,
+        yearLow: summaryDetail?.fiftyTwoWeekLow || 0,
         open: priceData.regularMarketOpen || 0,
         previousClose: priceData.regularMarketPreviousClose || 0,
         volume: priceData.regularMarketVolume || 0,
@@ -83,7 +92,7 @@ export class MarketDataService {
 
   async getHistoricalData(
     symbol: string, 
-    period: '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | '5Y' = '1M'
+    period: '1D' | '1W' | '1M' | '3M' | '6M' | 'YTD' | '1Y' | '5Y' | '10Y' = '1M'
     ): Promise<ChartData[]> {
     const cacheKey = `history:${symbol}:${period}`;
     const cached = this.getFromCache(cacheKey);
@@ -115,13 +124,25 @@ export class MarketDataService {
             startDate = subDays(endDate, 180);
             interval = '1d'; // Daily for 6 months
             break;
+        case 'YTD': {
+            const y = new Date(endDate.getFullYear(), 0, 1);
+            startDate = y;
+            // Choose daily or weekly depending on span
+            const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+            interval = days > 366 ? '1wk' : '1d';
+            break;
+        }
         case '1Y':
             startDate = subDays(endDate, 365);
-            interval = '1wk'; // Weekly for 1 year
+            interval = '1d'; // Daily for 1 year (needed for technical analysis - requires 205+ points)
             break;
         case '5Y':
             startDate = subDays(endDate, 365 * 5);
             interval = '1mo'; // Monthly for 5 years
+            break;
+        case '10Y':
+            startDate = subDays(endDate, 365 * 10);
+            interval = '1mo'; // Monthly for 10 years
             break;
         default:
             startDate = subDays(endDate, 30);
@@ -153,6 +174,43 @@ export class MarketDataService {
     } catch (error) {
         console.error(`Failed to fetch historical data for ${symbol}:`, error);
         throw new Error(`Failed to fetch historical data for ${symbol}`);
+    }
+  }
+
+  async getHistoricalRange(
+    symbol: string,
+    startDate: Date,
+    endDate: Date,
+    interval: '1m' | '2m' | '5m' | '15m' | '30m' | '60m' | '90m' | '1h' | '1d' | '5d' | '1wk' | '1mo' | '3mo' = '1d'
+  ): Promise<ChartData[]> {
+    const cacheKey = `historyRange:${symbol}:${startDate.toISOString()}:${endDate.toISOString()}:${interval}`;
+    const cached = this.getFromCache(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const result = await yahooFinance.chart(symbol, {
+        period1: startDate,
+        period2: endDate,
+        interval: interval as any,
+      });
+
+      if (!result || !result.quotes || result.quotes.length === 0) {
+        return [];
+      }
+
+      const chartData: ChartData[] = result.quotes
+        .filter(quote => quote.date && (quote.close !== null || quote.adjclose !== null))
+        .map(quote => ({
+          date: quote.date!.toISOString(),
+          value: quote.close ?? quote.adjclose ?? 0,
+          volume: quote.volume || 0,
+        }));
+
+      this.setCache(cacheKey, chartData);
+      return chartData;
+    } catch (error) {
+      console.error(`Failed to fetch historical range for ${symbol}:`, error);
+      return [];
     }
   }
 

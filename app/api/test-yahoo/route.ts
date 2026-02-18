@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import yahooFinance from 'yahoo-finance2';
+import yahooFinance from '@/lib/yahoo-finance';
 
 export async function GET() {
   try {

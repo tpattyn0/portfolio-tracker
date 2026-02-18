@@ -1,4 +1,4 @@
-import yahooFinance from 'yahoo-finance2';
+import yahooFinance from '@/lib/yahoo-finance';
 import { prisma } from '@/lib/prisma';
 
 interface AnalystRatings {

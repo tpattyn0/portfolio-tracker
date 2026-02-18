@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import axios from 'axios';
-import yahooFinance from 'yahoo-finance2';
+import yahooFinance from '@/lib/yahoo-finance';
 import NodeCache from 'node-cache';
 
 interface NewsArticleData {
