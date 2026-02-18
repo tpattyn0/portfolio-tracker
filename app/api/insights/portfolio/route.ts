@@ -1,31 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import { getAuthenticatedUser } from '@/lib/utils/auth';
 import { prisma } from '@/lib/prisma';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    const auth = await getAuthenticatedUser();
+    if (auth.error) return auth.error;
 
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: {
-        portfolio: {
-          include: {
-            positions: true
-          }
-        }
-      }
+    const portfolio = await prisma.portfolio.findUnique({
+      where: { userId: auth.userId },
+      include: { positions: true },
     });
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
 
     // Check for existing insight today
     const today = new Date();
@@ -34,7 +20,7 @@ export async function GET(_request: NextRequest) {
     const existingInsight = await prisma.portfolioInsight.findUnique({
       where: {
         userId_date: {
-          userId: user.id,
+          userId: auth.userId,
           date: today,
         },
       },
@@ -44,7 +30,7 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json(existingInsight);
     }
 
-    const positions = user.portfolio?.positions || [];
+    const positions = portfolio?.positions || [];
 
     if (positions.length === 0) {
       return NextResponse.json({
@@ -62,7 +48,7 @@ export async function GET(_request: NextRequest) {
     if (!geminiKey) {
       const basicInsight = await prisma.portfolioInsight.create({
         data: {
-          userId: user.id,
+          userId: auth.userId,
           date: today,
           marketSummary: 'Configure Gemini API key for AI-powered insights',
           marketSentiment: 0,
@@ -121,7 +107,7 @@ export async function GET(_request: NextRequest) {
 
       const savedInsight = await prisma.portfolioInsight.create({
         data: {
-          userId: user.id,
+          userId: auth.userId,
           date: today,
           marketSummary: insights.marketSummary || 'Analysis complete',
           marketSentiment: parseFloat(insights.marketSentiment) || 0,
@@ -139,7 +125,7 @@ export async function GET(_request: NextRequest) {
 
       const fallbackInsight = await prisma.portfolioInsight.create({
         data: {
-          userId: user.id,
+          userId: auth.userId,
           date: today,
           marketSummary: 'AI analysis temporarily unavailable',
           marketSentiment: 0,

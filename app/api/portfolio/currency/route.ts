@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthenticatedUser } from '@/lib/utils/auth';
 import { prisma } from '@/lib/prisma';
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const auth = await getAuthenticatedUser();
+    if (auth.error) return auth.error;
 
     const { baseCurrency } = await request.json();
 
@@ -27,21 +24,12 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
     // Update or create portfolio with new base currency
     const portfolio = await prisma.portfolio.upsert({
-      where: { userId: user.id },
+      where: { userId: auth.userId },
       update: { baseCurrency },
       create: {
-        userId: user.id,
+        userId: auth.userId,
         baseCurrency,
       },
     });
@@ -59,24 +47,17 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const auth = await getAuthenticatedUser();
+    if (auth.error) return auth.error;
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: { portfolio: true },
+    const portfolio = await prisma.portfolio.findUnique({
+      where: { userId: auth.userId },
     });
 
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
     return NextResponse.json({
-      baseCurrency: user.portfolio?.baseCurrency || 'EUR',
+      baseCurrency: portfolio?.baseCurrency || 'EUR',
     });
   } catch (error) {
     console.error('Error fetching portfolio currency:', error);
