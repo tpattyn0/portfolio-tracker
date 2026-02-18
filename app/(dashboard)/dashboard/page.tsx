@@ -1,6 +1,6 @@
-// app/(dashboard)/dashboard/page.tsx
 "use client";
 
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,24 +8,47 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, TrendingDown, Plus, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { PortfolioChart } from "@/components/portfolio-chart";
 import { PositionsTable } from "@/components/positions-table";
-import { PortfolioInsights } from "@/components/portfolio-insights"; // Add this import
+import { PortfolioInsights } from "@/components/portfolio-insights";
+import { CurrencySelector } from "@/components/currency-selector";
+import { ComponentErrorBoundary } from "@/components/error-boundary";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatPercent } from "@/lib/utils/format";
 import Link from "next/link";
 import { usePriceSync } from "@/hooks/use-price-sync";
 
+
 export default function DashboardPage() {
   // Add price sync
   usePriceSync();
-  
+
+  const [baseCurrency, setBaseCurrency] = useState<string>("EUR");
+
   const { data: portfolio, isLoading } = useQuery({
-    queryKey: ["portfolio"],
+    queryKey: ["portfolio", baseCurrency],
     queryFn: async () => {
-      const res = await fetch("/api/portfolio");
+      const res = await fetch(`/api/portfolio?baseCurrency=${baseCurrency}`);
       if (!res.ok) throw new Error("Failed to fetch portfolio");
       return res.json();
     },
+    staleTime: 30000, // Consider data fresh for 30 seconds
+    refetchOnWindowFocus: true, // Refetch when window regains focus
   });
+
+  // Fetch the user's preferred base currency
+  const { data: currencyData } = useQuery({
+    queryKey: ["portfolioCurrency"],
+    queryFn: async () => {
+      const res = await fetch("/api/portfolio/currency");
+      if (!res.ok) return { baseCurrency: "EUR" };
+      return res.json();
+    },
+  });
+
+  useEffect(() => {
+    if (currencyData?.baseCurrency) {
+      setBaseCurrency(currencyData.baseCurrency);
+    }
+  }, [currencyData]);
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -43,12 +66,18 @@ export default function DashboardPage() {
             Track your investments and monitor performance
           </p>
         </div>
-        <Link href="/portfolio/add">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Position
-          </Button>
-        </Link>
+        <div className="flex items-center gap-4">
+          <CurrencySelector
+            currentCurrency={baseCurrency}
+            onCurrencyChange={setBaseCurrency}
+          />
+          <Link href="/portfolio/add">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Position
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Metrics Cards */}
@@ -60,7 +89,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(portfolio?.totalValue || 0)}
+              {formatCurrency(portfolio?.totalValue || 0, baseCurrency)}
             </div>
             <p className="text-xs text-muted-foreground">
               {hasPositions ? "Current market value" : "Start investing today"}
@@ -83,7 +112,7 @@ export default function DashboardPage() {
                 portfolio?.dayChange >= 0 ? "text-green-600" : "text-red-600"
               )}>
                 {portfolio?.dayChange >= 0 && "+"}
-                {formatCurrency(portfolio?.dayChange || 0)}
+                {formatCurrency(portfolio?.dayChange || 0, baseCurrency)}
               </span>
             </div>
             <p className={cn(
@@ -110,7 +139,7 @@ export default function DashboardPage() {
                 portfolio?.totalReturn >= 0 ? "text-green-600" : "text-red-600"
               )}>
                 {portfolio?.totalReturn >= 0 && "+"}
-                {formatCurrency(portfolio?.totalReturn || 0)}
+                {formatCurrency(portfolio?.totalReturn || 0, baseCurrency)}
               </span>
             </div>
             <p className={cn(
@@ -123,19 +152,22 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* AI Portfolio Insights - Only show if user has positions */}
-      {hasPositions && (
-        <PortfolioInsights />
-      )}
-
       {/* Performance Chart */}
       {hasPositions && (
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-2">
             <CardTitle>Performance</CardTitle>
           </CardHeader>
-          <CardContent>
-            <PortfolioChart positions={portfolio?.positions} />
+          <CardContent className="pt-0">
+            <ComponentErrorBoundary name="Performance Chart">
+              <PortfolioChart
+                positions={portfolio?.positions}
+                baseCurrency={baseCurrency}
+                exchangeRatesUsed={portfolio?.exchangeRatesUsed}
+                totalValue={portfolio?.totalValue}
+                totalCost={portfolio?.totalCost}
+              />
+            </ComponentErrorBoundary>
           </CardContent>
         </Card>
       )}
@@ -147,7 +179,9 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           {hasPositions ? (
-            <PositionsTable positions={portfolio.positions} />
+            <ComponentErrorBoundary name="Positions Table">
+              <PositionsTable positions={portfolio.positions} baseCurrency={baseCurrency} />
+            </ComponentErrorBoundary>
           ) : (
             <div className="text-center py-12">
               <div className="text-gray-400 mb-4">
@@ -167,6 +201,13 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* AI Portfolio Insights */}
+      {hasPositions && (
+        <ComponentErrorBoundary name="Portfolio Insights">
+          <PortfolioInsights />
+        </ComponentErrorBoundary>
+      )}
     </div>
   );
 }
