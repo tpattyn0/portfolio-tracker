@@ -1,6 +1,8 @@
 "use client";
 
+import React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { FundamentalMetricsResponse } from "@/lib/types/market";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -30,6 +32,7 @@ import { formatCurrency, formatNumber } from "@/lib/utils/format";
 
 interface FundamentalAnalysisProps {
   symbol: string;
+  currency?: string;
 }
 
 // Helper function to format percentages
@@ -38,7 +41,7 @@ const formatPercentLocal = (value: number | null): string => {
   return `${(value * 100).toFixed(2)}%`;
 };
 
-export function FundamentalAnalysis({ symbol }: FundamentalAnalysisProps) {
+export function FundamentalAnalysis({ symbol, currency }: FundamentalAnalysisProps) {
   const { data, isLoading, error } = useQuery({
     queryKey: ["fundamentals", symbol],
     queryFn: async () => {
@@ -151,53 +154,117 @@ export function FundamentalAnalysis({ symbol }: FundamentalAnalysisProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <MetricRow
-                  label="P/E Ratio"
-                  value={data.valuation.peRatio}
-                  format="number"
-                  tooltip="Price to Earnings - Lower is generally better"
-                  benchmark={25}
-                  inverse
-                />
-                <MetricRow
-                  label="PEG Ratio"
-                  value={data.valuation.pegRatio}
-                  format="number"
-                  tooltip="Price/Earnings to Growth - Below 1 may indicate undervaluation"
-                  benchmark={1}
-                  inverse
-                />
-                <MetricRow
-                  label="P/S Ratio"
-                  value={data.valuation.psRatio}
-                  format="number"
-                  tooltip="Price to Sales - Lower suggests better value"
-                  benchmark={2}
-                  inverse
-                />
-                <MetricRow
-                  label="P/B Ratio"
-                  value={data.valuation.pbRatio}
-                  format="number"
-                  tooltip="Price to Book Value - Below 1 may indicate undervaluation"
-                  benchmark={1}
-                  inverse
-                />
-                <MetricRow
-                  label="EV/EBITDA"
-                  value={data.valuation.evToEbitda}
-                  format="number"
-                  tooltip="Enterprise Value to EBITDA - Lower is generally better"
-                  benchmark={10}
-                  inverse
-                />
-                <MetricRow
-                  label="Market Cap"
-                  value={data.valuation.marketCap}
-                  format="largeNumber"
-                  tooltip="Total market value of the company"
-                />
+              <div className="space-y-6">
+                {/* Valuation Ratios Section */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">
+                    Valuation Ratios
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
+                    <MetricRow
+                      label="P/E Ratio"
+                      value={data.valuation.peRatio}
+                      format="number"
+                      tooltip="Price to Earnings (Trailing) - Lower is generally better"
+                      benchmark={25}
+                      inverse
+                    />
+                    <MetricRow
+                      label="Forward P/E"
+                      value={data.valuation.forwardPE}
+                      format="number"
+                      tooltip="Forward Price to Earnings - Based on future earnings estimates, more forward-looking than trailing P/E"
+                      benchmark={22}
+                      inverse
+                    />
+                    <MetricRow
+                      label="PEG Ratio"
+                      value={data.valuation.pegRatio}
+                      format="number"
+                      tooltip="Price/Earnings to Growth - Below 1 may indicate undervaluation"
+                      benchmark={1}
+                      inverse
+                    />
+                    <MetricRow
+                      label="P/S Ratio"
+                      value={data.valuation.psRatio}
+                      format="number"
+                      tooltip="Price to Sales - Lower suggests better value"
+                      benchmark={2}
+                      inverse
+                    />
+                    <MetricRow
+                      label="P/B Ratio"
+                      value={data.valuation.pbRatio}
+                      format="number"
+                      tooltip="Price to Book Value - Below 1 may indicate undervaluation"
+                      benchmark={1}
+                      inverse
+                    />
+                    <MetricRow
+                      label="P/FCF Ratio"
+                      value={data.valuation.pfcfRatio}
+                      format="number"
+                      tooltip="Price to Free Cash Flow - More reliable than P/E for valuation"
+                      benchmark={20}
+                      inverse
+                    />
+                    <MetricRow
+                      label="EV/EBITDA"
+                      value={data.valuation.evToEbitda}
+                      format="number"
+                      tooltip="Enterprise Value to EBITDA - Lower is generally better"
+                      benchmark={10}
+                      inverse
+                    />
+                  </div>
+                </div>
+
+                {/* Per-Share Metrics Section */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">
+                    Per-Share Metrics
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
+                    <MetricRow
+                      label="EPS"
+                      value={data.valuation.eps}
+                      format="currency"
+                      tooltip="Earnings Per Share - Profit per outstanding share"
+                      currency={currency}
+                    />
+                    <MetricRow
+                      label="Forward EPS"
+                      value={data.valuation.forwardEps}
+                      format="currency"
+                      tooltip="Forward Earnings Per Share - Expected future earnings per share"
+                      currency={currency}
+                    />
+                    <MetricRow
+                      label="Book Value"
+                      value={data.valuation.bookValue}
+                      format="currency"
+                      currency={currency}
+                      tooltip="Book Value Per Share - Net asset value per share"
+                    />
+                  </div>
+                </div>
+
+                {/* Company Size Section */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">
+                    Company Size
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
+                    <MetricRow
+                      label="Market Cap"
+                      value={data.valuation.marketCap}
+                      format="largeNumber"
+                      currency={currency}
+                      tooltip="Total market value of the company"
+                    />
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -412,7 +479,7 @@ export function FundamentalAnalysis({ symbol }: FundamentalAnalysisProps) {
 interface ScoreCardProps {
   title: string;
   score: number;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
 }
 
 function ScoreCard({ title, score, icon: Icon }: ScoreCardProps) {
@@ -442,6 +509,7 @@ interface MetricRowProps {
   benchmark?: number;
   inverse?: boolean;
   showTrend?: boolean;
+  currency?: string;
 }
 
 function MetricRow({ 
@@ -451,7 +519,8 @@ function MetricRow({
   tooltip, 
   benchmark, 
   inverse = false,
-  showTrend = false 
+  showTrend = false,
+  currency
 }: MetricRowProps) {
   if (value === null || value === undefined) {
     return (
@@ -484,14 +553,15 @@ function MetricRow({
       formattedValue = value >= 0 ? `+${(value * 100).toFixed(2)}%` : `${(value * 100).toFixed(2)}%`;
       break;
     case "currency":
-      formattedValue = formatCurrency(value);
+      formattedValue = formatCurrency(value, currency);
       break;
     case "largeNumber":
+      const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency || '$';
       formattedValue = value >= 1e9 
-        ? `€${(value / 1e9).toFixed(2)}B`
+        ? `${currencySymbol}${(value / 1e9).toFixed(2)}B`
         : value >= 1e6
-        ? `€${(value / 1e6).toFixed(2)}M`
-        : formatCurrency(value);
+        ? `${currencySymbol}${(value / 1e6).toFixed(2)}M`
+        : formatCurrency(value, currency);
       break;
     default:
       formattedValue = value.toFixed(2);
@@ -537,12 +607,20 @@ function MetricRow({
 }
 
 // Generate insights based on data
-function generateInsights(data: any): string[] {
+function generateInsights(data: FundamentalMetricsResponse): string[] {
   const insights: string[] = [];
 
-  // Valuation insight
-  if (data.valuation.peRatio && data.valuation.peRatio < 15) {
+  // Valuation insight - prioritize forward-looking metrics
+  if (data.valuation.pfcfRatio && data.valuation.pfcfRatio < 15) {
+    insights.push("Excellent value based on P/FCF ratio - the stock trades at an attractive price relative to free cash flow.");
+  } else if (data.valuation.forwardPE && data.valuation.forwardPE < 12) {
+    insights.push("Attractive forward P/E ratio suggests good value based on future earnings expectations.");
+  } else if (data.valuation.peRatio && data.valuation.peRatio < 15) {
     insights.push("The stock appears undervalued based on P/E ratio compared to market average.");
+  } else if (data.valuation.pfcfRatio && data.valuation.pfcfRatio > 40) {
+    insights.push("High P/FCF ratio indicates expensive valuation - ensure strong growth prospects justify the premium.");
+  } else if (data.valuation.forwardPE && data.valuation.forwardPE > 35) {
+    insights.push("High forward P/E ratio suggests premium valuation - strong growth expectations are priced in.");
   } else if (data.valuation.peRatio && data.valuation.peRatio > 30) {
     insights.push("High P/E ratio suggests premium valuation - ensure growth justifies the price.");
   }

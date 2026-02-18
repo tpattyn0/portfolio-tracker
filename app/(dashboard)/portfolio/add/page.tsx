@@ -113,7 +113,7 @@ export default function AddPositionPage() {
 
   const values = calculateValues();
 
-  const handleStockSelect = (stock: any) => {
+  const handleStockSelect = (stock: { symbol: string; name: string; price: number; currency: string }) => {
     setSelectedStock(stock);
     setValue("ticker", stock.symbol);
     setValue("name", stock.name);
@@ -160,7 +160,7 @@ export default function AddPositionPage() {
           className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
         >
           <ArrowLeft className="h-4 w-4 mr-1" />
-          Back to Dashboard
+          Back to Portfolio
         </Link>
       </div>
 
@@ -190,7 +190,7 @@ export default function AddPositionPage() {
                   <div className="font-medium">{selectedStock.symbol}</div>
                   <div className="text-sm text-gray-600">{selectedStock.name}</div>
                   <div className="text-sm">
-                    Current Price: {formatCurrency(selectedStock.price)}
+                    Current Price: {formatCurrency(selectedStock.price, selectedStock.currency || 'USD')}
                   </div>
                 </div>
               )}

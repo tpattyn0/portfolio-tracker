@@ -40,12 +40,12 @@ interface ChartData {
 
 export class MarketDataService {
   // Cache for reducing API calls
-  private cache = new Map<string, { data: any; timestamp: number }>();
+  private cache = new Map<string, { data: unknown; timestamp: number }>();
   private CACHE_DURATION = 60000; // 1 minute
 
   async getQuote(symbol: string): Promise<MarketQuote> {
     const cacheKey = `quote:${symbol}`;
-    const cached = this.getFromCache(cacheKey);
+    const cached = this.getFromCache<MarketQuote>(cacheKey);
     if (cached) return cached;
 
     try {
@@ -95,7 +95,7 @@ export class MarketDataService {
     period: '1D' | '1W' | '1M' | '3M' | '6M' | 'YTD' | '1Y' | '5Y' | '10Y' = '1M'
     ): Promise<ChartData[]> {
     const cacheKey = `history:${symbol}:${period}`;
-    const cached = this.getFromCache(cacheKey);
+    const cached = this.getFromCache<ChartData[]>(cacheKey);
     if (cached) return cached;
 
     try {
@@ -152,7 +152,7 @@ export class MarketDataService {
         const queryOptions = {
         period1: startDate,
         period2: endDate,
-        interval: interval as any
+        interval
         };
 
         const result = await yahooFinance.chart(symbol, queryOptions);
@@ -184,14 +184,14 @@ export class MarketDataService {
     interval: '1m' | '2m' | '5m' | '15m' | '30m' | '60m' | '90m' | '1h' | '1d' | '5d' | '1wk' | '1mo' | '3mo' = '1d'
   ): Promise<ChartData[]> {
     const cacheKey = `historyRange:${symbol}:${startDate.toISOString()}:${endDate.toISOString()}:${interval}`;
-    const cached = this.getFromCache(cacheKey);
+    const cached = this.getFromCache<ChartData[]>(cacheKey);
     if (cached) return cached;
 
     try {
       const result = await yahooFinance.chart(symbol, {
         period1: startDate,
         period2: endDate,
-        interval: interval as any,
+        interval,
       });
 
       if (!result || !result.quotes || result.quotes.length === 0) {
@@ -248,19 +248,19 @@ export class MarketDataService {
   }
 
   // Cache helpers
-  private getFromCache(key: string): any {
+  private getFromCache<T>(key: string): T | null {
     const cached = this.cache.get(key);
     if (!cached) return null;
-    
+
     if (Date.now() - cached.timestamp > this.CACHE_DURATION) {
       this.cache.delete(key);
       return null;
     }
-    
-    return cached.data;
+
+    return cached.data as T;
   }
 
-  private setCache(key: string, data: any): void {
+  private setCache(key: string, data: unknown): void {
     this.cache.set(key, { data, timestamp: Date.now() });
   }
 }

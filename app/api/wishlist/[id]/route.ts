@@ -13,10 +13,10 @@ export async function DELETE(
     const { id } = await params;
     await wishlistService.removeFromWishlist(auth.userId, id);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Failed to remove from wishlist:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to remove from wishlist' },
+      { error: error instanceof Error ? error.message : 'Failed to remove from wishlist' },
       { status: 400 }
     );
   }
@@ -41,10 +41,10 @@ export async function PATCH(
     );
 
     return NextResponse.json(item);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Failed to update wishlist item:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to update wishlist item' },
+      { error: error instanceof Error ? error.message : 'Failed to update wishlist item' },
       { status: 400 }
     );
   }

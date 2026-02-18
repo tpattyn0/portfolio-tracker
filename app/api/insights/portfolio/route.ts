@@ -166,12 +166,11 @@ export async function GET(request: NextRequest) {
       console.log('Insight saved successfully');
       return NextResponse.json(savedInsight);
       
-    } catch (aiError: any) {
+    } catch (aiError: unknown) {
+      const err = aiError instanceof Error ? aiError : new Error(String(aiError));
       console.error('AI generation error details:', {
-        message: aiError.message,
-        status: aiError.status,
-        statusText: aiError.statusText,
-        name: aiError.name
+        message: err.message,
+        name: err.name
       });
       
       // Create fallback with more specific error info
@@ -190,10 +189,10 @@ export async function GET(request: NextRequest) {
       
       return NextResponse.json(fallbackInsight);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Main error in insights API:', error);
     return NextResponse.json(
-      { error: 'Failed to generate insights', details: error.message },
+      { error: 'Failed to generate insights', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

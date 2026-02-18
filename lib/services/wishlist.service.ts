@@ -337,7 +337,7 @@ export class WishlistService {
     return Math.round(normalized * 10 * 10) / 10;
   }
 
-  private calculateSentimentScore(articles: any[]): number {
+  private calculateSentimentScore(articles: Array<{ sentiment?: number; impact?: string; relevanceScore?: number }>): number {
     if (!Array.isArray(articles) || articles.length === 0) return 5;
 
     let weighted = 0;

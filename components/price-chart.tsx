@@ -22,6 +22,8 @@ import { cn } from "@/lib/utils";
 interface PriceChartProps {
   symbol: string;
   name: string;
+  showSummary?: boolean;
+  currency?: string;
 }
 
 const periods = [
@@ -34,7 +36,7 @@ const periods = [
   { label: "5Y", value: "5Y" },
 ];
 
-export function PriceChart({ symbol, name }: PriceChartProps) {
+export function PriceChart({ symbol, name, showSummary = true, currency }: PriceChartProps) {
   const [period, setPeriod] = useState("1M");
 
   const { data, isLoading, error } = useQuery({
@@ -111,7 +113,7 @@ export function PriceChart({ symbol, name }: PriceChartProps) {
   const score = totalSignals > 0 ? Math.round((buySignals / totalSignals) * 10) : 5;
 
   // Add moving averages to chart data
-  const enhancedChartData = chartData.map((point: any) => ({
+  const enhancedChartData = chartData.map((point: { date: string; value: number; volume: number }) => ({
     ...point,
     sma20: indicators.sma20,
     sma50: indicators.sma50,
@@ -126,7 +128,7 @@ export function PriceChart({ symbol, name }: PriceChartProps) {
             <p className="text-sm text-gray-600">{symbol}</p>
             <div className="mt-2">
               <span className="text-2xl font-bold">
-                {formatCurrency(lastValue)}
+                {formatCurrency(lastValue, currency)}
               </span>
               <span
                 className={cn(
@@ -135,7 +137,7 @@ export function PriceChart({ symbol, name }: PriceChartProps) {
                 )}
               >
                 {change >= 0 ? "+" : ""}
-                {formatCurrency(change)} ({changePercent >= 0 ? "+" : ""}
+                {formatCurrency(change, currency)} ({changePercent >= 0 ? "+" : ""}
                 {changePercent.toFixed(2)}%)
               </span>
             </div>
@@ -179,11 +181,14 @@ export function PriceChart({ symbol, name }: PriceChartProps) {
               <YAxis
                 domain={["dataMin", "dataMax"]}
                 tick={{ fontSize: 12 }}
-                tickFormatter={(value) => `€${value.toFixed(2)}`}
+                tickFormatter={(value) => {
+                  const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency || '$';
+                  return `${currencySymbol}${value.toFixed(2)}`;
+                }}
               />
               <Tooltip
                 formatter={(value: number, name: string) => [
-                  formatCurrency(value),
+                  formatCurrency(value, currency),
                   name === 'value' ? 'Price' : name
                 ]}
                 labelFormatter={(label) => {
@@ -204,105 +209,84 @@ export function PriceChart({ symbol, name }: PriceChartProps) {
                 dot={false}
                 name="Price"
               />
-              {indicators.sma20 && (
-                <Line
-                  type="monotone"
-                  dataKey="sma20"
-                  stroke="#3b82f6"
-                  strokeWidth={1}
-                  strokeDasharray="3 3"
-                  dot={false}
-                  name="SMA 20"
-                />
-              )}
-              {indicators.sma50 && (
-                <Line
-                  type="monotone"
-                  dataKey="sma50"
-                  stroke="#8b5cf6"
-                  strokeWidth={1}
-                  strokeDasharray="5 5"
-                  dot={false}
-                  name="SMA 50"
-                />
-              )}
+              
             </ComposedChart>
           </ResponsiveContainer>
         </div>
+        {showSummary && (
+          <div className="mt-4 space-y-4 border-t pt-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-sm text-gray-600">RSI (14)</p>
+                <p className="font-medium">
+                  {indicators.rsi14?.toFixed(2) || "-"}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {indicators.rsi14 
+                    ? indicators.rsi14 > 70 
+                      ? "Overbought - potential sell signal"
+                      : indicators.rsi14 < 30
+                      ? "Oversold - potential buy signal"
+                      : "Neutral momentum"
+                    : "Not enough data"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">SMA (20)</p>
+                <p className="font-medium">
+                  {indicators.sma20 ? formatCurrency(indicators.sma20, currency) : "-"}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {indicators.sma20
+                    ? lastValue > indicators.sma20
+                      ? "Price above SMA - bullish"
+                      : "Price below SMA - bearish"
+                    : "Not enough data"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">SMA (50)</p>
+                <p className="font-medium">
+                  {indicators.sma50 ? formatCurrency(indicators.sma50, currency) : "-"}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {indicators.sma50
+                    ? lastValue > indicators.sma50
+                      ? "Above medium-term trend"
+                      : "Below medium-term trend"
+                    : "Not enough data"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Signal</p>
+                <p className={cn(
+                  "font-medium",
+                  score >= 7 ? "text-green-600" :
+                  score <= 3 ? "text-red-600" : "text-gray-600"
+                )}>
+                  {indicators.signal?.replace("_", " ") || "HOLD"}
+                </p>
+                <p className="text-xs font-medium mt-1">
+                  Score: {score}/10
+                </p>
+              </div>
+            </div>
 
-        {/* Technical Indicators Summary with Interpretations */}
-        <div className="mt-4 space-y-4 border-t pt-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-sm text-gray-600">RSI (14)</p>
-              <p className="font-medium">
-                {indicators.rsi14?.toFixed(2) || "-"}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                {indicators.rsi14 
-                  ? indicators.rsi14 > 70 
-                    ? "Overbought - potential sell signal"
-                    : indicators.rsi14 < 30
-                    ? "Oversold - potential buy signal"
-                    : "Neutral momentum"
-                  : "Not enough data"}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">SMA (20)</p>
-              <p className="font-medium">
-                {indicators.sma20 ? formatCurrency(indicators.sma20) : "-"}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                {indicators.sma20
-                  ? lastValue > indicators.sma20
-                    ? "Price above SMA - bullish"
-                    : "Price below SMA - bearish"
-                  : "Not enough data"}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">SMA (50)</p>
-              <p className="font-medium">
-                {indicators.sma50 ? formatCurrency(indicators.sma50) : "-"}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                {indicators.sma50
-                  ? lastValue > indicators.sma50
-                    ? "Above medium-term trend"
-                    : "Below medium-term trend"
-                  : "Not enough data"}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Signal</p>
-              <p className={cn(
-                "font-medium",
-                score >= 7 ? "text-green-600" :
-                score <= 3 ? "text-red-600" : "text-gray-600"
-              )}>
-                {indicators.signal?.replace("_", " ") || "HOLD"}
-              </p>
-              <p className="text-xs font-medium mt-1">
-                Score: {score}/10
+            {/* Overall interpretation */}
+            <div className="bg-gray-50 p-3 rounded-md">
+              <p className="text-sm font-medium text-gray-700">Technical Analysis Summary</p>
+              <p className="text-sm text-gray-600 mt-1">
+                {score >= 7 
+                  ? `Strong buy signals with ${buySignals} out of ${totalSignals} indicators positive. The stock shows strong momentum and is trading above key moving averages.`
+                  : score >= 5
+                  ? `Mixed signals with ${buySignals} out of ${totalSignals} indicators positive. Consider waiting for a clearer trend or use fundamental analysis to guide decisions.`
+                  : score >= 3
+                  ? `Mostly neutral to bearish signals. The stock may be consolidating or in a downtrend. Monitor for potential reversal signals.`
+                  : `Strong sell signals with only ${buySignals} out of ${totalSignals} indicators positive. The stock shows weak momentum and bearish technical setup.`}
               </p>
             </div>
           </div>
-
-          {/* Overall interpretation */}
-          <div className="bg-gray-50 p-3 rounded-md">
-            <p className="text-sm font-medium text-gray-700">Technical Analysis Summary</p>
-            <p className="text-sm text-gray-600 mt-1">
-              {score >= 7 
-                ? `Strong buy signals with ${buySignals} out of ${totalSignals} indicators positive. The stock shows strong momentum and is trading above key moving averages.`
-                : score >= 5
-                ? `Mixed signals with ${buySignals} out of ${totalSignals} indicators positive. Consider waiting for a clearer trend or use fundamental analysis to guide decisions.`
-                : score >= 3
-                ? `Mostly neutral to bearish signals. The stock may be consolidating or in a downtrend. Monitor for potential reversal signals.`
-                : `Strong sell signals with only ${buySignals} out of ${totalSignals} indicators positive. The stock shows weak momentum and bearish technical setup.`}
-            </p>
-          </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );

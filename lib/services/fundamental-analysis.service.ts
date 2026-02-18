@@ -1,5 +1,6 @@
 import yahooFinance from '@/lib/yahoo-finance';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 interface AnalystRatings {
   targetPrice: number | null;
@@ -134,7 +135,8 @@ export class FundamentalAnalysisService {
   }
 
 
-  private extractMetrics(data: any): Omit<FundamentalMetrics, 'score'> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private extractMetrics(data: Record<string, any>): Omit<FundamentalMetrics, 'score'> {
     const price = data.price || {};
     const summaryDetail = data.summaryDetail || {};
     const defaultKeyStatistics = data.defaultKeyStatistics || {};
@@ -521,7 +523,7 @@ export class FundamentalAnalysisService {
     return 3;
   }
 
-  private generateInterpretation(score: number, breakdown: any, metrics: Omit<FundamentalMetrics, 'score'>): string {
+  private generateInterpretation(score: number, _breakdown: FundamentalMetrics['score']['breakdown'], _metrics: Omit<FundamentalMetrics, 'score'>): string {
     if (score >= 7) {
       return "Strong fundamentals across multiple metrics. The company shows solid profitability, reasonable valuation, and healthy financial position.";
     } else if (score >= 5) {
@@ -561,7 +563,7 @@ export class FundamentalAnalysisService {
         payoutRatio: metrics.dividend.payoutRatio,
         dividendGrowth: metrics.dividend.growthRate,
         fundamentalScore: metrics.score.total,
-        scoreDetails: metrics.score as any,
+        scoreDetails: metrics.score as unknown as Prisma.InputJsonValue,
         lastUpdated: new Date(),
       },
       create: {
@@ -592,12 +594,13 @@ export class FundamentalAnalysisService {
         payoutRatio: metrics.dividend.payoutRatio,
         dividendGrowth: metrics.dividend.growthRate,
         fundamentalScore: metrics.score.total,
-        scoreDetails: metrics.score as any,
+        scoreDetails: metrics.score as unknown as Prisma.InputJsonValue,
       },
     });
   }
 
-  private formatCachedData(cached: any): FundamentalMetrics {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private formatCachedData(cached: Record<string, any>): FundamentalMetrics {
     // Ensure the cached data has the correct structure
     const metrics = typeof cached.data === 'string' ? JSON.parse(cached.data) : cached.data;
     const score = cached.scoreDetails || {

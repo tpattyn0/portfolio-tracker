@@ -17,9 +17,10 @@ import { format } from "date-fns";
 interface TransactionHistoryProps {
   positionId?: string;
   ticker?: string;
+  baseCurrency?: string;
 }
 
-export function TransactionHistory({ positionId, ticker }: TransactionHistoryProps) {
+export function TransactionHistory({ positionId, ticker, baseCurrency = 'EUR' }: TransactionHistoryProps) {
   const { data: transactions, isLoading } = useQuery({
     queryKey: ["transactions", positionId, ticker],
     queryFn: async () => {
@@ -56,7 +57,7 @@ export function TransactionHistory({ positionId, ticker }: TransactionHistoryPro
             </TableRow>
           </TableHeader>
           <TableBody>
-            {transactions?.map((tx: any) => (
+            {transactions?.map((tx: { id: string; type: string; ticker: string; quantity: number; price: number; fees: number; totalAmount: number; executedAt: string }) => (
               <TableRow key={tx.id}>
                 <TableCell>
                   {format(new Date(tx.executedAt), "MMM d, yyyy")}
@@ -71,13 +72,13 @@ export function TransactionHistory({ positionId, ticker }: TransactionHistoryPro
                   {formatNumber(tx.quantity)}
                 </TableCell>
                 <TableCell className="text-right">
-                  {formatCurrency(tx.price)}
+                  {formatCurrency(tx.price, baseCurrency)}
                 </TableCell>
                 <TableCell className="text-right">
-                  {formatCurrency(tx.fees)}
+                  {formatCurrency(tx.fees, baseCurrency)}
                 </TableCell>
                 <TableCell className="text-right font-medium">
-                  {formatCurrency(tx.totalAmount)}
+                  {formatCurrency(tx.totalAmount, baseCurrency)}
                 </TableCell>
               </TableRow>
             ))}

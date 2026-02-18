@@ -4,9 +4,20 @@ import {
   RSI,
   MACD,
   BollingerBands,
+  Stochastic,
 } from 'technicalindicators';
 
+// Enhanced output structure per v2.0 specification
+interface IndicatorBreakdown {
+  available: boolean;
+  signal: 'bullish' | 'bearish' | 'neutral';
+  points: number;
+  value?: number | string | null;
+  details?: Record<string, string | number | null>;
+}
+
 interface TechnicalIndicators {
+  // Raw indicator values
   sma20: number | null;
   sma50: number | null;
   sma200: number | null;
@@ -23,77 +34,155 @@ interface TechnicalIndicators {
     middle: number | null;
     lower: number | null;
   };
-  signal: 'STRONG_BUY' | 'BUY' | 'HOLD' | 'SELL' | 'STRONG_SELL';
+  stochastic?: {
+    k: number | null;
+    d: number | null;
+  };
+  volumeTrend?: {
+    currentVolume: number | null;
+    avgVolume: number | null;
+    changePercent: number | null;
+  };
+
+  // v2.0 Enhanced outputs
+  signal: 'STRONG_BUY' | 'BUY' | 'WEAK_BUY' | 'HOLD' | 'WEAK_SELL' | 'SELL' | 'STRONG_SELL' | 'INSUFFICIENT_DATA';
+  score: number;
+  baseScore: number;
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  confidenceStars: number;
+  bullishPoints: number;
+  bearishPoints: number;
+  availableWeight: number;
+  indicatorsUsed: number;
+  agreement: number;
+  breakdown: {
+    trend: {
+      sma20?: IndicatorBreakdown;
+      sma50?: IndicatorBreakdown;
+      sma200?: IndicatorBreakdown;
+      goldenCross?: IndicatorBreakdown;
+    };
+    momentum: {
+      rsi?: IndicatorBreakdown;
+      macd?: IndicatorBreakdown;
+      stochastic?: IndicatorBreakdown;
+    };
+    volatility: {
+      bollinger?: IndicatorBreakdown;
+    };
+    volume: {
+      volumeTrend?: IndicatorBreakdown;
+    };
+  };
+  warnings: string[];
+}
+
+interface PriceData {
+  close: number;
+  high: number;
+  low: number;
+  volume?: number;
 }
 
 export class TechnicalAnalysisService {
-  calculateIndicators(prices: number[]): TechnicalIndicators {
-    console.log(`Calculating indicators for ${prices.length} price points`);
-    
-    // More flexible requirements
-    if (!prices || prices.length < 20) {
+  calculateIndicators(
+    prices: number[] | PriceData[],
+    volumes?: number[]
+  ): TechnicalIndicators {
+    console.log(`Calculating indicators for ${prices.length} data points`);
+
+    // Handle both simple number array and PriceData array
+    const closePrices = Array.isArray(prices) && typeof prices[0] === 'object'
+      ? (prices as PriceData[]).map(p => p.close)
+      : (prices as number[]);
+
+    const highPrices = Array.isArray(prices) && typeof prices[0] === 'object'
+      ? (prices as PriceData[]).map(p => p.high)
+      : closePrices;
+
+    const lowPrices = Array.isArray(prices) && typeof prices[0] === 'object'
+      ? (prices as PriceData[]).map(p => p.low)
+      : closePrices;
+
+    const volumeData = volumes ||
+      (Array.isArray(prices) && typeof prices[0] === 'object'
+        ? (prices as PriceData[]).map(p => p.volume).filter(v => v !== undefined) as number[]
+        : undefined);
+
+    // Minimum requirement: 20 price points
+    if (!closePrices || closePrices.length < 20) {
       console.log('Not enough data for indicators, need at least 20 points');
-      return this.getEmptyIndicators();
+      return this.getInsufficientDataResponse();
     }
 
     try {
-      const closePrices = prices;
       const currentPrice = closePrices[closePrices.length - 1];
-      
-      // Calculate what we can based on available data
-      const indicatorData: any = {};
+      const indicatorData = {} as TechnicalIndicators;
 
-      // SMA 20 (needs at least 20 points)
-      if (closePrices.length >= 20) {
+      // Track which indicators are available
+      let indicatorsAvailable = 0;
+
+      // === TREND INDICATORS ===
+
+      // SMA 20 (needs 25 points: 20 + 5 warm-up)
+      if (closePrices.length >= 25) {
         const sma20Array = SMA.calculate({ period: 20, values: closePrices });
         indicatorData.sma20 = sma20Array.length > 0 ? sma20Array[sma20Array.length - 1] : null;
+        if (indicatorData.sma20 !== null) indicatorsAvailable++;
       } else {
         indicatorData.sma20 = null;
       }
 
-      // SMA 50 (needs at least 50 points)
-      if (closePrices.length >= 50) {
+      // SMA 50 (needs 55 points: 50 + 5 warm-up)
+      if (closePrices.length >= 55) {
         const sma50Array = SMA.calculate({ period: 50, values: closePrices });
         indicatorData.sma50 = sma50Array.length > 0 ? sma50Array[sma50Array.length - 1] : null;
+        if (indicatorData.sma50 !== null) indicatorsAvailable++;
       } else {
         indicatorData.sma50 = null;
       }
 
-      // SMA 200 (needs at least 200 points)
-      if (closePrices.length >= 200) {
+      // SMA 200 (needs 205 points: 200 + 5 warm-up)
+      if (closePrices.length >= 205) {
         const sma200Array = SMA.calculate({ period: 200, values: closePrices });
         indicatorData.sma200 = sma200Array.length > 0 ? sma200Array[sma200Array.length - 1] : null;
+        if (indicatorData.sma200 !== null) indicatorsAvailable++;
       } else {
         indicatorData.sma200 = null;
       }
 
-      // EMA 12 (needs at least 12 points)
-      if (closePrices.length >= 12) {
+      // EMA 12 and 26 for MACD
+      if (closePrices.length >= 15) {
         const ema12Array = EMA.calculate({ period: 12, values: closePrices });
         indicatorData.ema12 = ema12Array.length > 0 ? ema12Array[ema12Array.length - 1] : null;
       } else {
         indicatorData.ema12 = null;
       }
 
-      // EMA 26 (needs at least 26 points)
-      if (closePrices.length >= 26) {
+      if (closePrices.length >= 30) {
         const ema26Array = EMA.calculate({ period: 26, values: closePrices });
         indicatorData.ema26 = ema26Array.length > 0 ? ema26Array[ema26Array.length - 1] : null;
       } else {
         indicatorData.ema26 = null;
       }
 
-      // RSI (needs at least 15 points for RSI 14)
-      if (closePrices.length >= 15) {
+      // Golden/Death Cross (counted as one indicator when SMA 50 & 200 available)
+      // Already counted in SMA 50 and 200
+
+      // === MOMENTUM INDICATORS ===
+
+      // RSI (needs 20 points: 14 + 6 warm-up)
+      if (closePrices.length >= 20) {
         const rsiArray = RSI.calculate({ period: 14, values: closePrices });
         indicatorData.rsi14 = rsiArray.length > 0 ? rsiArray[rsiArray.length - 1] : null;
+        if (indicatorData.rsi14 !== null) indicatorsAvailable++;
         console.log('RSI calculated:', indicatorData.rsi14);
       } else {
         indicatorData.rsi14 = null;
       }
 
-      // MACD (needs at least 26 points)
-      if (closePrices.length >= 35) { // Need extra points for signal line
+      // MACD (needs 40 points: 26 + 9 + 5 warm-up)
+      if (closePrices.length >= 40) {
         const macdArray = MACD.calculate({
           values: closePrices,
           fastPeriod: 12,
@@ -109,13 +198,47 @@ export class TechnicalAnalysisService {
           signal: lastMACD?.signal ?? null,
           histogram: lastMACD?.histogram ?? null,
         };
+        if (indicatorData.macd.value !== null) indicatorsAvailable++;
         console.log('MACD calculated:', indicatorData.macd);
       } else {
         indicatorData.macd = { value: null, signal: null, histogram: null };
       }
 
-      // Bollinger Bands (needs at least 20 points)
-      if (closePrices.length >= 20) {
+      // Stochastic Oscillator (needs 20 points: 14 + 3 + 3 warm-up)
+      if (closePrices.length >= 20 && highPrices.length >= 20 && lowPrices.length >= 20) {
+        try {
+          const stochasticArray = Stochastic.calculate({
+            high: highPrices,
+            low: lowPrices,
+            close: closePrices,
+            period: 14,
+            signalPeriod: 3
+          });
+
+          const lastStochastic = stochasticArray.length > 0
+            ? stochasticArray[stochasticArray.length - 1]
+            : null;
+
+          if (lastStochastic) {
+            indicatorData.stochastic = {
+              k: lastStochastic.k ?? null,
+              d: lastStochastic.d ?? null,
+            };
+            if (indicatorData.stochastic.k !== null) indicatorsAvailable++;
+            console.log('Stochastic calculated:', indicatorData.stochastic);
+          }
+        } catch (error) {
+          console.error('Stochastic calculation error:', error);
+          indicatorData.stochastic = { k: null, d: null };
+        }
+      } else {
+        indicatorData.stochastic = { k: null, d: null };
+      }
+
+      // === VOLATILITY INDICATORS ===
+
+      // Bollinger Bands (needs 25 points: 20 + 5 warm-up)
+      if (closePrices.length >= 25) {
         const bbArray = BollingerBands.calculate({
           period: 20,
           values: closePrices,
@@ -129,151 +252,467 @@ export class TechnicalAnalysisService {
             middle: lastBB.middle,
             lower: lastBB.lower,
           };
+          indicatorsAvailable++;
+          console.log('Bollinger Bands calculated:', indicatorData.bollingerBands);
         }
       }
 
-      // Generate signal
-      const signal = this.generateSignal(currentPrice, indicatorData);
-      
-      console.log('Final signal:', signal);
-      console.log('Indicators summary:', {
-        sma20: indicatorData.sma20 !== null,
-        sma50: indicatorData.sma50 !== null,
-        sma200: indicatorData.sma200 !== null,
-        rsi14: indicatorData.rsi14,
-        macd: indicatorData.macd.value !== null,
-      });
-      
+      // === VOLUME INDICATORS ===
+
+      // Volume Trend (needs 25 volume points: 20 for avg + 5 for trend)
+      if (volumeData && volumeData.length >= 25) {
+        const currentVolume = volumeData[volumeData.length - 1];
+        const last20Volumes = volumeData.slice(-20);
+        const avgVolume = last20Volumes.reduce((a, b) => a + b, 0) / last20Volumes.length;
+        const changePercent = ((currentVolume - avgVolume) / avgVolume) * 100;
+
+        indicatorData.volumeTrend = {
+          currentVolume,
+          avgVolume,
+          changePercent,
+        };
+        indicatorsAvailable++;
+        console.log('Volume Trend calculated:', indicatorData.volumeTrend);
+      }
+
+      // Insufficient indicators check (need at least 2)
+      if (indicatorsAvailable < 2) {
+        console.log('Insufficient indicators available:', indicatorsAvailable);
+        return this.getInsufficientDataResponse();
+      }
+
+      // Generate enhanced signal with breakdown
+      const analysis = this.generateEnhancedSignal(currentPrice, indicatorData, closePrices);
+
+      console.log('Final signal:', analysis.signal);
+      console.log('Indicators used:', indicatorsAvailable, '/ 9');
+
       return {
         ...indicatorData,
-        signal
+        ...analysis
       };
     } catch (error) {
       console.error('Technical analysis calculation error:', error);
-      return this.getEmptyIndicators();
+      return this.getInsufficientDataResponse();
     }
   }
 
-  private generateSignal(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private generateEnhancedSignal(
     currentPrice: number,
-    indicators: Omit<TechnicalIndicators, 'signal'>
-  ): TechnicalIndicators['signal'] {
+    indicators: Record<string, any>,
+    closePrices: number[]
+  ): Partial<TechnicalIndicators> {
     let bullishPoints = 0;
     let bearishPoints = 0;
     let totalWeight = 0;
+    let indicatorsUsed = 0;
+    const warnings: string[] = [];
 
-    console.log('Generating signal for price:', currentPrice);
+    const breakdown: TechnicalIndicators['breakdown'] = {
+      trend: {},
+      momentum: {},
+      volatility: {},
+      volume: {}
+    };
 
-    // Moving average analysis (weight: 3 each)
+    console.log('Generating enhanced signal for price:', currentPrice);
+
+    // === TREND INDICATORS ===
+
+    // SMA 20 vs Price (weight: 3)
     if (indicators.sma20 !== null && indicators.sma20 !== undefined) {
       const weight = 3;
       totalWeight += weight;
-      if (currentPrice > indicators.sma20) {
+      indicatorsUsed++;
+      const isBullish = currentPrice > indicators.sma20;
+
+      if (isBullish) {
         bullishPoints += weight;
-        console.log(`Price above SMA20: +${weight} bullish`);
       } else {
         bearishPoints += weight;
-        console.log(`Price below SMA20: +${weight} bearish`);
       }
+
+      breakdown.trend.sma20 = {
+        available: true,
+        signal: isBullish ? 'bullish' : 'bearish',
+        points: weight,
+        value: indicators.sma20,
+      };
+      console.log(`SMA20: ${isBullish ? 'bullish' : 'bearish'} (+${weight})`);
     }
 
+    // SMA 50 vs Price (weight: 3)
     if (indicators.sma50 !== null && indicators.sma50 !== undefined) {
       const weight = 3;
       totalWeight += weight;
-      if (currentPrice > indicators.sma50) {
+      indicatorsUsed++;
+      const isBullish = currentPrice > indicators.sma50;
+
+      if (isBullish) {
         bullishPoints += weight;
-        console.log(`Price above SMA50: +${weight} bullish`);
       } else {
         bearishPoints += weight;
-        console.log(`Price below SMA50: +${weight} bearish`);
       }
+
+      breakdown.trend.sma50 = {
+        available: true,
+        signal: isBullish ? 'bullish' : 'bearish',
+        points: weight,
+        value: indicators.sma50,
+      };
+      console.log(`SMA50: ${isBullish ? 'bullish' : 'bearish'} (+${weight})`);
     }
 
+    // SMA 200 vs Price (weight: 2)
     if (indicators.sma200 !== null && indicators.sma200 !== undefined) {
       const weight = 2;
       totalWeight += weight;
-      if (currentPrice > indicators.sma200) {
+      indicatorsUsed++;
+      const isBullish = currentPrice > indicators.sma200;
+
+      if (isBullish) {
         bullishPoints += weight;
-        console.log(`Price above SMA200: +${weight} bullish`);
       } else {
         bearishPoints += weight;
-        console.log(`Price below SMA200: +${weight} bearish`);
       }
-    }
-    
-    // Golden cross/death cross (weight: 4)
-    if (indicators.sma50 !== null && indicators.sma200 !== null) {
-      const weight = 4;
-      totalWeight += weight;
-      if (indicators.sma50 > indicators.sma200) {
-        bullishPoints += weight;
-        console.log(`Golden Cross: +${weight} bullish`);
-      } else {
-        bearishPoints += weight;
-        console.log(`Death Cross: +${weight} bearish`);
-      }
+
+      breakdown.trend.sma200 = {
+        available: true,
+        signal: isBullish ? 'bullish' : 'bearish',
+        points: weight,
+        value: indicators.sma200,
+      };
+      console.log(`SMA200: ${isBullish ? 'bullish' : 'bearish'} (+${weight})`);
     }
 
-    // RSI analysis (weight: 5)
-    if (indicators.rsi14 !== null && indicators.rsi14 !== undefined) {
+    // Golden Cross/Death Cross (weight: 5)
+    if (indicators.sma50 !== null && indicators.sma200 !== null) {
       const weight = 5;
       totalWeight += weight;
-      if (indicators.rsi14 < 30) {
-        bullishPoints += weight; // Oversold
-        console.log(`RSI oversold (${indicators.rsi14}): +${weight} bullish`);
-      } else if (indicators.rsi14 > 70) {
-        bearishPoints += weight; // Overbought
-        console.log(`RSI overbought (${indicators.rsi14}): +${weight} bearish`);
-      } else if (indicators.rsi14 > 50) {
-        bullishPoints += weight * 0.5;
-        console.log(`RSI above 50 (${indicators.rsi14}): +${weight * 0.5} bullish`);
-      } else {
-        bearishPoints += weight * 0.5;
-        console.log(`RSI below 50 (${indicators.rsi14}): +${weight * 0.5} bearish`);
-      }
-    }
+      indicatorsUsed++;
+      const isGoldenCross = indicators.sma50 > indicators.sma200;
 
-    // MACD analysis (weight: 4)
-    if (indicators.macd.value !== null && indicators.macd.signal !== null) {
-      const weight = 4;
-      totalWeight += weight;
-      if (indicators.macd.value > indicators.macd.signal) {
+      if (isGoldenCross) {
         bullishPoints += weight;
-        console.log(`MACD above signal: +${weight} bullish`);
       } else {
         bearishPoints += weight;
-        console.log(`MACD below signal: +${weight} bearish`);
       }
 
-      // MACD histogram momentum
-      if (indicators.macd.histogram !== null) {
-        const histWeight = 2;
-        totalWeight += histWeight;
-        if (indicators.macd.histogram > 0) {
-          bullishPoints += histWeight;
-          console.log(`MACD histogram positive: +${histWeight} bullish`);
-        } else {
-          bearishPoints += histWeight;
-          console.log(`MACD histogram negative: +${histWeight} bearish`);
-        }
+      breakdown.trend.goldenCross = {
+        available: true,
+        signal: isGoldenCross ? 'bullish' : 'bearish',
+        points: weight,
+        details: { active: isGoldenCross ? 'Golden Cross' : 'Death Cross' },
+      };
+      console.log(`${isGoldenCross ? 'Golden Cross' : 'Death Cross'}: (+${weight})`);
+    }
+
+    // === MOMENTUM INDICATORS ===
+
+    // RSI Analysis (weight: 4) - Enhanced v2.0 logic
+    if (indicators.rsi14 !== null && indicators.rsi14 !== undefined) {
+      const weight = 4;
+      totalWeight += weight;
+      indicatorsUsed++;
+      const rsi = indicators.rsi14;
+      let rsiPoints = 0;
+      let rsiSignal: 'bullish' | 'bearish' | 'neutral' = 'neutral';
+      let category = '';
+
+      if (rsi < 30) {
+        // Oversold - reversal signal
+        rsiPoints = weight;
+        bullishPoints += rsiPoints;
+        rsiSignal = 'bullish';
+        category = 'Oversold (Reversal)';
+        warnings.push('RSI oversold - potential bounce opportunity');
+      } else if (rsi > 70) {
+        // Overbought - reversal signal
+        rsiPoints = weight;
+        bearishPoints += rsiPoints;
+        rsiSignal = 'bearish';
+        category = 'Overbought (Reversal)';
+        warnings.push('RSI overbought - potential correction ahead');
+      } else if (rsi >= 50 && rsi <= 70) {
+        // Bullish momentum
+        rsiPoints = 2;
+        bullishPoints += rsiPoints;
+        rsiSignal = 'bullish';
+        category = 'Bullish Momentum';
+      } else if (rsi >= 30 && rsi < 50) {
+        // Bearish momentum
+        rsiPoints = 2;
+        bearishPoints += rsiPoints;
+        rsiSignal = 'bearish';
+        category = 'Bearish Momentum';
       }
+
+      breakdown.momentum.rsi = {
+        available: true,
+        signal: rsiSignal,
+        points: rsiPoints,
+        value: rsi,
+        details: { category },
+      };
+      console.log(`RSI (${rsi.toFixed(2)}): ${category} - ${rsiSignal} (+${rsiPoints})`);
     }
 
-    // Calculate final score
-    if (totalWeight === 0) {
-      console.log('No indicators available, defaulting to HOLD');
-      return 'HOLD';
+    // MACD Analysis (weight: 3) - v2.0: histogram removed
+    if (indicators.macd.value !== null && indicators.macd.signal !== null) {
+      const weight = 3;
+      totalWeight += weight;
+      indicatorsUsed++;
+      const isBullish = indicators.macd.value > indicators.macd.signal;
+
+      if (isBullish) {
+        bullishPoints += weight;
+      } else {
+        bearishPoints += weight;
+      }
+
+      breakdown.momentum.macd = {
+        available: true,
+        signal: isBullish ? 'bullish' : 'bearish',
+        points: weight,
+        details: {
+          macdValue: indicators.macd.value,
+          signalValue: indicators.macd.signal,
+        },
+      };
+      console.log(`MACD: ${isBullish ? 'bullish' : 'bearish'} (+${weight})`);
     }
 
-    const netScore = (bullishPoints - bearishPoints) / totalWeight;
-    console.log(`Score calculation: bullish=${bullishPoints}, bearish=${bearishPoints}, total_weight=${totalWeight}, net_score=${netScore}`);
+    // Stochastic Oscillator (weight: 3)
+    if (indicators.stochastic?.k !== null && indicators.stochastic?.d !== null) {
+      const weight = 3;
+      totalWeight += weight;
+      indicatorsUsed++;
+      const k = indicators.stochastic.k;
+      const d = indicators.stochastic.d;
+      let stochPoints = 0;
+      let stochSignal: 'bullish' | 'bearish' | 'neutral' = 'neutral';
 
-    // Generate signal based on net score
-    if (netScore >= 0.6) return 'STRONG_BUY';
-    if (netScore >= 0.2) return 'BUY';
-    if (netScore >= -0.2) return 'HOLD';
-    if (netScore >= -0.6) return 'SELL';
-    return 'STRONG_SELL';
+      if (k < 20) {
+        // Oversold
+        stochPoints = weight;
+        bullishPoints += stochPoints;
+        stochSignal = 'bullish';
+        warnings.push('Stochastic oversold - potential reversal');
+      } else if (k > 80) {
+        // Overbought
+        stochPoints = weight;
+        bearishPoints += stochPoints;
+        stochSignal = 'bearish';
+        warnings.push('Stochastic overbought - potential pullback');
+      } else if (k > d && k >= 20 && k <= 80) {
+        // Bullish crossover in mid-range
+        stochPoints = 1.5;
+        bullishPoints += stochPoints;
+        stochSignal = 'bullish';
+      } else if (k < d && k >= 20 && k <= 80) {
+        // Bearish crossover in mid-range
+        stochPoints = 1.5;
+        bearishPoints += stochPoints;
+        stochSignal = 'bearish';
+      }
+
+      breakdown.momentum.stochastic = {
+        available: true,
+        signal: stochSignal,
+        points: stochPoints,
+        details: { kValue: k, dValue: d },
+      };
+      console.log(`Stochastic (%K:${k.toFixed(1)}, %D:${d.toFixed(1)}): ${stochSignal} (+${stochPoints})`);
+    }
+
+    // === VOLATILITY INDICATORS ===
+
+    // Bollinger Bands (weight: 3) - v2.0: now scored
+    if (indicators.bollingerBands) {
+      const weight = 3;
+      totalWeight += weight;
+      indicatorsUsed++;
+      const bb = indicators.bollingerBands;
+      let bbPoints = 0;
+      let bbSignal: 'bullish' | 'bearish' | 'neutral' = 'neutral';
+      let position = '';
+
+      if (currentPrice > bb.upper) {
+        // Above upper band - overbought
+        bbPoints = weight;
+        bearishPoints += bbPoints;
+        bbSignal = 'bearish';
+        position = 'Above Upper Band';
+        warnings.push('Price above Bollinger upper band - potentially overbought');
+      } else if (currentPrice < bb.lower) {
+        // Below lower band - oversold
+        bbPoints = weight;
+        bullishPoints += bbPoints;
+        bbSignal = 'bullish';
+        position = 'Below Lower Band';
+        warnings.push('Price below Bollinger lower band - potentially oversold');
+      } else if (currentPrice > bb.middle) {
+        // Between middle and upper - bullish zone
+        bbPoints = 1.5;
+        bullishPoints += bbPoints;
+        bbSignal = 'bullish';
+        position = 'Upper Half';
+      } else {
+        // Between lower and middle - bearish zone
+        bbPoints = 1.5;
+        bearishPoints += bbPoints;
+        bbSignal = 'bearish';
+        position = 'Lower Half';
+      }
+
+      breakdown.volatility.bollinger = {
+        available: true,
+        signal: bbSignal,
+        points: bbPoints,
+        details: { position, upper: bb.upper, middle: bb.middle, lower: bb.lower },
+      };
+      console.log(`Bollinger Bands (${position}): ${bbSignal} (+${bbPoints})`);
+    }
+
+    // === VOLUME INDICATORS ===
+
+    // Volume Trend (weight: 4)
+    if (indicators.volumeTrend) {
+      const weight = 4;
+      totalWeight += weight;
+      indicatorsUsed++;
+      const vt = indicators.volumeTrend;
+      const changePercent = vt.changePercent;
+      let volPoints = 0;
+      let volSignal: 'bullish' | 'bearish' | 'neutral' = 'neutral';
+
+      // Determine price direction (comparing last 2 closes)
+      const priceUp = closePrices[closePrices.length - 1] > closePrices[closePrices.length - 2];
+
+      if (priceUp && changePercent > 20) {
+        // Price up + high volume = strong bullish
+        volPoints = weight;
+        bullishPoints += volPoints;
+        volSignal = 'bullish';
+      } else if (!priceUp && changePercent > 20) {
+        // Price down + high volume = strong bearish
+        volPoints = weight;
+        bearishPoints += volPoints;
+        volSignal = 'bearish';
+        warnings.push('Price declining on high volume - strong selling pressure');
+      } else if (priceUp && changePercent < -20) {
+        // Price up + low volume = weak move
+        volPoints = 1;
+        bearishPoints += volPoints;
+        volSignal = 'bearish';
+        warnings.push('Price increase not confirmed by volume');
+      } else if (!priceUp && changePercent < -20) {
+        // Price down + low volume = weak selling
+        volPoints = 1;
+        bullishPoints += volPoints;
+        volSignal = 'bullish';
+      }
+
+      breakdown.volume.volumeTrend = {
+        available: true,
+        signal: volSignal,
+        points: volPoints,
+        details: {
+          currentVolume: vt.currentVolume,
+          avgVolume: vt.avgVolume,
+          changePercent: `${changePercent > 0 ? '+' : ''}${changePercent.toFixed(1)}%`,
+        },
+      };
+      console.log(`Volume Trend (${changePercent.toFixed(1)}%): ${volSignal} (+${volPoints})`);
+    }
+
+    // === CALCULATE FINAL SCORE ===
+
+    if (totalWeight === 0 || indicatorsUsed < 2) {
+      console.log('Insufficient indicators for scoring');
+      return {
+        signal: 'INSUFFICIENT_DATA',
+        score: 0,
+        baseScore: 0,
+        confidence: 'LOW',
+        confidenceStars: 1,
+        bullishPoints: 0,
+        bearishPoints: 0,
+        availableWeight: 0,
+        indicatorsUsed: 0,
+        agreement: 0,
+        breakdown,
+        warnings: ['Insufficient data for reliable analysis'],
+      };
+    }
+
+    // Base score calculation
+    const baseScore = (bullishPoints - bearishPoints) / totalWeight;
+
+    // Confidence factor based on indicator availability (out of 9 possible indicators)
+    const confidenceFactor = indicatorsUsed / 9;
+
+    // Final adjusted score
+    const finalScore = baseScore * (0.7 + 0.3 * confidenceFactor);
+
+    // Agreement calculation
+    const totalPoints = bullishPoints + bearishPoints;
+    const dominantPoints = Math.max(bullishPoints, bearishPoints);
+    const agreement = totalPoints > 0 ? (dominantPoints / totalPoints) * 100 : 0;
+
+    // Confidence rating
+    let confidence: 'HIGH' | 'MEDIUM' | 'LOW' = 'LOW';
+    let confidenceStars = 1;
+
+    if (indicatorsUsed >= 8 && agreement >= 75) {
+      confidence = 'HIGH';
+      confidenceStars = 3;
+    } else if (indicatorsUsed >= 6 || agreement >= 60) {
+      confidence = 'MEDIUM';
+      confidenceStars = 2;
+    }
+
+    // Signal classification (7 levels)
+    let signal: TechnicalIndicators['signal'];
+    if (finalScore >= 0.6) signal = 'STRONG_BUY';
+    else if (finalScore >= 0.3) signal = 'BUY';
+    else if (finalScore >= 0.1) signal = 'WEAK_BUY';
+    else if (finalScore >= -0.1) signal = 'HOLD';
+    else if (finalScore >= -0.3) signal = 'WEAK_SELL';
+    else if (finalScore >= -0.6) signal = 'SELL';
+    else signal = 'STRONG_SELL';
+
+    // Add contextual warnings
+    if (confidence === 'LOW') {
+      warnings.push(`Signal based on limited data (only ${indicatorsUsed}/9 indicators available)`);
+    }
+
+    if (agreement < 60) {
+      warnings.push('Mixed signals - indicators show divergence');
+    }
+
+    // Convert finalScore from -1..+1 range to 0..10 scale
+    const scoreOutOf10 = Math.round(((finalScore + 1) / 2) * 10 * 10) / 10;
+
+    console.log(`Score: base=${baseScore.toFixed(3)}, final=${finalScore.toFixed(3)}, out of 10=${scoreOutOf10}, confidence=${confidence}`);
+    console.log(`Points: bullish=${bullishPoints}, bearish=${bearishPoints}, weight=${totalWeight}`);
+    console.log(`Agreement: ${agreement.toFixed(1)}%`);
+
+    return {
+      signal,
+      score: scoreOutOf10,
+      baseScore,
+      confidence,
+      confidenceStars,
+      bullishPoints,
+      bearishPoints,
+      availableWeight: totalWeight,
+      indicatorsUsed,
+      agreement,
+      breakdown,
+      warnings,
+    };
   }
 
   private getEmptyIndicators(): TechnicalIndicators {
@@ -286,6 +725,30 @@ export class TechnicalAnalysisService {
       rsi14: null,
       macd: { value: null, signal: null, histogram: null },
       signal: 'HOLD',
+      score: 0,
+      baseScore: 0,
+      confidence: 'LOW',
+      confidenceStars: 1,
+      bullishPoints: 0,
+      bearishPoints: 0,
+      availableWeight: 0,
+      indicatorsUsed: 0,
+      agreement: 0,
+      breakdown: {
+        trend: {},
+        momentum: {},
+        volatility: {},
+        volume: {}
+      },
+      warnings: [],
+    };
+  }
+
+  private getInsufficientDataResponse(): TechnicalIndicators {
+    return {
+      ...this.getEmptyIndicators(),
+      signal: 'INSUFFICIENT_DATA',
+      warnings: ['Insufficient historical data for reliable technical analysis. Minimum 20 data points required.'],
     };
   }
 }

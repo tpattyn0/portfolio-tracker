@@ -161,11 +161,11 @@ export class NewsAggregationService {
       const newsArticles: NewsArticleData[] = [];
       
       if (result.news && Array.isArray(result.news)) {
-        result.news.forEach((article: any) => {
+        result.news.forEach((article) => {
           if (article.title && article.link) {
             newsArticles.push({
               title: article.title,
-              summary: article.summary || article.title,
+              summary: (typeof article.summary === 'string' ? article.summary : null) || article.title,
               url: article.link,
               source: article.publisher || 'Yahoo Finance',
               publishedAt: article.providerPublishTime 
@@ -215,6 +215,7 @@ export class NewsAggregationService {
       }
       
       return response.data.articles
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .filter((article: any) => article.title && article.url)
         .map((article: any) => ({
           title: article.title,
@@ -227,8 +228,8 @@ export class NewsAggregationService {
           imageUrl: article.urlToImage,
           symbols: [symbol],
         }));
-    } catch (error: any) {
-      console.error('NewsAPI error:', error.message);
+    } catch (error: unknown) {
+      console.error('NewsAPI error:', error instanceof Error ? error.message : error);
       return [];
     }
   }

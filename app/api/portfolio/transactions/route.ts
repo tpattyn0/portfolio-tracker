@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const positionId = searchParams.get("positionId");
     const ticker = searchParams.get("ticker");
 
-    const whereClause: any = {
+    const whereClause: { portfolioId: string; positionId?: string; ticker?: string } = {
       portfolioId: portfolio.id,
     };
 

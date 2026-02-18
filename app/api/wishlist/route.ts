@@ -41,10 +41,10 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json(item, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Failed to add to wishlist:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to add to wishlist' },
+      { error: error instanceof Error ? error.message : 'Failed to add to wishlist' },
       { status: 400 }
     );
   }

@@ -73,7 +73,8 @@ export class AnalystRatingsService {
     }
   }
 
-  private extractRatings(data: any): Omit<AnalystRatings, 'score' | 'scoreInterpretation'> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private extractRatings(data: Record<string, any>): Omit<AnalystRatings, 'score' | 'scoreInterpretation'> {
     const financialData = data.financialData || {};
     const recommendationTrend = data.recommendationTrend?.trend?.[0] || {};
     
