@@ -90,19 +90,27 @@ jobs:
 
   # Full-history scan — REPORTING ONLY, deliberately not a merge gate.
   #
-  # This repo has a known, unresolved historical leak: NEXTAUTH_SECRET,
-  # NEWS_API_KEY, and GEMINI_API_KEY are live and public in commits 2a6c4c1a /
-  # 3855042e (.env and .env.local). See reviews/2026-07-16-onboarding.md ONB-01
-  # and TECH_DEBT.md TD-01. The owner has deferred rotation.
+  # This repo has a known historical leak in commits 2a6c4c1a / 3855042e (.env
+  # and .env.local). As of 2026-07-17 NEXTAUTH_SECRET, GEMINI_API_KEY and
+  # DATABASE_URL are ROTATED — the values in history are dead. NEWS_API_KEY is
+  # still live and public: newsapi.org's free tier offers no revoke, and the
+  # owner accepted that risk conditional on this app staying out of production
+  # (ADR-7, TECH_DEBT.md TD-01, reviews/2026-07-16-onboarding.md ONB-01).
   #
-  # So this job WILL fail until those keys are rotated and history is scrubbed.
+  # So this job WILL still fail: it reports every historical secret, live or
+  # dead, because gitleaks matches shapes and cannot know which values were
+  # rotated. Findings for the rotated keys are expected noise; the NEWS_API_KEY
+  # findings are the real ones.
   # `continue-on-error` keeps it from blocking unrelated PRs on a known debt,
   # while keeping the finding visible on every run instead of configuring it
   # away. Allowlisting .env is what hid this for months — do not do that again.
   #
-  # WHEN ONB-01 IS RESOLVED: delete `continue-on-error` and make this a required
-  # check too. That is the point at which "no secrets in history" becomes a real
-  # guarantee rather than an aspiration.
+  # WHEN ONB-01 IS FULLY RESOLVED (fresh NewsAPI key + history scrubbed, or the
+  # repo made private and the dead findings suppressed by fingerprint in a
+  # committed, history-scoped ignore file): delete `continue-on-error` and make
+  # this a required check. That is the point at which "no secrets in history"
+  # becomes a real guarantee rather than an aspiration. Do not silence it before
+  # then — a blanket .env allowlist is exactly what hid this leak for months.
   secret-scan-history:
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -124,7 +132,7 @@ jobs:
             | tar -xz -C /usr/local/bin gitleaks
           gitleaks version
 
-      - name: Secret scan (full history — known to fail, see ONB-01)
+      - name: Secret scan (full history — known to fail, see ADR-7 / TD-01)
         run: |
           gitleaks detect \
             --source . \

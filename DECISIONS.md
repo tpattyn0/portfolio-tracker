@@ -41,3 +41,12 @@
 - **Tradeoffs:** simplest possible setup for a single-developer project; but any dev-side mutation (manual testing, a bad migration, a seed script) affects real user data with no isolation, and there is no way to test schema changes safely before they hit production.
 - **Status:** accepted-but-flagged
 - **Confidence:** High
+
+## ADR-7 — Accept the leaked NEWS_API_KEY while non-production
+- **Decision:** `NEWS_API_KEY` remains live and publicly readable in git history (commits `2a6c4c1a`, `3855042e`, in both `.env` and `.env.local`). The owner accepts this risk **conditional on this app not being in production**. `NEXTAUTH_SECRET`, `GEMINI_API_KEY`, and `DATABASE_URL` were rotated on 2026-07-17; this key was not, because newsapi.org's free tier exposes no regenerate or revoke control.
+- **Evidence:** `lib/services/news.service.ts` (sole consumer); `TECH_DEBT.md` TD-01; `reviews/2026-07-16-onboarding.md` ONB-01. Leak verified by hashing the current `.env` against `3855042e:.env` — that check also confirms the other three are rotated.
+- **Tradeoffs:** Anyone reading the public repo can spend this repo's NewsAPI quota, and the key cannot be revoked, so the exposure runs until a fresh key replaces it. Accepted because the blast radius is confined to a free-tier news quota: the key grants no access to our data, our users, or any account of value. This is explicitly *not* the reasoning that applied to `NEXTAUTH_SECRET`, which could forge sessions for any user and was rotated on that basis.
+- **Condition (this is what makes the decision valid):** the app is not deployed. Going to production changes the calculus — a live app makes quota exhaustion a user-visible outage rather than a private annoyance. TD-01 therefore carries a blocking precondition: obtain a fresh NewsAPI key before any production deploy.
+- **Supersedes:** the 2026-07-16 acceptance of ONB-01, which was made on the incorrect belief that the repo was a local-only clone. This one is made with the public exposure confirmed.
+- **Status:** accepted-but-flagged
+- **Confidence:** High (on the reasoning; the condition is the thing to watch — a decision conditional on "we won't deploy" silently expires the moment someone deploys)
