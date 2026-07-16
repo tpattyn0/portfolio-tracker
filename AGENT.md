@@ -48,7 +48,7 @@ Two checks, and only one of them blocks:
 
 So a PR showing one red X and one green is **normal**. Two reds means `code-gate` failed and something is actually wrong. These were previously both named `verify`, which made a real failure indistinguishable from the expected one at a glance — renamed 2026-07-17.
 
-**CI runs `npm run verify:code`, not `npm run verify`** — same typecheck + lint + test gate, minus the local secret scan. CI covers secrets with the gitleaks GitHub Action instead, which scans full history rather than just the checked-out tree. Keep the two in sync: a check added to `verify` belongs in `verify:code` too.
+**CI runs `npm run verify:code`, not `npm run verify`** — same typecheck + lint + test gate, minus the local secret scan. CI handles secrets in its own steps instead: `code-gate` scans this PR's commit range, and `secret-history` scans all of history. Neither uses the gitleaks GitHub Action — on a `pull_request` event it only scans the PR's own commits and ignores `fetch-depth`, which is how a green check once coexisted with three live secrets in the first commit. Keep the two in sync: a check added to `verify` belongs in `verify:code` too.
 
 ## Git hooks live in `.githooks/`, not `hooks/`
 
