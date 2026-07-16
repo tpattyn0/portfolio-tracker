@@ -43,3 +43,8 @@
 # new finding. Same file, same line, same purpose — a real key in a real,
 # gitignored .env. Suppressed on the same grounds as the entries above.
 .env:generic-api-key:16
+
+# Added 2026-07-17 (setup audit): .env.local was synced to the rotated values
+# (closing TD-29), so the replacement Gemini key now fires `generic-api-key` in
+# .env.local too — same file-purpose, same grounds as the entry above.
+.env.local:generic-api-key:16
