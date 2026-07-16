@@ -58,7 +58,7 @@ Ready for Coding agent: SA-01..07, SA-09 (all fixed in this session)
 
 ### SA-08 — ISSUE (owner action)
 **File:** — (local machine)
-**Problem:** The `gh` CLI token in the keyring is invalid — `gh auth status` fails. `gh pr create`, ruleset inspection via API, and any Coding-agent step that uses `gh` are broken (this session had to verify branch protection by push-probe and could not open its PR via `gh`). Git push auth (keychain) still works.
+**Problem:** The `gh` CLI token in the keyring is invalid — `gh auth status` fails and `gh api` returns errors (this session had to verify branch protection by push-probe instead of reading the ruleset, and could not confirm the auto-delete-branches setting). Oddly, `gh pr create` still worked (PR #7), so some credential path functions; API queries do not. Git push auth (keychain) is fine.
 **Recommendation:** run `gh auth refresh -h github.com` in a terminal.
 
 ### SA-09 — SUGGESTION (fixed; one-minute owner confirmation left)
