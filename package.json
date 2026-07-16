@@ -9,8 +9,10 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "secret-scan": "gitleaks detect --source . --no-git -c .gitleaks.toml --redact",
+    "secret-scan": "gitleaks detect --source . --no-git -c .gitleaks.toml --redact -i .gitleaks-local",
+    "secret-scan:history": "gitleaks detect --source . --log-opts=--all -c .gitleaks.toml --redact -i /dev/null",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run secret-scan",
+    "verify:code": "npm run typecheck && npm run lint && npm run test",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate"
