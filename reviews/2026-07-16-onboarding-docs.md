@@ -1,6 +1,6 @@
 # Review: onboarding framework docs (PRODUCT / ARCHITECTURE / DECISIONS / AGENT / TECH_DEBT)
 Date: 2026-07-16
-Status: [leave blank until implemented]
+Status: PARTIALLY IMPLEMENTED — 2026-07-16 (DOC-02..05 done, DOC-06 skipped — owner did not have the deployment target to confirm, deferred; DOC-01 BLOCKER still awaits owner decision)
 
 Audit target: branch `feature/onboarding-audit-fixes` @ `90f435fd` — working tree clean (non-`.next`; `.next` now untracked per ONB-08).
 Scope: the five framework docs created by the Coding agent under ONB-09, verified against code at HEAD. This is a follow-up to `reviews/2026-07-16-onboarding.md`.

@@ -49,7 +49,11 @@
 
 ## API surface
 
-~23 route files under `app/api`. See `AGENT.md` conventions for the auth-guard pattern new routes should follow. Full enumeration is not duplicated here — read `app/api/**/route.ts` directly; the tree is shallow and each file is short.
+23 route files under `app/api`. See `AGENT.md` conventions for the auth-guard pattern new routes should follow. Full enumeration is not duplicated here — read `app/api/**/route.ts` directly; the tree is shallow and each file is short.
+
+Two routes are intentionally public, with no auth guard — every other route requires an authenticated session:
+- `api/auth/[...nextauth]` — the NextAuth handler itself; it *is* the auth mechanism, so it can't require a session.
+- `api/auth/register` — new-account creation; a session can't exist yet at registration time.
 
 ## Environment separation
 
