@@ -3,12 +3,54 @@ title = "portfolio-tracker gitleaks config"
 [extend]
 useDefault = true
 
+# --- Project-specific rules -------------------------------------------------
+# The default ruleset fingerprints well-known vendor formats (Google `AIza…`,
+# AWS, Stripe, …) but has no rule for credentials we mint ourselves. ONB-01's
+# NEXTAUTH_SECRET is an `openssl rand -base64 32` blob and NEWS_API_KEY is a
+# bare 32-char hex string — neither carries a vendor fingerprint, so neither is
+# caught by the defaults. These rules cover this repo's own credential shapes.
+
+[[rules]]
+id = "nextauth-secret"
+description = "NextAuth signing secret (base64 — signs session JWTs, see ADR-1)"
+regex = '''(?i)nextauth_secret\s*[:=]\s*["']?([A-Za-z0-9+/]{43}=?)["']?'''
+keywords = ["nextauth_secret"]
+
+[[rules]]
+id = "newsapi-key"
+description = "NewsAPI key (32-char lowercase hex)"
+regex = '''(?i)news_api_key\s*[:=]\s*["']?([a-f0-9]{32})["']?'''
+keywords = ["news_api_key"]
+
+[[rules]]
+id = "gemini-api-key-assignment"
+description = "Google/Gemini API key assigned to an env var"
+regex = '''(?i)gemini_api_key\s*[:=]\s*["']?(AIza[A-Za-z0-9_\-]{35})["']?'''
+keywords = ["gemini_api_key", "aiza"]
+
+# --- Allowlist --------------------------------------------------------------
+# Deliberately NOT allowlisting `.env`.
+#
+# This config previously carried a `(^|/)\.env(\.[^/]*)?$` path allowlist. That
+# was written for the local `--no-git` working-tree scan, where `.env` is
+# present-but-untracked and would otherwise fire on every run. The problem: the
+# same allowlist also applies to history scans, where `.env` IS in the tree
+# (commits 2a6c4c1a, 3855042e, c89e333d) holding the live ONB-01 credentials.
+# It suppressed the one finding that matters most — a full-history scan reported
+# "no leaks found" purely because of this line.
+#
+# The local working-tree noise from `.env` is handled instead by per-finding
+# fingerprints in `.gitleaksignore`, which match only the untracked files and
+# NOT the same secrets in history. See that file for the reasoning.
+
 [allowlist]
-description = "Ignore paths that are gitignored/build output, not tracked source"
+description = "Build output and vendored files — not source"
 paths = [
   '''\.next/''',
-  '''(^|/)\.env(\.[^/]*)?$''',
+  '''(^|/)node_modules/''',
+  '''(^|/)package-lock\.json$''',
 ]
 
-# See TECH_DEBT.md for the historical secrets leak (ONB-01) tracked
-# separately — this config guards tracked source going forward.
+# `.env.example` is a committed template; its placeholders must never be real.
+# If a real key ever lands there the rules above SHOULD fire, so it is
+# intentionally not allowlisted.

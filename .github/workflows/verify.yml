@@ -1,7 +1,6 @@
 # CI — runs the SAME Verify block agents run locally. Keep in sync with AGENT.md.
-# Wire this as a required status check in branch protection (see workflow/SETUP.md)
-# so no PR can merge unless it passes — this is what makes "never skip
-# verification" physically unbreakable (assessment P0-1.1).
+# Wire `verify` as a required status check in branch protection (workflow/SETUP.md §1)
+# so no PR can merge unless it passes.
 name: verify
 
 on:
@@ -11,7 +10,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read   # required by gitleaks-action to list PR commits
 
 jobs:
   verify:
@@ -19,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # full history so gitleaks can scan the range
+          fetch-depth: 0   # full history — the secret scan below needs every commit
 
       - uses: actions/setup-node@v4
         with:
@@ -29,14 +27,37 @@ jobs:
       - run: npm ci
 
       # Prisma client is generated into node_modules at install time; `npm ci`
-      # skips postinstall scripts for some setups, so generate explicitly —
-      # tsc --noEmit fails without the generated types.
+      # skips postinstall for some setups, so generate explicitly — tsc --noEmit
+      # fails without the generated types.
       - run: npx prisma generate
 
-      - name: Secret scan (gitleaks)
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Secret scan — scans THIS BRANCH'S NEW COMMITS against main.
+      #
+      # Why not gitleaks-action: on a pull_request event it scans only
+      # `<head>^..<head>` — the PR's own commits — and silently ignores
+      # fetch-depth. That produced a green `verify` on the rollout PR while three
+      # live credentials sat in the repo's first commit (ONB-01). A check that
+      # cannot fail on a pre-existing leak should not be called a secret scan.
+      #
+      # This step is the merge gate: it fails if the PR ADDS a secret. The
+      # pre-existing leak is covered by the separate `secret-scan-history` job
+      # below, which is intentionally not the merge gate — see its comment.
+      - name: Secret scan (new commits)
+        run: |
+          BASE="origin/${{ github.base_ref || 'main' }}"
+          if git rev-parse --verify -q "$BASE" >/dev/null; then
+            RANGE="$BASE..HEAD"
+          else
+            RANGE="HEAD~1..HEAD"
+          fi
+          echo "Scanning commit range: $RANGE"
+          npx --yes gitleaks@8.24.3 detect \
+            --source . \
+            --log-opts="$RANGE" \
+            -c .gitleaks.toml \
+            --redact \
+            --no-banner \
+            -v
 
       # Optional: static analysis (assessment SK-9)
       # - name: Semgrep
@@ -44,7 +65,40 @@ jobs:
 
       - name: Verify block (code gate)
         run: npm run verify:code
-        # The local command (`npm run verify`) = code gate + a local gitleaks
-        # binary. In CI the gitleaks-action above handles the secret scan over
-        # full history, so this step runs the code-gate variant — same checks,
-        # same gate. See rollout/verify-portfolio-tracker.md.
+        # The local command (`npm run verify`) = code gate + a working-tree
+        # secret scan. CI splits those: the scan step above covers secrets over a
+        # real commit range, so this runs the code-gate variant. Same checks.
+        # See rollout/verify-portfolio-tracker.md.
+
+  # Full-history scan — REPORTING ONLY, deliberately not a merge gate.
+  #
+  # This repo has a known, unresolved historical leak: NEXTAUTH_SECRET,
+  # NEWS_API_KEY, and GEMINI_API_KEY are live and public in commits 2a6c4c1a /
+  # 3855042e (.env and .env.local). See reviews/2026-07-16-onboarding.md ONB-01
+  # and TECH_DEBT.md TD-01. The owner has deferred rotation.
+  #
+  # So this job WILL fail until those keys are rotated and history is scrubbed.
+  # `continue-on-error` keeps it from blocking unrelated PRs on a known debt,
+  # while keeping the finding visible on every run instead of configuring it
+  # away. Allowlisting .env is what hid this for months — do not do that again.
+  #
+  # WHEN ONB-01 IS RESOLVED: delete `continue-on-error` and make this a required
+  # check too. That is the point at which "no secrets in history" becomes a real
+  # guarantee rather than an aspiration.
+  secret-scan-history:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Secret scan (full history — known to fail, see ONB-01)
+        run: |
+          npx --yes gitleaks@8.24.3 detect \
+            --source . \
+            --log-opts="--all" \
+            -c .gitleaks.toml \
+            --redact \
+            --no-banner \
+            -v

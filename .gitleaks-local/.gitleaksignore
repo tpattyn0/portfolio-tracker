@@ -1,0 +1,38 @@
+# Findings suppressed for the LOCAL working-tree scan (`npm run secret-scan`).
+#
+# `npm run secret-scan` runs with --no-git, which walks the filesystem and so
+# reads .env / .env.local even though both are gitignored. Those files hold real
+# credentials by design — that is what a .env IS. Without these entries the
+# local scan fires on every run and everyone learns to ignore its output.
+#
+# SCOPE — read before adding anything here, and before moving this file:
+#
+# This file lives in `.gitleaks-local/` and is loaded ONLY by the local scan,
+# via `-i .gitleaks-local` in the `secret-scan` script. That directory scoping is
+# load-bearing. Gitleaks matches these fingerprints by SUFFIX, so the entry
+# `.env:nextauth-secret:7` ALSO matches the history finding
+# `3855042e…:.env:nextauth-secret:7`. If this file sits at the repo root where
+# gitleaks auto-discovers it, it silences the ONB-01 history findings too — I
+# verified that: the history scan dropped from 16 findings to "no leaks found".
+#
+# So: `secret-scan:history` passes `-i /dev/null` to load no ignore file at all,
+# and CI's secret-scan-history job runs gitleaks directly without `-i`. Both
+# still report the ONB-01 leak in full — 16 findings across commits 2a6c4c1a and
+# 3855042e. Do not move this file to the repo root.
+#
+# This is the narrow version of what .gitleaks.toml used to do with a blanket
+# `.env` path allowlist. That allowlist applied to history scans too and reported
+# "no leaks found" on a repo with three live public credentials. Suppress
+# specific known findings here; never re-add a path allowlist for .env.
+#
+# If a NEW secret is added to a new line of .env, its fingerprint won't match
+# these and the scan will correctly fire.
+
+.env:nextauth-secret:7
+.env:newsapi-key:13
+.env:gcp-api-key:16
+.env:gemini-api-key-assignment:16
+.env.local:nextauth-secret:7
+.env.local:newsapi-key:13
+.env.local:gcp-api-key:16
+.env.local:gemini-api-key-assignment:16
