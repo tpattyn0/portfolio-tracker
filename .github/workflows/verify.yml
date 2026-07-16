@@ -43,8 +43,13 @@ jobs:
       # pre-existing leak is covered by the separate `secret-scan-history` job
       # below, which is intentionally not the merge gate — see its comment.
       - name: Secret scan (new commits)
+        env:
+          # Pass github context through env, never interpolated into `run:` —
+          # a branch name is attacker-controllable on a fork PR, so `${{ }}`
+          # directly in the script is a shell-injection vector.
+          BASE_REF: ${{ github.base_ref || 'main' }}
         run: |
-          BASE="origin/${{ github.base_ref || 'main' }}"
+          BASE="origin/$BASE_REF"
           if git rev-parse --verify -q "$BASE" >/dev/null; then
             RANGE="$BASE..HEAD"
           else
