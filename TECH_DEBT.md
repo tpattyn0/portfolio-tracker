@@ -4,7 +4,7 @@
 
 | ID | Severity | Impact | Effort | Recommended fix |
 |----|----------|--------|--------|-----------------|
-| TD-01 | Critical | `NEXTAUTH_SECRET`, `NEWS_API_KEY`, `GEMINI_API_KEY` were committed in the first commit and are unchanged in the working `.env` today. The repo is public on GitHub, so all three are publicly readable and should be assumed harvested. Owner decision pending (2026-07-16): risk accepted for now, re-raise before any further work that increases exposure. | Low | Rotate all three now: `NEXTAUTH_SECRET` via `openssl rand -base64 32`; reissue+revoke NewsAPI and Gemini keys from their consoles. Consider making the repo private and scrubbing history (`git filter-repo`) as a follow-up, not a substitute. |
+| TD-01 | Critical | `NEXTAUTH_SECRET`, `NEWS_API_KEY`, `GEMINI_API_KEY` were committed in the first commit and are unchanged in the working `.env` today. The repo is public on GitHub, so all three are publicly readable and should be assumed harvested. The 2026-07-16 risk acceptance for this item was based on incorrect information (a failing `git log @{u}..` was misread as "no remote configured"); the repo is in fact public and the secret-bearing commit is on `origin/main`. That acceptance is **SUPERSEDED** (see `reviews/2026-07-16-onboarding.md` ONB-01) and this finding awaits a fresh owner decision on the corrected facts. | Low | Rotate all three now: `NEXTAUTH_SECRET` via `openssl rand -base64 32`; reissue+revoke NewsAPI and Gemini keys from their consoles. Consider making the repo private and scrubbing history (`git filter-repo`) as a follow-up, not a substitute. |
 | TD-02 | High | Dev and production share one Supabase database (confirmed by owner 2026-07-16, see ADR-6). Any dev-side mutation affects real user data with no isolation. | Medium | Provision a separate dev/staging database; update `.env.local` to point at it; document the split in `ARCHITECTURE.md`/`.env.example`. |
 | TD-03 | High | `next` has a critical RCE/DoS/cache-poisoning vulnerability per `npm audit` (many CVEs across RSC flight protocol, middleware bypass, cache poisoning). Currently pinned `^15.5.3`. | Medium-High | Planner to scope a Next.js upgrade — this is a version-bump architectural decision, not a drop-in fix; test the full app after upgrading given how much relies on App Router/middleware behavior. |
 | TD-04 | Medium | `axios` has numerous high-severity CVEs (SSRF, prototype pollution, header injection) per `npm audit`. | Low-Medium | Upgrade `axios` to latest; check for breaking changes in the few call sites that use it. |
@@ -20,19 +20,19 @@
 | TD-14 | Low | `ComponentErrorBoundary` only wraps sections on `dashboard/page.tsx` and `portfolio/[ticker]/page.tsx`. `research/[symbol]/page.tsx`, `research/page.tsx`, `wishlist/page.tsx`, `portfolio/add/page.tsx`, `portfolio/closed-positions/page.tsx` have no boundary around components that depend on external API calls. The full-page `ErrorBoundary` class is defined but never used anywhere, including `app/layout.tsx`. | Low-Medium | Wrap the remaining pages' external-data-dependent sections in `ComponentErrorBoundary`; consider using `ErrorBoundary` at the root layout as a last-resort catch-all. |
 | TD-15 | Low | `research/[symbol]/page.tsx` fetches data via manual `useEffect` + `fetch` instead of React Query, unlike every other data-fetching page — misses caching/refetch-on-focus/shared invalidation. | Low | Migrate to React Query for consistency. |
 | TD-16 | Low | `zustand` is a dependency (oddly listed under `devDependencies`) but never imported anywhere in the app. | Low | Remove if confirmed unused, or move to `dependencies` if there's a planned use. |
-| TD-17 | Low | Numerous `console.log` statements in service files instead of the existing `lib/utils/logger.ts` utility (carried over from `IMPROVEMENTS.md`, not reverified against current line numbers). | Low | Replace with `logger.*` calls where touched. |
-| TD-18 | Low | Duplicate `saveToDatabase`-style logic in `fundamental-analysis.service.ts` (carried over from `IMPROVEMENTS.md`, original line range `424-481` not reverified). | Low | Extract common data-shaping helper when next touching this file. |
-| TD-19 | Low | Magic numbers scattered in technical/fundamental scoring (e.g. RSI 30/70 thresholds, indicator weights) rather than named constants (carried over from `IMPROVEMENTS.md`). | Low | Extract to `lib/constants/` when next touching the relevant scoring logic. |
+| TD-19 | Low | Magic numbers scattered in technical/fundamental scoring (e.g. RSI 30/70 thresholds at `lib/services/technical-analysis.service.ts:408-428`, indicator weights) rather than named constants. Reverified against HEAD 2026-07-16. | Low | Extract to `lib/constants/` when next touching the relevant scoring logic. |
 
 ## Resolved
 
-| ID | Description | Resolved |
-|----|-------------|----------|
-| ONB-02 | Deleted unauthenticated `app/api/test-yahoo` debug route that echoed upstream error text. | 2026-07-16 |
-| ONB-03 | Deleted dormant, unwired `lib/middleware/csrf.ts` (see TD-05 for the real follow-up). Wired `lib/middleware/rate-limit.ts` into `/api/auth/register` and the third-party-fanout routes (`market/search`, `news/[symbol]`, `sentiment/[symbol]/history`, `research/[symbol]/intrinsic-value`). | 2026-07-16 |
-| ONB-04 | Added auth guard + `days` param clamping to `app/api/sentiment/[symbol]/history/route.ts`. | 2026-07-16 |
-| ONB-05 | Added auth guard to `research/[symbol]/intrinsic-value`, `news/[symbol]`, `market/search` routes. | 2026-07-16 |
-| ONB-06 | Set up `vitest`, `tsc --noEmit` typecheck script, `gitleaks` secret scan, and a single `npm run verify` command. | 2026-07-16 |
-| ONB-07 | Added tests for code touched in the 2026-07-16 session (rate-limit unit tests, auth-guard tests for the 4 newly-protected routes). Full retrofit intentionally out of scope — see TD-07. | 2026-07-16 |
-| ONB-08 | Untracked `.next/` from git (`git rm -r --cached .next`); `.gitignore` entry was already correct. | 2026-07-16 |
-| ONB-09 | Created `PRODUCT.md`, `ARCHITECTURE.md`, `DECISIONS.md`, `AGENT.md`, `TECH_DEBT.md` from codebase audit; created `GTM.md`, `DESIGN.md`, `future_ideas.md` as `[REQUIRES INPUT]` stubs. | 2026-07-16 |
+IDs below are `TD-*` in this table's own namespace; the "resolved by" column cites the originating review finding in `reviews/2026-07-16-onboarding.md` for traceability.
+
+| ID | Description | Resolved by | Resolved |
+|----|-------------|-------------|----------|
+| TD-20 | Deleted unauthenticated `app/api/test-yahoo` debug route that echoed upstream error text. | ONB-02 | 2026-07-16 |
+| TD-21 | Deleted dormant, unwired `lib/middleware/csrf.ts` (see TD-05 for the real follow-up). Wired `lib/middleware/rate-limit.ts` into `/api/auth/register` and the third-party-fanout routes (`market/search`, `news/[symbol]`, `sentiment/[symbol]/history`, `research/[symbol]/intrinsic-value`). | ONB-03 | 2026-07-16 |
+| TD-22 | Added auth guard + `days` param clamping to `app/api/sentiment/[symbol]/history/route.ts`. | ONB-04 | 2026-07-16 |
+| TD-23 | Added auth guard to `research/[symbol]/intrinsic-value`, `news/[symbol]`, `market/search` routes. | ONB-05 | 2026-07-16 |
+| TD-24 | Set up `vitest`, `tsc --noEmit` typecheck script, `gitleaks` secret scan, and a single `npm run verify` command. | ONB-06 | 2026-07-16 |
+| TD-25 | Added tests for code touched in the 2026-07-16 session (rate-limit unit tests, auth-guard tests for the 4 newly-protected routes). Full retrofit intentionally out of scope — see TD-07. | ONB-07 | 2026-07-16 |
+| TD-26 | Untracked `.next/` from git (`git rm -r --cached .next`); `.gitignore` entry was already correct. | ONB-08 | 2026-07-16 |
+| TD-27 | Created `PRODUCT.md`, `ARCHITECTURE.md`, `DECISIONS.md`, `AGENT.md`, `TECH_DEBT.md` from codebase audit; created `GTM.md`, `DESIGN.md`, `future_ideas.md` as `[REQUIRES INPUT]` stubs. | ONB-09 | 2026-07-16 |
