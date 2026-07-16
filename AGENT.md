@@ -37,3 +37,11 @@ npm run verify
 
 This runs, in order: `typecheck` (`tsc --noEmit`), `lint` (`next lint`), `test` (`vitest run`), and `secret-scan` (`gitleaks detect --source . --no-git -c .gitleaks.toml --redact`). All four must pass. `lint` currently has pre-existing warnings (unused imports, a few `any` types) that do not fail the command — do not treat fixing all of them as in-scope for an unrelated change; fix only what you touch.
 
+**CI runs `npm run verify:code`, not `npm run verify`** — same typecheck + lint + test gate, minus the local secret scan. CI covers secrets with the gitleaks GitHub Action instead, which scans full history rather than just the checked-out tree. Keep the two in sync: a check added to `verify` belongs in `verify:code` too.
+
+## Git hooks live in `.githooks/`, not `hooks/`
+
+`hooks/` is application source (React hooks — `use-debounce`, `use-price-sync`, `use-toast`), imported as `@/hooks/*` across `app/` and `components/`. The workflow framework's rollout script defaults to putting `pre-commit` and `install.sh` in a root `hooks/` directory; in this repo they were moved to `.githooks/` to keep shell scripts out of a source tree.
+
+Install them on a fresh clone with `bash .githooks/install.sh` (**not** `bash hooks/install.sh`, which HUMAN_GUIDE §12 states as the generic command). Git hooks live in `.git/hooks/` and never survive a clone, so this is a per-clone step.
+

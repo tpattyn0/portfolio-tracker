@@ -1,0 +1,50 @@
+# CI — runs the SAME Verify block agents run locally. Keep in sync with AGENT.md.
+# Wire this as a required status check in branch protection (see workflow/SETUP.md)
+# so no PR can merge unless it passes — this is what makes "never skip
+# verification" physically unbreakable (assessment P0-1.1).
+name: verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read   # required by gitleaks-action to list PR commits
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so gitleaks can scan the range
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Prisma client is generated into node_modules at install time; `npm ci`
+      # skips postinstall scripts for some setups, so generate explicitly —
+      # tsc --noEmit fails without the generated types.
+      - run: npx prisma generate
+
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Optional: static analysis (assessment SK-9)
+      # - name: Semgrep
+      #   uses: semgrep/semgrep-action@v1
+
+      - name: Verify block (code gate)
+        run: npm run verify:code
+        # The local command (`npm run verify`) = code gate + a local gitleaks
+        # binary. In CI the gitleaks-action above handles the secret scan over
+        # full history, so this step runs the code-gate variant — same checks,
+        # same gate. See rollout/verify-portfolio-tracker.md.

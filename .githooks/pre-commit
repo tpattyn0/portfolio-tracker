@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Local pre-commit guard (assessment P0-1.3 / P0-2). Install with hooks/install.sh.
+# Blocks: (1) committing secrets, (2) direct commits to main.
+set -euo pipefail
+
+# 1. Block direct commits to main
+branch="$(git rev-parse --abbrev-ref HEAD)"
+if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
+  echo "✗ Direct commits to $branch are blocked. Use a feature branch." >&2
+  exit 1
+fi
+
+# 2. Secret scan on staged changes (requires gitleaks; skips with a warning if absent)
+if command -v gitleaks >/dev/null 2>&1; then
+  if ! gitleaks protect --staged --no-banner; then
+    echo "✗ gitleaks found a potential secret in staged changes. Commit blocked." >&2
+    echo "  Move keys to .env (gitignored). If a key was exposed, rotate it." >&2
+    exit 1
+  fi
+else
+  echo "⚠ gitleaks not installed — secret scan skipped. Install: brew install gitleaks" >&2
+fi
