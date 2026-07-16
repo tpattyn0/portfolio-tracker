@@ -1,12 +1,10 @@
 # STATUS.md
 
 ## In progress
-Review: reviews/2026-07-16-onboarding.md
+Review: reviews/2026-07-16-onboarding.md (PARTIALLY IMPLEMENTED)
 Since: 2026-07-16
-Branch: main
-Next: awaiting owner decision
+Branch: feature/onboarding-audit-fixes
+Next: owner to open PR / merge
 
 ## Blocked
-ONB-01 — live secrets PUBLIC on github.com/tpattyn0/portfolio-tracker; rotate now
-ONB-10 — docs/ status unconfirmed (authoritative spec vs historical reference)
-ONB-11 — dev/production database separation unconfirmed
+ONB-01 — live secrets PUBLIC on github.com/tpattyn0/portfolio-tracker; owner deferred rotation on 2026-07-16, re-raise before further work

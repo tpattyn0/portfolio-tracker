@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit } from "@/lib/middleware/rate-limit";
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -11,6 +12,9 @@ const registerSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const limited = checkRateLimit(request, "register", 5, 60 * 60 * 1000);
+    if (limited) return limited;
+
     const body = await request.json();
     const { email, password, name } = registerSchema.parse(body);
 
