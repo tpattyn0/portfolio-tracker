@@ -60,11 +60,12 @@ Ready for Coding agent: SA-01..07, SA-09 (all fixed in this session)
 **File:** — (local machine)
 **Problem:** The `gh` CLI token in the keyring is invalid — `gh auth status` fails and `gh api` returns errors (this session had to verify branch protection by push-probe instead of reading the ruleset, and could not confirm the auto-delete-branches setting). Oddly, `gh pr create` still worked (PR #7), so some credential path functions; API queries do not. Git push auth (keychain) is fine.
 **Recommendation:** run `gh auth refresh -h github.com` in a terminal.
+**Resolution (2026-07-17, post-merge):** root cause found and it is NOT the token being invalid. GitHub's REST API returns HTTP 503 (its "Unicorn" HTML page, real `X-Github-Request-Id`) for requests carrying this token, while the SAME token authenticates GraphQL fine — `gh pr create`/`gh pr view` (GraphQL) work, `gh api repos/...` (REST) 503s, and `gh auth status` checks via REST, which is why it misreports the token as invalid. The owner's `gh auth refresh` changed nothing, consistent with this. Workaround for sessions: use `gh api graphql` for settings/ruleset queries (this is how `deleteBranchOnMerge: true` and the ACTIVE main ruleset were finally confirmed). If REST access is ever needed: `gh auth logout` + fresh `gh auth login` to mint a new token. No further owner action required for the workflow.
 
 ### SA-09 — SUGGESTION (fixed; one-minute owner confirmation left)
 **File:** — (GitHub settings / stale branches)
 **Problem:** Six stale merged branches locally and two on origin. The PR #3–#6 head branches were already auto-deleted on GitHub (only stale local tracking refs remained), so "Automatically delete head branches" appears to be ON — the two origin leftovers were from PRs #1/#2, merged before the setting was flipped. Every branch was verified fully contained in main (`git cherry` / tree-diff against the squash commits) before deletion; all are restorable from their PR pages.
-**Recommendation:** local branches deleted, tracking refs pruned, the two origin leftovers deleted. **Done.** Owner: glance at Settings → General → Pull Requests once to confirm auto-delete is indeed enabled (unverifiable from here while `gh` auth is broken — SA-08).
+**Recommendation:** local branches deleted, tracking refs pruned, the two origin leftovers deleted. **Done.** Confirmed 2026-07-17 post-merge: `deleteBranchOnMerge: true` (GraphQL) and PR #7's branch auto-deleted on merge; the main ruleset is ACTIVE with non-fast-forward + PR + required-status-checks rules. Nothing left to check.
 
 ### SA-10 — SUGGESTION (owner action)
 **File:** — (Claude plugin config)
