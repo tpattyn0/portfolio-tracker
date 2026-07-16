@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
             price: quote.price,
             change: quote.change,
             changePercent: quote.changePercent,
+            currency: quote.currency,
             exchange: result.exchange,
             type: result.type
           };
@@ -35,6 +36,7 @@ export async function GET(request: NextRequest) {
             price: 0,
             change: 0,
             changePercent: 0,
+            currency: 'USD',
             exchange: result.exchange,
             type: result.type
           };

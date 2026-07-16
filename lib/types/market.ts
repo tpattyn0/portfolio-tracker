@@ -74,6 +74,7 @@ export interface FundamentalMetricsResponse {
     pbRatio: number | null;
     pfcfRatio: number | null;
     evToEbitda: number | null;
+    enterpriseValue: number | null;
     marketCap: number | null;
     eps: number | null;
     forwardEps: number | null;

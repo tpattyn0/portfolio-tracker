@@ -14,6 +14,7 @@ interface Stock {
   price: number;
   change: number;
   changePercent: number;
+  currency: string;
   exchange?: string;
   type?: string;
 }
@@ -127,7 +128,7 @@ export function StockSearch({ onSelect }: StockSearchProps) {
                   </div>
                   <div className="text-right">
                     <div className="font-medium">
-                      {stock.price > 0 ? formatCurrency(stock.price) : "Loading..."}
+                      {stock.price > 0 ? formatCurrency(stock.price, stock.currency) : "Loading..."}
                     </div>
                     {stock.price > 0 && (
                       <div className={cn(

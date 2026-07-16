@@ -21,7 +21,8 @@ import {
   Settings,
   LogOut,
   User,
-  Menu
+  Menu,
+  Archive  // Add this import
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,8 +31,8 @@ export function Navigation() {
   const { data: session } = useSession();
 
   const navItems = [
-    { href: "/dashboard", label: "Dashboard", icon: Home },
-    { href: "/portfolio", label: "Portfolio", icon: Briefcase },
+    { href: "/dashboard", label: "Portfolio", icon: Home },
+    { href: "/portfolio/closed-positions", label: "Closed", icon: Archive },  // Add this line
     { href: "/wishlist", label: "Wishlist", icon: Star },
     { href: "/research", label: "Research", icon: Search },
   ];
@@ -51,7 +52,11 @@ export function Navigation() {
             <nav className="hidden md:flex items-center space-x-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href;
+                // Update isActive logic to handle exact paths and portfolio subpaths
+                const isActive =
+                  pathname === item.href ||
+                  // When on any portfolio pages (except closed-positions), highlight the main Portfolio tab ("/dashboard")
+                  (item.href === "/dashboard" && pathname.startsWith("/portfolio") && !pathname.includes("closed-positions"));
                 
                 return (
                   <Link

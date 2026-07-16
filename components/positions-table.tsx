@@ -24,13 +24,16 @@ interface Position {
   marketValue: number;
   unrealizedPL: number;
   unrealizedPLPercent: number;
+  originalCurrency?: string;
+  currency?: string;
 }
 
 interface PositionsTableProps {
   positions: Position[];
+  baseCurrency?: string;
 }
 
-export function PositionsTable({ positions }: PositionsTableProps) {
+export function PositionsTable({ positions, baseCurrency = 'EUR' }: PositionsTableProps) {
   return (
     <div className="rounded-md border">
       <Table>
@@ -64,13 +67,13 @@ export function PositionsTable({ positions }: PositionsTableProps) {
                 {formatNumber(position.quantity, position.quantity % 1 === 0 ? 0 : 2)}
               </TableCell>
               <TableCell className="text-right">
-                {formatCurrency(position.avgCostBasis)}
+                {formatCurrency(position.avgCostBasis, position.currency)}
               </TableCell>
               <TableCell className="text-right">
-                {formatCurrency(position.currentPrice)}
+                {formatCurrency(position.currentPrice, position.currency)}
               </TableCell>
               <TableCell className="text-right font-medium">
-                {formatCurrency(position.marketValue)}
+                {formatCurrency(position.marketValue, position.currency)}
               </TableCell>
               <TableCell className="text-right">
                 <div className={cn(
@@ -84,7 +87,7 @@ export function PositionsTable({ positions }: PositionsTableProps) {
                   )}
                   <span>
                     {position.unrealizedPL >= 0 && "+"}
-                    {formatCurrency(position.unrealizedPL)}
+                    {formatCurrency(position.unrealizedPL, position.originalCurrency || position.currency || baseCurrency)}
                   </span>
                 </div>
               </TableCell>

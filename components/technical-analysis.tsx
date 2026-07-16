@@ -5,22 +5,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  TrendingUp, 
-  TrendingDown, 
+import {
+  TrendingUp,
+  TrendingDown,
   AlertCircle,
   Activity,
   BarChart3,
-  Info
+  Info,
+  Star
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/format";
 
 interface TechnicalAnalysisProps {
   symbol: string;
+  currency?: string;
 }
 
-export function TechnicalAnalysis({ symbol }: TechnicalAnalysisProps) {
+export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) {
   const { data, isLoading, error } = useQuery({
     queryKey: ["technical-analysis", symbol],
     queryFn: async () => {
@@ -65,15 +67,38 @@ export function TechnicalAnalysis({ symbol }: TechnicalAnalysisProps) {
 
   const indicators = data.indicators;
   const signal = indicators.signal;
-  const signalScore = getSignalScore(signal);
+  // Use the actual calculated score from the backend instead of mapping signal
+  const signalScore = typeof indicators.score === 'number' ? indicators.score : 5;
   const currentPrice = data.chart[data.chart.length - 1]?.value;
+
+  // v2.0 enhancements
+  const confidence = indicators.confidence || 'MEDIUM';
+  const confidenceStars = indicators.confidenceStars || 2;
+  const breakdown = indicators.breakdown || {};
+  const warnings = indicators.warnings || [];
+  const agreement = indicators.agreement || 0;
+  const indicatorsUsed = indicators.indicatorsUsed || 0;
 
   return (
     <div className="space-y-4">
-      {/* Overall Signal */}
+      {/* Overall Signal - Enhanced v2.0 */}
       <Card>
         <CardHeader>
-          <CardTitle>Technical Signal</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Technical Signal</span>
+            {/* Confidence Stars */}
+            <div className="flex items-center space-x-1">
+              {[...Array(3)].map((_, i) => (
+                <Star
+                  key={i}
+                  className={cn(
+                    "h-4 w-4",
+                    i < confidenceStars ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                  )}
+                />
+              ))}
+            </div>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -83,6 +108,8 @@ export function TechnicalAnalysis({ symbol }: TechnicalAnalysisProps) {
                   <TrendingUp className="h-5 w-5 text-green-600" />
                 ) : signal.includes("SELL") ? (
                   <TrendingDown className="h-5 w-5 text-red-600" />
+                ) : signal === "INSUFFICIENT_DATA" ? (
+                  <AlertCircle className="h-5 w-5 text-orange-600" />
                 ) : (
                   <Activity className="h-5 w-5 text-gray-600" />
                 )}
@@ -102,8 +129,8 @@ export function TechnicalAnalysis({ symbol }: TechnicalAnalysisProps) {
                 Score: {signalScore}/10
               </Badge>
             </div>
-            <Progress 
-              value={signalScore * 10} 
+            <Progress
+              value={signalScore * 10}
               className={cn(
                 "h-2",
                 signalScore >= 7 ? "[&>div]:bg-green-600" :
@@ -111,11 +138,40 @@ export function TechnicalAnalysis({ symbol }: TechnicalAnalysisProps) {
                 "[&>div]:bg-gray-400"
               )}
             />
+
+            {/* v2.0: Confidence and Agreement */}
+            <div className="flex items-center justify-between text-xs text-gray-600">
+              <span>
+                Confidence: <span className={cn(
+                  "font-medium",
+                  confidence === "HIGH" ? "text-green-600" :
+                  confidence === "MEDIUM" ? "text-blue-600" :
+                  "text-orange-600"
+                )}>
+                  {confidence}
+                </span>
+              </span>
+              {agreement > 0 && (
+                <span>
+                  Agreement: <span className="font-medium">{agreement.toFixed(0)}%</span>
+                </span>
+              )}
+              {indicatorsUsed > 0 && (
+                <span>
+                  Indicators: <span className="font-medium">{indicatorsUsed}/9</span>
+                </span>
+              )}
+            </div>
+
             <p className="text-sm text-gray-600">
-              {signalScore >= 7 
+              {signalScore >= 8
                 ? "Strong bullish signals across multiple indicators"
-                : signalScore <= 3
+                : signalScore >= 6
+                ? "Moderate bullish signals - positive trend indicated"
+                : signalScore <= 2
                 ? "Strong bearish signals suggest caution"
+                : signalScore <= 4
+                ? "Bearish signals - negative trend indicated"
                 : "Mixed signals - consider waiting for clearer direction"}
             </p>
           </div>
@@ -135,8 +191,10 @@ export function TechnicalAnalysis({ symbol }: TechnicalAnalysisProps) {
             {indicators.sma20 && (
               <IndicatorRow
                 label="SMA (20)"
-                value={formatCurrency(indicators.sma20)}
+                value={formatCurrency(indicators.sma20, currency)}
                 status={getMAStatus(currentPrice, indicators.sma20)}
+                signal={breakdown.trend?.sma20?.signal}
+                points={breakdown.trend?.sma20?.points}
                 interpretation={
                   currentPrice && currentPrice > indicators.sma20
                     ? "Price above short-term average"
@@ -147,8 +205,10 @@ export function TechnicalAnalysis({ symbol }: TechnicalAnalysisProps) {
             {indicators.sma50 && (
               <IndicatorRow
                 label="SMA (50)"
-                value={formatCurrency(indicators.sma50)}
+                value={formatCurrency(indicators.sma50, currency)}
                 status={getMAStatus(currentPrice, indicators.sma50)}
+                signal={breakdown.trend?.sma50?.signal}
+                points={breakdown.trend?.sma50?.points}
                 interpretation={
                   currentPrice && currentPrice > indicators.sma50
                     ? "Above medium-term trend"
@@ -159,8 +219,10 @@ export function TechnicalAnalysis({ symbol }: TechnicalAnalysisProps) {
             {indicators.sma200 && (
               <IndicatorRow
                 label="SMA (200)"
-                value={formatCurrency(indicators.sma200)}
+                value={formatCurrency(indicators.sma200, currency)}
                 status={getMAStatus(currentPrice, indicators.sma200)}
+                signal={breakdown.trend?.sma200?.signal}
+                points={breakdown.trend?.sma200?.points}
                 interpretation={
                   currentPrice && currentPrice > indicators.sma200
                     ? "In long-term uptrend"
@@ -168,15 +230,35 @@ export function TechnicalAnalysis({ symbol }: TechnicalAnalysisProps) {
                 }
               />
             )}
-            
-            {/* Golden/Death Cross */}
+
+            {/* Golden/Death Cross - Enhanced v2.0 */}
             {indicators.sma50 && indicators.sma200 && (
-              <div className="mt-3 p-3 bg-gray-50 rounded-md">
-                <div className="flex items-center space-x-2">
-                  <Info className="h-4 w-4 text-blue-600" />
-                  <p className="text-sm font-medium">
-                    {indicators.sma50 > indicators.sma200 ? "Golden Cross" : "Death Cross"}
-                  </p>
+              <div className={cn(
+                "mt-3 p-3 rounded-md",
+                indicators.sma50 > indicators.sma200 ? "bg-green-50" : "bg-red-50"
+              )}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Info className={cn(
+                      "h-4 w-4",
+                      indicators.sma50 > indicators.sma200 ? "text-green-600" : "text-red-600"
+                    )} />
+                    <p className="text-sm font-medium">
+                      {indicators.sma50 > indicators.sma200 ? "Golden Cross" : "Death Cross"}
+                    </p>
+                  </div>
+                  {breakdown.trend?.goldenCross?.points && (
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-xs",
+                        breakdown.trend.goldenCross.signal === 'bullish' ? "text-green-700 border-green-300" :
+                        breakdown.trend.goldenCross.signal === 'bearish' ? "text-red-700 border-red-300" : ""
+                      )}
+                    >
+                      {breakdown.trend.goldenCross.signal === 'bullish' ? '+' : breakdown.trend.goldenCross.signal === 'bearish' ? '-' : ''}{breakdown.trend.goldenCross.points} pts
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-xs text-gray-600 mt-1">
                   {indicators.sma50 > indicators.sma200
@@ -189,7 +271,7 @@ export function TechnicalAnalysis({ symbol }: TechnicalAnalysisProps) {
         </CardContent>
       </Card>
 
-      {/* Momentum Indicators */}
+      {/* Momentum Indicators - Enhanced v2.0 */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -203,32 +285,61 @@ export function TechnicalAnalysis({ symbol }: TechnicalAnalysisProps) {
               <div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">RSI (14)</span>
-                  <span className={cn(
-                    "text-sm font-medium",
-                    indicators.rsi14 > 70 ? "text-red-600" :
-                    indicators.rsi14 < 30 ? "text-green-600" :
-                    "text-gray-600"
-                  )}>
-                    {indicators.rsi14.toFixed(2)}
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className={cn(
+                      "text-sm font-medium",
+                      indicators.rsi14 > 70 ? "text-red-600" :
+                      indicators.rsi14 < 30 ? "text-green-600" :
+                      "text-gray-600"
+                    )}>
+                      {indicators.rsi14.toFixed(2)}
+                    </span>
+                    {breakdown.momentum?.rsi?.points && (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs",
+                          breakdown.momentum.rsi.signal === 'bullish' ? "text-green-700 border-green-300" :
+                          breakdown.momentum.rsi.signal === 'bearish' ? "text-red-700 border-red-300" : ""
+                        )}
+                      >
+                        {breakdown.momentum.rsi.signal === 'bullish' ? '+' : breakdown.momentum.rsi.signal === 'bearish' ? '-' : ''}{breakdown.momentum.rsi.points} pts
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-                <Progress 
-                  value={indicators.rsi14} 
+                <Progress
+                  value={indicators.rsi14}
                   className="h-1.5 mt-1"
                 />
                 <div className="mt-1 text-xs text-gray-600">
-                  {indicators.rsi14 > 70 ? "Overbought - potential pullback ahead" :
-                   indicators.rsi14 < 30 ? "Oversold - potential bounce opportunity" :
-                   "Neutral momentum"}
+                  {breakdown.momentum?.rsi?.details?.category ||
+                   (indicators.rsi14 > 70 ? "Overbought (Reversal)" :
+                    indicators.rsi14 < 30 ? "Oversold (Reversal)" :
+                    indicators.rsi14 >= 50 ? "Bullish Momentum" : "Bearish Momentum")}
                 </div>
               </div>
             )}
-            
+
             {indicators.macd && indicators.macd.value !== null && (
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">MACD</span>
-                  <span className="text-sm">{indicators.macd.value.toFixed(4)}</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm">{indicators.macd.value.toFixed(4)}</span>
+                    {breakdown.momentum?.macd?.points && (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs",
+                          breakdown.momentum.macd.signal === 'bullish' ? "text-green-700 border-green-300" :
+                          breakdown.momentum.macd.signal === 'bearish' ? "text-red-700 border-red-300" : ""
+                        )}
+                      >
+                        {breakdown.momentum.macd.signal === 'bullish' ? '+' : breakdown.momentum.macd.signal === 'bearish' ? '-' : ''}{breakdown.momentum.macd.points} pts
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <div className="text-xs text-gray-600">
                   Signal: {indicators.macd.signal?.toFixed(4) || "-"}
@@ -240,11 +351,54 @@ export function TechnicalAnalysis({ symbol }: TechnicalAnalysisProps) {
                 </div>
               </div>
             )}
+
+            {/* v2.0: Stochastic Oscillator */}
+            {indicators.stochastic && indicators.stochastic.k !== null && (
+              <div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Stochastic</span>
+                  <div className="flex items-center space-x-2">
+                    <span className={cn(
+                      "text-sm font-medium",
+                      indicators.stochastic.k > 80 ? "text-red-600" :
+                      indicators.stochastic.k < 20 ? "text-green-600" :
+                      "text-gray-600"
+                    )}>
+                      %K: {indicators.stochastic.k.toFixed(1)}
+                    </span>
+                    {breakdown.momentum?.stochastic?.points && (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs",
+                          breakdown.momentum.stochastic.signal === 'bullish' ? "text-green-700 border-green-300" :
+                          breakdown.momentum.stochastic.signal === 'bearish' ? "text-red-700 border-red-300" : ""
+                        )}
+                      >
+                        {breakdown.momentum.stochastic.signal === 'bullish' ? '+' : breakdown.momentum.stochastic.signal === 'bearish' ? '-' : ''}{breakdown.momentum.stochastic.points} pts
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <Progress
+                  value={indicators.stochastic.k}
+                  className="h-1.5 mt-1"
+                />
+                <div className="mt-1 text-xs text-gray-600">
+                  %D: {indicators.stochastic.d?.toFixed(1) || "N/A"} | {
+                    indicators.stochastic.k > 80 ? "Overbought - potential pullback" :
+                    indicators.stochastic.k < 20 ? "Oversold - potential reversal" :
+                    indicators.stochastic.k > (indicators.stochastic.d || 0) ? "Bullish crossover" :
+                    "Bearish crossover"
+                  }
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Bollinger Bands */}
+      {/* Bollinger Bands - Enhanced v2.0 */}
       {indicators.bollingerBands && indicators.bollingerBands.middle !== null && (
         <Card>
           <CardHeader>
@@ -254,31 +408,110 @@ export function TechnicalAnalysis({ symbol }: TechnicalAnalysisProps) {
             <div className="space-y-2">
               <IndicatorRow
                 label="Upper Band"
-                value={formatCurrency(indicators.bollingerBands.upper || 0)}
+                value={formatCurrency(indicators.bollingerBands.upper || 0, currency)}
               />
               <IndicatorRow
                 label="Middle Band"
-                value={formatCurrency(indicators.bollingerBands.middle || 0)}
+                value={formatCurrency(indicators.bollingerBands.middle || 0, currency)}
               />
               <IndicatorRow
                 label="Lower Band"
-                value={formatCurrency(indicators.bollingerBands.lower || 0)}
+                value={formatCurrency(indicators.bollingerBands.lower || 0, currency)}
               />
               <div className="mt-3 p-3 bg-gray-50 rounded-md">
-                <p className="text-xs text-gray-600">
-                  {currentPrice && currentPrice > indicators.bollingerBands.upper
-                    ? "Price above upper band - potentially overbought"
-                    : currentPrice && currentPrice < indicators.bollingerBands.lower
-                    ? "Price below lower band - potentially oversold"
-                    : "Price within bands - normal volatility"}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-gray-600">
+                    {breakdown.volatility?.bollinger?.details?.position ||
+                     (currentPrice && currentPrice > indicators.bollingerBands.upper
+                      ? "Above Upper Band - Overbought"
+                      : currentPrice && currentPrice < indicators.bollingerBands.lower
+                      ? "Below Lower Band - Oversold"
+                      : "Within Bands - Normal Volatility")}
+                  </p>
+                  {breakdown.volatility?.bollinger?.points && (
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-xs",
+                        breakdown.volatility.bollinger.signal === 'bullish' ? "text-green-700 border-green-300" :
+                        breakdown.volatility.bollinger.signal === 'bearish' ? "text-red-700 border-red-300" : ""
+                      )}
+                    >
+                      {breakdown.volatility.bollinger.signal === 'bullish' ? '+' : breakdown.volatility.bollinger.signal === 'bearish' ? '-' : ''}{breakdown.volatility.bollinger.points} pts
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Analysis Summary */}
+      {/* Volume Analysis - v2.0 (with warnings integrated) */}
+      {indicators.volumeTrend && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Activity className="mr-2 h-4 w-4" />
+              Volume Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <IndicatorRow
+                label="Current Volume"
+                value={formatVolume(indicators.volumeTrend.currentVolume)}
+              />
+              <IndicatorRow
+                label="Average Volume (20d)"
+                value={formatVolume(indicators.volumeTrend.avgVolume)}
+              />
+              {indicators.volumeTrend.changePercent !== null && (
+                <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-600">
+                      Volume is {indicators.volumeTrend.changePercent > 0 ? 'up' : 'down'}{' '}
+                      {Math.abs(indicators.volumeTrend.changePercent).toFixed(1)}% vs 20-day average
+                      {breakdown.volume?.volumeTrend?.details?.interpretation && ` - ${breakdown.volume.volumeTrend.details.interpretation}`}
+                    </p>
+                    {breakdown.volume?.volumeTrend?.points !== undefined && (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs",
+                          breakdown.volume.volumeTrend.signal === 'bullish' ? "text-green-700 border-green-300" :
+                          breakdown.volume.volumeTrend.signal === 'bearish' ? "text-red-700 border-red-300" : ""
+                        )}
+                      >
+                        {breakdown.volume.volumeTrend.signal === 'bullish' ? '+' : breakdown.volume.volumeTrend.signal === 'bearish' ? '-' : ''}{breakdown.volume.volumeTrend.points} pts
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
+              {/* Integrated Warnings */}
+              {warnings.length > 0 && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <AlertCircle className="h-4 w-4 text-yellow-800" />
+                    <span className="text-sm font-semibold text-yellow-800">Important Considerations</span>
+                  </div>
+                  <ul className="space-y-1">
+                    {warnings.map((warning: string, idx: number) => (
+                      <li key={idx} className="text-xs text-yellow-800 flex items-start">
+                        <span className="mr-2">•</span>
+                        <span>{warning}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Analysis Summary - Enhanced v2.0 */}
       <Card className="bg-blue-50 border-blue-200">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
@@ -288,14 +521,25 @@ export function TechnicalAnalysis({ symbol }: TechnicalAnalysisProps) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-gray-700">
-            Technical analysis shows a <span className="font-semibold">{signal.replace(/_/g, " ")}</span> signal 
-            with a strength of {signalScore}/10. 
-            {signalScore >= 7 
-              ? " Multiple indicators confirm bullish momentum."
-              : signalScore <= 3
-              ? " Multiple indicators suggest bearish pressure."
-              : " Indicators show mixed signals - be cautious."}
+            Technical analysis shows a <span className="font-semibold">{signal.replace(/_/g, " ")}</span> signal
+            with {confidence.toLowerCase()} confidence ({confidenceStars}/3 stars).
+            {signalScore >= 8
+              ? " Multiple indicators confirm strong bullish momentum."
+              : signalScore >= 6
+              ? " Indicators suggest positive trend with room to run."
+              : signalScore <= 2
+              ? " Multiple indicators suggest strong bearish pressure."
+              : signalScore <= 4
+              ? " Indicators show bearish trend - exercise caution."
+              : " Indicators show mixed signals - consider waiting."}
           </p>
+          {indicators.bullishPoints > 0 && indicators.bearishPoints > 0 && (
+            <p className="text-xs text-gray-600 mt-2">
+              Bullish signals: {indicators.bullishPoints.toFixed(1)} pts |
+              Bearish signals: {indicators.bearishPoints.toFixed(1)} pts |
+              Total weight: {indicators.availableWeight} pts
+            </p>
+          )}
           <p className="text-xs text-gray-600 mt-2">
             Always combine technical analysis with fundamental research and proper risk management.
           </p>
@@ -306,13 +550,15 @@ export function TechnicalAnalysis({ symbol }: TechnicalAnalysisProps) {
 }
 
 interface IndicatorRowProps {
-  label: string; 
-  value: string; 
+  label: string;
+  value: string;
   status?: "above" | "below" | "neutral";
+  signal?: "bullish" | "bearish" | "neutral";
+  points?: number;
   interpretation?: string;
 }
 
-function IndicatorRow({ label, value, status, interpretation }: IndicatorRowProps) {
+function IndicatorRow({ label, value, status, signal, points, interpretation }: IndicatorRowProps) {
   return (
     <div className="space-y-1">
       <div className="flex justify-between items-center">
@@ -320,11 +566,23 @@ function IndicatorRow({ label, value, status, interpretation }: IndicatorRowProp
         <div className="flex items-center space-x-2">
           <span className="text-sm font-medium">{value}</span>
           {status && (
-            <Badge 
+            <Badge
               variant={status === "above" ? "default" : status === "below" ? "secondary" : "outline"}
               className="text-xs"
             >
               {status === "above" ? "Above" : status === "below" ? "Below" : "At"}
+            </Badge>
+          )}
+          {points !== undefined && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-xs",
+                signal === 'bullish' ? "text-green-700 border-green-300" :
+                signal === 'bearish' ? "text-red-700 border-red-300" : ""
+              )}
+            >
+              {signal === 'bullish' ? '+' : signal === 'bearish' ? '-' : ''}{points} pts
             </Badge>
           )}
         </div>
@@ -336,20 +594,17 @@ function IndicatorRow({ label, value, status, interpretation }: IndicatorRowProp
   );
 }
 
-function getSignalScore(signal: string): number {
-  switch (signal) {
-    case "STRONG_BUY": return 9;
-    case "BUY": return 7;
-    case "HOLD": return 5;
-    case "SELL": return 3;
-    case "STRONG_SELL": return 1;
-    default: return 5;
-  }
-}
-
 function getMAStatus(currentPrice: number | undefined, ma: number): "above" | "below" | "neutral" {
   if (!currentPrice) return "neutral";
   if (currentPrice > ma * 1.001) return "above";
   if (currentPrice < ma * 0.999) return "below";
   return "neutral";
+}
+
+function formatVolume(volume: number | null): string {
+  if (!volume) return "N/A";
+  if (volume >= 1_000_000_000) return `${(volume / 1_000_000_000).toFixed(2)}B`;
+  if (volume >= 1_000_000) return `${(volume / 1_000_000).toFixed(2)}M`;
+  if (volume >= 1_000) return `${(volume / 1_000).toFixed(2)}K`;
+  return volume.toFixed(0);
 }

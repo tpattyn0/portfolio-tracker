@@ -97,7 +97,7 @@ export function FundamentalAnalysis({ symbol, currency }: FundamentalAnalysisPro
         <CardContent>
           <div className="space-y-4">
             <Progress value={data.score.total * 10} className="h-3" />
-            
+
             <p className="text-sm text-gray-600">
               {data.score.interpretation}
             </p>
@@ -165,56 +165,71 @@ export function FundamentalAnalysis({ symbol, currency }: FundamentalAnalysisPro
                       label="P/E Ratio"
                       value={data.valuation.peRatio}
                       format="number"
-                      tooltip="Price to Earnings (Trailing) - Lower is generally better"
-                      benchmark={25}
+                      tooltip="Price to Earnings (Trailing) - < 20 is good, > 30 is high"
+                      goodThreshold={20}
+                      badThreshold={30}
                       inverse
                     />
                     <MetricRow
                       label="Forward P/E"
                       value={data.valuation.forwardPE}
                       format="number"
-                      tooltip="Forward Price to Earnings - Based on future earnings estimates, more forward-looking than trailing P/E"
-                      benchmark={22}
+                      tooltip="Forward P/E - < 15 is attractive, > 25 is premium"
+                      goodThreshold={15}
+                      badThreshold={25}
                       inverse
                     />
                     <MetricRow
                       label="PEG Ratio"
                       value={data.valuation.pegRatio}
                       format="number"
-                      tooltip="Price/Earnings to Growth - Below 1 may indicate undervaluation"
-                      benchmark={1}
+                      tooltip="PEG Ratio - < 1 is undervalued, > 2 is overvalued"
+                      goodThreshold={1}
+                      badThreshold={2}
                       inverse
                     />
                     <MetricRow
                       label="P/S Ratio"
                       value={data.valuation.psRatio}
                       format="number"
-                      tooltip="Price to Sales - Lower suggests better value"
-                      benchmark={2}
+                      tooltip="Price to Sales - < 1.5 is good value, > 5 is high"
+                      goodThreshold={1.5}
+                      badThreshold={5}
                       inverse
                     />
                     <MetricRow
                       label="P/B Ratio"
                       value={data.valuation.pbRatio}
                       format="number"
-                      tooltip="Price to Book Value - Below 1 may indicate undervaluation"
-                      benchmark={1}
+                      tooltip="Price to Book - < 1.5 is value, > 3 is premium"
+                      goodThreshold={1.5}
+                      badThreshold={3}
                       inverse
                     />
                     <MetricRow
                       label="P/FCF Ratio"
                       value={data.valuation.pfcfRatio}
                       format="number"
-                      tooltip="Price to Free Cash Flow - More reliable than P/E for valuation"
-                      benchmark={20}
+                      tooltip="Price to Free Cash Flow - < 15 is attractive"
+                      goodThreshold={15}
+                      badThreshold={30}
                       inverse
+                    />
+                    <MetricRow
+                      label="FCF Yield"
+                      value={data.valuation.pfcfRatio ? 1 / data.valuation.pfcfRatio : null}
+                      format="percentDecimal"
+                      tooltip="Free Cash Flow Yield - > 5% is attractive"
+                      goodThreshold={0.05}
+                      badThreshold={0.02}
                     />
                     <MetricRow
                       label="EV/EBITDA"
                       value={data.valuation.evToEbitda}
                       format="number"
-                      tooltip="Enterprise Value to EBITDA - Lower is generally better"
-                      benchmark={10}
+                      tooltip="Enterprise Value to EBITDA - < 10 is value"
+                      goodThreshold={10}
+                      badThreshold={20}
                       inverse
                     />
                   </div>
@@ -262,6 +277,13 @@ export function FundamentalAnalysis({ symbol, currency }: FundamentalAnalysisPro
                       format="largeNumber"
                       currency={currency}
                       tooltip="Total market value of the company"
+                    />
+                    <MetricRow
+                      label="Enterprise Value"
+                      value={data.valuation.enterpriseValue}
+                      format="largeNumber"
+                      currency={currency}
+                      tooltip="Market Cap + Debt - Cash. The theoretical takeover price."
                     />
                   </div>
                 </div>
@@ -506,18 +528,29 @@ interface MetricRowProps {
   value: number | null;
   format: "number" | "percentDecimal" | "currency" | "largeNumber";
   tooltip?: string;
+  // New benchmark system:
+  // goodThreshold: value better than this is GOOD (Green)
+  // badThreshold: value worse than this is BAD (Red)
+  // In between is NEUTRAL (Yellow)
+  goodThreshold?: number;
+  badThreshold?: number;
+  inverse?: boolean; // if true, lower is better. default false (higher is better)
+
+  // Legacy support (optional, converts to binary good/bad if used alone)
   benchmark?: number;
-  inverse?: boolean;
+
   showTrend?: boolean;
   currency?: string;
 }
 
-function MetricRow({ 
-  label, 
-  value, 
-  format, 
-  tooltip, 
-  benchmark, 
+function MetricRow({
+  label,
+  value,
+  format,
+  tooltip,
+  goodThreshold,
+  badThreshold,
+  benchmark,
   inverse = false,
   showTrend = false,
   currency
@@ -546,7 +579,26 @@ function MetricRow({
   }
 
   let formattedValue = "";
-  let isGood = false;
+
+  // Color Logic
+  let colorClass = "text-gray-900"; // default
+
+  if (goodThreshold !== undefined && badThreshold !== undefined) {
+    // 3-tier logic
+    if (inverse) {
+      if (value <= goodThreshold) colorClass = "text-green-600";
+      else if (value >= badThreshold) colorClass = "text-red-600";
+      else colorClass = "text-yellow-600";
+    } else {
+      if (value >= goodThreshold) colorClass = "text-green-600";
+      else if (value <= badThreshold) colorClass = "text-red-600";
+      else colorClass = "text-yellow-600";
+    }
+  } else if (benchmark !== undefined) {
+    // Legacy binary logic
+    const isGood = inverse ? value < benchmark : value > benchmark;
+    colorClass = isGood ? "text-green-600" : "text-red-600";
+  }
 
   switch (format) {
     case "percentDecimal":
@@ -557,18 +609,14 @@ function MetricRow({
       break;
     case "largeNumber":
       const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency || '$';
-      formattedValue = value >= 1e9 
+      formattedValue = value >= 1e9
         ? `${currencySymbol}${(value / 1e9).toFixed(2)}B`
         : value >= 1e6
-        ? `${currencySymbol}${(value / 1e6).toFixed(2)}M`
-        : formatCurrency(value, currency);
+          ? `${currencySymbol}${(value / 1e6).toFixed(2)}M`
+          : formatCurrency(value, currency);
       break;
     default:
       formattedValue = value.toFixed(2);
-  }
-
-  if (benchmark !== undefined) {
-    isGood = inverse ? value < benchmark : value > benchmark;
   }
 
   return (
@@ -588,17 +636,14 @@ function MetricRow({
           )}
         </Tooltip>
       </TooltipProvider>
-      
+
       <div className="flex items-center space-x-2">
         {showTrend && value !== 0 && (
-          value > 0 
+          value > 0
             ? <ArrowUpRight className="h-4 w-4 text-green-600" />
             : <ArrowDownRight className="h-4 w-4 text-red-600" />
         )}
-        <span className={cn(
-          "text-sm font-medium",
-          benchmark && (isGood ? "text-green-600" : "text-red-600")
-        )}>
+        <span className={cn("text-sm font-medium", colorClass)}>
           {formattedValue}
         </span>
       </div>
@@ -674,7 +719,7 @@ function FundamentalAnalysisSkeleton() {
           </div>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardContent className="pt-6">
           <div className="space-y-3">

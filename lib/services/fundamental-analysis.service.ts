@@ -23,6 +23,7 @@ interface FundamentalMetrics {
     pbRatio: number | null;
     pfcfRatio: number | null;
     evToEbitda: number | null;
+    enterpriseValue: number | null;
     marketCap: number | null;
     eps: number | null;
     forwardEps: number | null;
@@ -103,10 +104,10 @@ export class FundamentalAnalysisService {
 
       // Extract metrics and analyst ratings
       const metrics = this.extractMetrics(quoteSummary);
-      
+
       // Calculate scores
       const score = this.calculateFundamentalScore(metrics);
-      
+
       // Create the complete metrics object with score
       const completeMetrics: FundamentalMetrics = {
         ...metrics,
@@ -144,13 +145,13 @@ export class FundamentalAnalysisService {
     // Calculate Forward P/E
     const currentPrice = price.regularMarketPrice || summaryDetail.regularMarketPrice || null;
     const forwardPE = summaryDetail.forwardPE ||
-                     (currentPrice && forwardEps && forwardEps > 0 ? currentPrice / forwardEps : null);
+      (currentPrice && forwardEps && forwardEps > 0 ? currentPrice / forwardEps : null);
 
     // Calculate P/FCF (Price to Free Cash Flow)
     // Try multiple sources for free cash flow data
     const freeCashFlow = financialData.freeCashflow ||
-                        financialData.operatingCashflow ||
-                        null;
+      financialData.operatingCashflow ||
+      null;
     const marketCap = price.marketCap || summaryDetail.marketCap || null;
 
 
@@ -183,6 +184,7 @@ export class FundamentalAnalysisService {
         pbRatio: price.priceToBook || defaultKeyStatistics.priceToBook || null,
         pfcfRatio,
         evToEbitda: defaultKeyStatistics.enterpriseToEbitda || null,
+        enterpriseValue: defaultKeyStatistics.enterpriseValue || null,
         marketCap,
         eps,
         forwardEps,
@@ -252,7 +254,7 @@ export class FundamentalAnalysisService {
 
     breakdown.valuation = valuationScores.length > 0
       ? valuationScores.reduce((acc, item) => acc + item.score * item.weight, 0) /
-        valuationScores.reduce((acc, item) => acc + item.weight, 0)
+      valuationScores.reduce((acc, item) => acc + item.weight, 0)
       : 5;
 
     // Profitability Score (average of available metrics)
@@ -518,6 +520,7 @@ export class FundamentalAnalysisService {
         pbRatio: metrics.valuation.pbRatio,
         pfcfRatio: metrics.valuation.pfcfRatio,
         evToEbitda: metrics.valuation.evToEbitda,
+        enterpriseValue: metrics.valuation.enterpriseValue,
         marketCap: metrics.valuation.marketCap,
         eps: metrics.valuation.eps,
         forwardEps: metrics.valuation.forwardEps,
@@ -549,6 +552,7 @@ export class FundamentalAnalysisService {
         pbRatio: metrics.valuation.pbRatio,
         pfcfRatio: metrics.valuation.pfcfRatio,
         evToEbitda: metrics.valuation.evToEbitda,
+        enterpriseValue: metrics.valuation.enterpriseValue,
         marketCap: metrics.valuation.marketCap,
         eps: metrics.valuation.eps,
         forwardEps: metrics.valuation.forwardEps,
@@ -598,6 +602,7 @@ export class FundamentalAnalysisService {
         pbRatio: cached.pbRatio,
         pfcfRatio: cached.pfcfRatio || null,
         evToEbitda: cached.evToEbitda,
+        enterpriseValue: cached.enterpriseValue,
         marketCap: cached.marketCap,
         eps: cached.eps || null,
         forwardEps: cached.forwardEps || null,

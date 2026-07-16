@@ -24,6 +24,7 @@ model User {
 model Portfolio {
   id           String        @id @default(cuid())
   userId       String        @unique
+  baseCurrency String        @default("EUR")
   totalValue   Decimal       @default(0) @db.Decimal(20, 2)
   totalCost    Decimal       @default(0) @db.Decimal(20, 2)
   realizedPL   Decimal       @default(0) @db.Decimal(20, 2)
@@ -98,6 +99,7 @@ model WishlistItem {
   wishlistId   String
   ticker       String
   name         String
+  currency     String   @default("EUR")
   addedPrice   Decimal  @db.Decimal(20, 2)
   currentPrice Decimal  @db.Decimal(20, 2)
   targetPrice  Decimal? @db.Decimal(20, 2)
@@ -116,9 +118,11 @@ model FundamentalData {
   marketCap        Float?
   enterpriseValue  Float?
   peRatio          Float?
+  forwardPE        Float?
   pegRatio         Float?
   psRatio          Float?
   pbRatio          Float?
+  pfcfRatio        Float?
   evToEbitda       Float?
   evToRevenue      Float?
   profitMargin     Float?
@@ -140,6 +144,7 @@ model FundamentalData {
   payoutRatio      Float?
   dividendGrowth   Float?
   eps              Float?
+  forwardEps       Float?
   bookValue        Float?
   fcfPerShare      Float?
   revenue          Float?
@@ -153,6 +158,26 @@ model FundamentalData {
 
   @@index([symbol])
   @@index([lastUpdated])
+}
+
+model AnalystRating {
+  id                 String    @id @default(cuid())
+  symbol             String    @unique
+  targetPrice        Decimal?  @db.Decimal(10, 2)
+  strongBuy          Int       @default(0)
+  buy                Int       @default(0)
+  hold               Int       @default(0)
+  sell               Int       @default(0)
+  strongSell         Int       @default(0)
+  totalAnalysts      Int       @default(0)
+  averageRating      Decimal?  @db.Decimal(3, 2)
+  score              Float     @default(5.0)
+  scoreInterpretation String   @default("No analyst data available")
+  lastUpdated        DateTime  @default(now())
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([symbol])
 }
 
 model IndustryComparison {
