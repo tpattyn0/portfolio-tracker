@@ -6,7 +6,7 @@ Audit target: branch `main` @ `bdbfad67` — working tree clean apart from track
 
 ## Summary
 Findings: 1 BLOCKER, 6 ISSUEs, 2 SUGGESTIONs, 2 QUESTIONs
-Requires owner decision: ONB-01, ONB-10, ONB-11
+Requires owner decision: ONB-01 (URGENT — live secrets public on GitHub, rotate now), ONB-10, ONB-11
 Ready for Coding agent: ONB-02, ONB-03, ONB-04, ONB-05, ONB-06, ONB-07, ONB-08, ONB-09
 
 Scope note: this is a first-time onboarding audit, so the target is the whole codebase at HEAD rather than a single diff. The `security-review` skill was run as the Step 1 reference pass but produced no output — it diffs the working tree against HEAD, and the feature work is already committed in `bdbfad67`, leaving it nothing to analyse. The security pass below was therefore done manually against the code at HEAD.
@@ -16,9 +16,9 @@ Scope note: this is a first-time onboarding audit, so the target is the whole co
 ### ONB-01 — BLOCKER
 **File:** git history — commits `2a6c4c1a`, `3855042e`, `c89e333d` (`.env`)
 **Problem:** Three live credentials were committed in the repo's first commit and their values are **unchanged in the working `.env` today**: `NEXTAUTH_SECRET`, `NEWS_API_KEY`, `GEMINI_API_KEY`. Verified by hashing each value in `3855042e:.env` against the current file — all three match. (`DATABASE_URL` differs and appears already rotated.) `NEXTAUTH_SECRET` is the most serious: it signs NextAuth session JWTs, so anyone with repo history can forge a session for any user. `.gitignore` correctly covers `.env` now and the files are untracked at HEAD, so the leak was stopped going forward — but that fix never reached back into history, and `git check-ignore` passing today gives a false sense of safety.
-**Mitigating factor:** no git remote is configured (`main` has no upstream), so exposure is currently limited to anyone with a local clone. This changes the moment a remote is added.
-**Owner decision (2026-07-16):** owner elected to keep the current secrets in place for now and accept the risk knowingly. Recorded, not resolved — this finding stays open.
-**Recommendation:** rotate all three before adding any git remote or deploying: `NEXTAUTH_SECRET` via `openssl rand -base64 32`, and reissue the NewsAPI and Gemini keys from their consoles. Rotation is what closes the exposure; scrubbing history (`git filter-repo`) is optional hardening and rewrites hashes for any existing clone. Per CLAUDE.md guardrail 7, a committed secret means rotate the key, not just delete the file.
+**Aggravating factor — PUBLIC EXPOSURE CONFIRMED:** the repo has a remote (`github.com/tpattyn0/portfolio-tracker`) and `gh repo view` reports `"visibility":"PUBLIC"`. `git branch -r --contains 3855042e` confirms the secret-bearing commit is on `origin/main`. **All three credentials are publicly readable on GitHub and have been since the first commit.** Public repos are continuously scraped for credentials by automated tooling; assume these keys are already harvested rather than merely exposed.
+**Owner decision (2026-07-16) — SUPERSEDED:** the owner elected to accept the risk, but did so on the basis of a reviewer error. An earlier check in the session misread `git log @{u}..` failing as "no remote configured" and the finding was presented as local-clone-only. That was wrong. The risk acceptance was made on false information and does not carry over to the corrected facts. Re-raised for a fresh decision.
+**Recommendation:** rotate all three **now**, ahead of any other work in this repo: `NEXTAUTH_SECRET` via `openssl rand -base64 32`, and reissue the NewsAPI and Gemini keys from their consoles (the old ones should be revoked, not just replaced). `NEXTAUTH_SECRET` signs session JWTs and the app uses stateless JWT sessions (ADR-1), so anyone with the leaked value can forge a session for any user and existing sessions cannot be revoked server-side. Rotation is what closes the exposure. Consider also making the repo private and scrubbing history (`git filter-repo`), but neither substitutes for rotation — the values are already public. Per CLAUDE.md guardrail 7, a committed secret means rotate the key, not just delete the file.
 
 ### ONB-02 — ISSUE
 **File:** `app/api/test-yahoo/route.ts:1-27`

@@ -7,6 +7,6 @@ Branch: main
 Next: awaiting owner decision
 
 ## Blocked
-ONB-01 — live secrets in git history; owner accepted risk for now, rotation still open
+ONB-01 — live secrets PUBLIC on github.com/tpattyn0/portfolio-tracker; rotate now
 ONB-10 — docs/ status unconfirmed (authoritative spec vs historical reference)
 ONB-11 — dev/production database separation unconfirmed
