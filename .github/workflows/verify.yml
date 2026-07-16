@@ -42,6 +42,19 @@ jobs:
       # This step is the merge gate: it fails if the PR ADDS a secret. The
       # pre-existing leak is covered by the separate `secret-scan-history` job
       # below, which is intentionally not the merge gate — see its comment.
+      - name: Install gitleaks
+        env:
+          # Pin to the version developers run locally (AGENT.md), so CI and
+          # local cannot silently diverge on rules or fingerprint behaviour.
+          # NOTE: do NOT use `npx gitleaks` — there is no official gitleaks npm
+          # package; `npx gitleaks@<ver>` fails with ETARGET, and the `gitleaks`
+          # name on npm is an unrelated 1.0.0 stub. Install the real binary.
+          GITLEAKS_VERSION: "8.30.1"
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+
       - name: Secret scan (new commits)
         env:
           # Pass github context through env, never interpolated into `run:` —
@@ -56,7 +69,7 @@ jobs:
             RANGE="HEAD~1..HEAD"
           fi
           echo "Scanning commit range: $RANGE"
-          npx --yes gitleaks@8.24.3 detect \
+          gitleaks detect \
             --source . \
             --log-opts="$RANGE" \
             -c .gitleaks.toml \
@@ -98,9 +111,22 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install gitleaks
+        env:
+          # Pin to the version developers run locally (AGENT.md), so CI and
+          # local cannot silently diverge on rules or fingerprint behaviour.
+          # NOTE: do NOT use `npx gitleaks` — there is no official gitleaks npm
+          # package; `npx gitleaks@<ver>` fails with ETARGET, and the `gitleaks`
+          # name on npm is an unrelated 1.0.0 stub. Install the real binary.
+          GITLEAKS_VERSION: "8.30.1"
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+
       - name: Secret scan (full history — known to fail, see ONB-01)
         run: |
-          npx --yes gitleaks@8.24.3 detect \
+          gitleaks detect \
             --source . \
             --log-opts="--all" \
             -c .gitleaks.toml \
