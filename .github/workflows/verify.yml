@@ -1,6 +1,18 @@
 # CI — runs the SAME Verify block agents run locally. Keep in sync with AGENT.md.
-# Wire `verify` as a required status check in branch protection (workflow/SETUP.md §1)
-# so no PR can merge unless it passes.
+#
+# Two jobs, and the difference matters when you're reading a red X on a PR:
+#
+#   code-gate            REQUIRED. Must be green to merge. Typecheck, lint,
+#                        tests, and a secret scan of THIS PR's commits.
+#   secret-history       REPORTING ONLY. Expected to be red today — it reports
+#                        the known historical leak (ADR-7 / TD-01). Does not
+#                        block. Nothing is wrong when this is red; something is
+#                        wrong when code-gate is.
+#
+# Job `name:` values set the check context shown on the PR and named in branch
+# protection. If you change them, the required-status-check name in the ruleset
+# must be updated to match, or main gets a required check that never reports and
+# every merge blocks. See workflow/SETUP.md §1.
 name: verify
 
 on:
@@ -12,7 +24,8 @@ permissions:
   contents: read
 
 jobs:
-  verify:
+  code-gate:
+    name: code-gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,7 +53,7 @@ jobs:
       # cannot fail on a pre-existing leak should not be called a secret scan.
       #
       # This step is the merge gate: it fails if the PR ADDS a secret. The
-      # pre-existing leak is covered by the separate `secret-scan-history` job
+      # pre-existing leak is covered by the separate `secret-history` job
       # below, which is intentionally not the merge gate — see its comment.
       - name: Install gitleaks
         env:
@@ -111,7 +124,8 @@ jobs:
   # this a required check. That is the point at which "no secrets in history"
   # becomes a real guarantee rather than an aspiration. Do not silence it before
   # then — a blanket .env allowlist is exactly what hid this leak for months.
-  secret-scan-history:
+  secret-history:
+    name: secret-history (reporting only — expected red)
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:

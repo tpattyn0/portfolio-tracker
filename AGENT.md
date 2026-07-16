@@ -37,7 +37,18 @@ npm run verify
 
 This runs, in order: `typecheck` (`tsc --noEmit`), `lint` (`next lint`), `test` (`vitest run`), and `secret-scan` (`gitleaks detect --source . --no-git -c .gitleaks.toml --redact`). All four must pass. `lint` currently has pre-existing warnings (unused imports, a few `any` types) that do not fail the command — do not treat fixing all of them as in-scope for an unrelated change; fix only what you touch.
 
-**CI runs `npm run verify:code`, not `npm run verify`** — same typecheck + lint + test gate, minus the local secret scan. CI covers secrets with the gitleaks GitHub Action instead, which scans full history rather than just the checked-out tree. Keep the two in sync: a check added to `verify` belongs in `verify:code` too.
+### Reading CI on a PR
+
+Two checks, and only one of them blocks:
+
+| Check | Blocks merge? | What a red means |
+|---|---|---|
+| `verify / code-gate` | **Yes — required** | A real failure. Typecheck, lint, tests, or a secret in *this PR's* commits. |
+| `verify / secret-history (reporting only — expected red)` | No | **Expected.** It reports the known historical leak (ADR-7 / TD-01). It is red on every run and will stay red until TD-01 is fully resolved. |
+
+So a PR showing one red X and one green is **normal**. Two reds means `code-gate` failed and something is actually wrong. These were previously both named `verify`, which made a real failure indistinguishable from the expected one at a glance — renamed 2026-07-17.
+
+**CI runs `npm run verify:code`, not `npm run verify`** — same typecheck + lint + test gate, minus the local secret scan. CI handles secrets in its own steps instead: `code-gate` scans this PR's commit range, and `secret-history` scans all of history. Neither uses the gitleaks GitHub Action — on a `pull_request` event it only scans the PR's own commits and ignores `fetch-depth`, which is how a green check once coexisted with three live secrets in the first commit. Keep the two in sync: a check added to `verify` belongs in `verify:code` too.
 
 ## Git hooks live in `.githooks/`, not `hooks/`
 
