@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { marketDataService } from "@/lib/services/market-data.service";
+import { checkRateLimit } from "@/lib/middleware/rate-limit";
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const limited = checkRateLimit(request, "market-search", 30, 60 * 1000);
+    if (limited) return limited;
+
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get("q") || "";
 

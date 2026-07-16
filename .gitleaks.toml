@@ -1,0 +1,14 @@
+title = "portfolio-tracker gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ignore paths that are gitignored/build output, not tracked source"
+paths = [
+  '''\.next/''',
+  '''(^|/)\.env(\.[^/]*)?$''',
+]
+
+# See TECH_DEBT.md for the historical secrets leak (ONB-01) tracked
+# separately — this config guards tracked source going forward.

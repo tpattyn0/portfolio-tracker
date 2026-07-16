@@ -1,6 +1,6 @@
 # Review: onboarding audit (existing project)
 Date: 2026-07-16
-Status: [leave blank until implemented]
+Status: PARTIALLY IMPLEMENTED — 2026-07-16 (ONB-02 through ONB-09 done; ONB-01 BLOCKER still open, owner deferred rotation; ONB-10/ONB-11 resolved by owner decision, see DECISIONS.md ADR-6 and TECH_DEBT.md TD-02)
 
 Audit target: branch `main` @ `bdbfad67` — working tree clean apart from tracked `.next/` build noise (see ONB-08).
 
