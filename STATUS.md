@@ -1,11 +1,10 @@
 # STATUS.md
 
 ## In progress
-Review: reviews/2026-07-16-onboarding-docs.md (DOC-02..05 implemented on feature/onboarding-docs-fixes)
-Since: 2026-07-16
-Branch: feature/onboarding-docs-fixes
-Next: awaiting owner decision
+Review: reviews/2026-07-17-setup-audit.md (fixes SA-01..07 implemented)
+Since: 2026-07-17
+Branch: chore/setup-audit-fixes
+Next: owner — merge PR, then action SA-08 (gh re-auth) and SA-10 (plugin hygiene)
 
 ## Blocked
-ONB-01 / TD-01 — live secrets PUBLIC on github.com/tpattyn0/portfolio-tracker; rotation still open
-DOC-01 — Verify secret-scan uses --no-git, cannot detect the leak; always passes
+TD-01 — NEWS_API_KEY live + public in history; risk accepted per ADR-7, blocks production deploys only
