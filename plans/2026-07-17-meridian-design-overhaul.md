@@ -73,6 +73,17 @@ One concrete interaction to preserve: `wishlist-table.tsx:150-154` has a `getSco
 
 `components/navigation.tsx` is replaced by the Meridian masthead: sticky, 3-col top row (dateline kicker / centered "Meridian" wordmark / search + theme toggle + account), plus a centered nav row below. It currently renders "InvestTracker" + a blue `TrendingUp` logo + horizontal icon nav. The dateline ("Vol. III — № 128 · Friday, 17 July 2026") is a **live-formatted date**, not a hardcoded string — the issue number is decorative and static, the date is `date-fns` (already a dependency).
 
+**Dateline formula (owner-specified).** The dateline is fully computed from the current date — nothing hardcoded:
+- **Volume** = the 2-digit year in Roman numerals. 2026 → `26` → `XXVI`.
+- **Issue №** = day-of-year (`date-fns` `getDayOfYear`). 17 July 2026 → `198`.
+- **Date** = the existing long-form date, e.g. `Friday, 17 July 2026`.
+
+Today renders: `Vol. XXVI — № 198 · Friday, 17 July 2026`.
+
+Chosen over the month/day alternative (`Vol. V — № 17`) because it behaves like a real masthead: the volume tracks the publication's life and the issue number counts up through it before resetting each January, giving every issue a unique dateline. Month-as-volume resets 12×/year, caps the issue number at 31, and restates the date that already sits beside it in the same line. The prototype's own `Vol. III — № 128` matches neither formula and is placeholder text (the handoff states all prototype figures are sample data); this formula supersedes it.
+
+Roman-numeral conversion is a small pure function — put it in `lib/utils/dateline.ts` and test it (see Verification).
+
 The account dropdown (Radix `DropdownMenu`, with real `signOut()`) is **kept** — the prototype's account circle just navigates to login, which is prototype shorthand for "sign out", not a spec to drop the menu. Same for `<Link>`-based nav: keep Next.js routing, take Meridian's styling.
 
 ### Out of scope
