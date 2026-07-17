@@ -1,6 +1,6 @@
 # Review: full-audit fixes (AUD-01..AUD-10)
 Date: 2026-07-17
-Status:
+Status: IMPLEMENTED — 2026-07-17 (AUD-FIX-01..04 fixed and re-verified; see reviews/2026-07-17-full-audit-fixes-v2.md)
 
 ## Summary
 Findings: 0 BLOCKERs, 1 ISSUE, 3 SUGGESTIONs, 0 QUESTIONs

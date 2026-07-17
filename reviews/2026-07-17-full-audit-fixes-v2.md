@@ -1,6 +1,6 @@
 # Review: full-audit fixes v2 (AUD-FIX-01..03 implementation)
 Date: 2026-07-17
-Status:
+Status: IMPLEMENTED — 2026-07-17 (REV2-01 fixed inline by the Reviewer session; REV2-02 accepted as no-action-needed)
 
 ## Summary
 Findings: 0 BLOCKERs, 1 ISSUE, 1 SUGGESTION, 0 QUESTIONs
