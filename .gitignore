@@ -60,3 +60,7 @@ next-env.d.ts
 # the committed template — carries no real values
 !.env.example
 scratch/
+
+# Design handoff bundles — prototype reference, not production source
+*.zip
+design_handoff_*/
