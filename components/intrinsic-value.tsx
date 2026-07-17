@@ -92,23 +92,23 @@ export function IntrinsicValue({ symbol, currentPrice, currency }: IntrinsicValu
   const getConfidenceColor = (confidence: string) => {
     switch (confidence) {
       case 'high':
-        return 'text-green-600 bg-green-50';
+        return 'text-up bg-fill';
       case 'medium':
-        return 'text-yellow-600 bg-yellow-50';
+        return 'text-amber bg-fill';
       case 'low':
-        return 'text-red-600 bg-red-50';
+        return 'text-dn bg-fill';
       default:
-        return 'text-gray-600 bg-gray-50';
+        return 'text-sub bg-fill';
     }
   };
 
   const getUpsideColor = (percent: number | null) => {
     if (!percent) return '';
-    if (percent >= 30) return 'text-green-600';
-    if (percent >= 15) return 'text-emerald-600';
-    if (percent >= -10) return 'text-blue-600';
-    if (percent >= -25) return 'text-orange-600';
-    return 'text-red-600';
+    if (percent >= 30) return 'text-up';
+    if (percent >= 15) return 'text-up';
+    if (percent >= -10) return 'text-foreground';
+    if (percent >= -25) return 'text-amber';
+    return 'text-dn';
   };
 
   if (loading) {
@@ -122,7 +122,7 @@ export function IntrinsicValue({ symbol, currentPrice, currency }: IntrinsicValu
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
-            <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+            <RefreshCw className="h-6 w-6 animate-spin text-mut" />
           </div>
         </CardContent>
       </Card>
@@ -140,8 +140,8 @@ export function IntrinsicValue({ symbol, currentPrice, currency }: IntrinsicValu
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <AlertCircle className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-gray-600">
+            <AlertCircle className="h-8 w-8 text-mut mx-auto mb-2" />
+            <p className="text-sub">
               {error || "Unable to calculate intrinsic value"}
             </p>
           </div>
@@ -172,11 +172,11 @@ export function IntrinsicValue({ symbol, currentPrice, currency }: IntrinsicValu
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <div>
-              <p className="text-sm text-gray-600">Current Price</p>
+              <p className="text-sm text-sub">Current Price</p>
               <p className="text-xl font-semibold">{formatCurrency(currentPrice, currency)}</p>
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-600">Intrinsic Value</p>
+              <p className="text-sm text-sub">Intrinsic Value</p>
               <p className="text-xl font-semibold">
                 {data.intrinsicValue ? formatCurrency(data.intrinsicValue, currency) : "—"}
               </p>
@@ -186,7 +186,7 @@ export function IntrinsicValue({ symbol, currentPrice, currency }: IntrinsicValu
           {/* Progress Bar */}
           {data.intrinsicValue && (
             <div className="space-y-2">
-              <div className="flex justify-between text-xs text-gray-600">
+              <div className="flex justify-between text-xs text-sub">
                 <span>Undervalued</span>
                 <span>Fair Value</span>
                 <span>Overvalued</span>
@@ -203,18 +203,18 @@ export function IntrinsicValue({ symbol, currentPrice, currency }: IntrinsicValu
 
           {/* Upside/Downside */}
           {data.upsidePercent !== null && (
-            <div className="bg-gray-50 rounded-lg p-4">
+            <div className="bg-fill rounded-lg p-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Potential Return</span>
+                <span className="text-sm text-sub">Potential Return</span>
                 <div className="flex items-center gap-2">
                   {data.upsidePercent >= 0 ? (
-                    <TrendingUp className="h-4 w-4 text-green-600" />
+                    <TrendingUp className="h-4 w-4 text-up" />
                   ) : (
-                    <TrendingDown className="h-4 w-4 text-red-600" />
+                    <TrendingDown className="h-4 w-4 text-dn" />
                   )}
                   <span className={cn(
                     "text-lg font-bold",
-                    data.upsidePercent >= 0 ? "text-green-600" : "text-red-600"
+                    data.upsidePercent >= 0 ? "text-up" : "text-dn"
                   )}>
                     {formatPercent(Math.abs(data.upsidePercent))}
                   </span>
@@ -227,7 +227,7 @@ export function IntrinsicValue({ symbol, currentPrice, currency }: IntrinsicValu
         {/* Valuation Methods Summary */}
         <div className="space-y-3">
           <div className="flex justify-between items-center">
-            <h4 className="text-sm font-medium text-gray-700">Valuation Methods</h4>
+            <h4 className="text-sm font-medium text-sub">Valuation Methods</h4>
             <Dialog open={showDetails} onOpenChange={setShowDetails}>
               <DialogTrigger asChild>
                 <Button variant="ghost" size="sm">
@@ -263,17 +263,17 @@ export function IntrinsicValue({ symbol, currentPrice, currency }: IntrinsicValu
                       <CardContent>
                         <div className="space-y-3">
                           <div>
-                            <p className="text-sm text-gray-600 mb-1">Formula:</p>
-                            <code className="text-xs bg-gray-100 p-2 rounded block">
+                            <p className="text-sm text-sub mb-1">Formula:</p>
+                            <code className="text-xs bg-fill p-2 rounded block">
                               {method.formula}
                             </code>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-600 mb-1">Inputs:</p>
+                            <p className="text-sm text-sub mb-1">Inputs:</p>
                             <div className="grid grid-cols-2 gap-2 text-sm">
                               {Object.entries(method.inputs).map(([key, value]) => (
                                 <div key={key} className="flex justify-between">
-                                  <span className="text-gray-600">{key}:</span>
+                                  <span className="text-sub">{key}:</span>
                                   <span className="font-medium">
                                     {value !== null ? 
                                       (typeof value === 'number' ? 
@@ -300,12 +300,12 @@ export function IntrinsicValue({ symbol, currentPrice, currency }: IntrinsicValu
           <div className="space-y-2">
             {data.methods.slice(0, 3).map((method, index) => (
               <div key={index} className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">{method.name}</span>
+                <span className="text-sub">{method.name}</span>
                 <div className="flex items-center gap-2">
-                  {method.confidence === 'high' && <CheckCircle className="h-3 w-3 text-green-500" />}
-                  {method.confidence === 'medium' && <AlertCircle className="h-3 w-3 text-yellow-500" />}
-                  {method.confidence === 'low' && <XCircle className="h-3 w-3 text-red-500" />}
-                  <span className={method.value ? "font-medium" : "text-gray-400"}>
+                  {method.confidence === 'high' && <CheckCircle className="h-3 w-3 text-up" />}
+                  {method.confidence === 'medium' && <AlertCircle className="h-3 w-3 text-amber" />}
+                  {method.confidence === 'low' && <XCircle className="h-3 w-3 text-dn" />}
+                  <span className={method.value ? "font-medium" : "text-mut"}>
                     {method.value ? formatCurrency(method.value, currency) : "N/A"}
                   </span>
                 </div>
@@ -316,7 +316,7 @@ export function IntrinsicValue({ symbol, currentPrice, currency }: IntrinsicValu
 
         {/* Refresh Button */}
         <div className="flex justify-between items-center pt-2 border-t">
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-mut">
             Last updated: {new Date(data.lastUpdated).toLocaleString()}
           </p>
           <Button

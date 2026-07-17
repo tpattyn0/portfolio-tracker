@@ -108,9 +108,9 @@ export function AnalystRatings({ symbol, currentPrice, initialData, currency }: 
   };
 
   const getRatingColor = (rating: number) => {
-    if (rating >= 7) return "bg-green-500";
-    if (rating >= 5) return "bg-yellow-500";
-    return "bg-red-500";
+    if (rating >= 7) return "bg-up";
+    if (rating >= 5) return "bg-amber";
+    return "bg-dn";
   };
 
   const getRatingLabel = (rating: number) => {
@@ -175,12 +175,12 @@ export function AnalystRatings({ symbol, currentPrice, initialData, currency }: 
                 <span>Analyst Score</span>
                 <span>{ratings.score.toFixed(1)}/10</span>
               </div>
-              <div className="relative h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+              <div className="relative h-2 w-full bg-fill rounded-full overflow-hidden">
                 <div 
                   className={cn(
                     'h-full rounded-full transition-all duration-1000',
-                    scorePercentage > 70 ? 'bg-green-500' :
-                    scorePercentage > 30 ? 'bg-yellow-400' : 'bg-red-500'
+                    scorePercentage > 70 ? 'bg-up' :
+                    scorePercentage > 30 ? 'bg-amber' : 'bg-dn'
                   )}
                   style={{ width: `${scorePercentage}%` }}
                 />
@@ -206,7 +206,7 @@ export function AnalystRatings({ symbol, currentPrice, initialData, currency }: 
             {currentPrice && priceDifference && (
               <p className={cn(
                 'text-sm mt-2',
-                priceDifference.isPositive ? 'text-green-500' : 'text-red-500'
+                priceDifference.isPositive ? 'text-up' : 'text-dn'
               )}>
                 {priceDifference.formatted} {priceDifference.isPositive ? '▲' : '▼'}
               </p>
@@ -229,53 +229,53 @@ export function AnalystRatings({ symbol, currentPrice, initialData, currency }: 
           <div className="space-y-4">
             {/* Consolidated Rating Bar */}
             <div className="space-y-3">
-              <div className="h-8 w-full bg-gray-200 rounded-full overflow-hidden flex">
+              <div className="h-8 w-full bg-fill rounded-full overflow-hidden flex">
                 {ratings.strongBuy > 0 && (
                   <div
-                    className="h-full bg-green-500 relative group flex items-center justify-center"
+                    className="h-full bg-up relative group flex items-center justify-center"
                     style={{ width: `${ratingToPercent(ratings.strongBuy)}%` }}
                   >
-                    <span className="text-xs font-medium text-white px-1 truncate">
+                    <span className="text-xs font-medium text-background px-1 truncate">
                       {ratings.strongBuy}
                     </span>
                   </div>
                 )}
                 {ratings.buy > 0 && (
                   <div
-                    className="h-full bg-green-400 relative group flex items-center justify-center"
+                    className="h-full bg-up/70 relative group flex items-center justify-center"
                     style={{ width: `${ratingToPercent(ratings.buy)}%` }}
                   >
-                    <span className="text-xs font-medium text-white px-1 truncate">
+                    <span className="text-xs font-medium text-background px-1 truncate">
                       {ratings.buy}
                     </span>
                   </div>
                 )}
                 {ratings.hold > 0 && (
                   <div
-                    className="h-full bg-yellow-400 relative group flex items-center justify-center"
+                    className="h-full bg-amber relative group flex items-center justify-center"
                     style={{ width: `${ratingToPercent(ratings.hold)}%` }}
                   >
-                    <span className="text-xs font-medium text-gray-800 px-1 truncate">
+                    <span className="text-xs font-medium text-foreground px-1 truncate">
                       {ratings.hold}
                     </span>
                   </div>
                 )}
                 {ratings.sell > 0 && (
                   <div
-                    className="h-full bg-orange-500 relative group flex items-center justify-center"
+                    className="h-full bg-dn/70 relative group flex items-center justify-center"
                     style={{ width: `${ratingToPercent(ratings.sell)}%` }}
                   >
-                    <span className="text-xs font-medium text-white px-1 truncate">
+                    <span className="text-xs font-medium text-background px-1 truncate">
                       {ratings.sell}
                     </span>
                   </div>
                 )}
                 {ratings.strongSell > 0 && (
                   <div
-                    className="h-full bg-red-500 relative group flex items-center justify-center"
+                    className="h-full bg-dn relative group flex items-center justify-center"
                     style={{ width: `${ratingToPercent(ratings.strongSell)}%` }}
                   >
-                    <span className="text-xs font-medium text-white px-1 truncate">
+                    <span className="text-xs font-medium text-background px-1 truncate">
                       {ratings.strongSell}
                     </span>
                   </div>
@@ -283,23 +283,23 @@ export function AnalystRatings({ symbol, currentPrice, initialData, currency }: 
               </div>
 <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-green-500 mr-1.5"></div>
+                  <div className="w-3 h-3 rounded-full bg-up mr-1.5"></div>
                   <span>Strong Buy</span>
                 </div>
                 <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-green-400 mr-1.5"></div>
+                  <div className="w-3 h-3 rounded-full bg-up/70 mr-1.5"></div>
                   <span>Buy</span>
                 </div>
                 <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-yellow-400 mr-1.5"></div>
+                  <div className="w-3 h-3 rounded-full bg-amber mr-1.5"></div>
                   <span>Hold</span>
                 </div>
                 <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-orange-500 mr-1.5"></div>
+                  <div className="w-3 h-3 rounded-full bg-dn/70 mr-1.5"></div>
                   <span>Sell</span>
                 </div>
                 <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-red-500 mr-1.5"></div>
+                  <div className="w-3 h-3 rounded-full bg-dn mr-1.5"></div>
                   <span>Strong Sell</span>
                 </div>
               </div>

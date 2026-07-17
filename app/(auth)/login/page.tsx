@@ -7,12 +7,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
 
 const loginSchema = z.object({
@@ -36,7 +30,7 @@ function LoginPageContent() {
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const registered = searchParams.get("registered") === "true";
 
   const {
@@ -80,95 +74,105 @@ function LoginPageContent() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Welcome back</CardTitle>
-          <CardDescription className="text-center">
-            Sign in to your account to continue
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <div className="flex min-h-screen items-center justify-center bg-background p-6">
+      <div className="w-full max-w-[420px]">
+        <div className="text-center pb-5" style={{ borderBottom: "3px double var(--foreground)" }}>
+          <div className="text-[10px] uppercase tracking-[0.16em] text-mut">
+            Est. 2026 · European edition
+          </div>
+          <div className="mt-2 font-serif text-[38px] font-medium">Meridian</div>
+        </div>
+
+        <div className="mt-8 rounded-lg border border-border bg-card p-9">
+          <div className="text-center font-serif text-[26px] font-medium">Welcome back</div>
+          <p className="mb-7 mt-2 text-center font-serif text-[14.5px] italic text-mut">
+            Sign in to your account to continue.
+          </p>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-[22px]">
             {registered && (
-              <Alert className="bg-green-50 border-green-200">
-                <AlertDescription className="text-green-800">
-                  Account created successfully! Please sign in.
-                </AlertDescription>
-              </Alert>
+              <div className="rounded-md border border-up/40 bg-fill p-3 text-sm text-up">
+                Account created successfully! Please sign in.
+              </div>
             )}
 
             {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
+              <div className="rounded-md border border-dn/40 bg-fill p-3 text-sm text-dn">
+                {error}
+              </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
+            <div>
+              <label htmlFor="email" className="mb-2 block text-[10.5px] uppercase tracking-[0.12em] text-mut">
+                Email
+              </label>
+              <input
                 id="email"
                 type="email"
-                placeholder="john@example.com"
+                placeholder="you@example.com"
                 {...register("email")}
                 disabled={isLoading}
+                className="h-10 w-full rounded-md border border-border bg-background px-3.5 text-sm text-foreground outline-none disabled:opacity-50"
               />
-              {errors.email && (
-                <p className="text-sm text-red-600">{errors.email.message}</p>
-              )}
+              {errors.email && <p className="mt-1 text-sm text-dn">{errors.email.message}</p>}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
+            <div>
+              <label htmlFor="password" className="mb-2 block text-[10.5px] uppercase tracking-[0.12em] text-mut">
+                Password
+              </label>
+              <input
                 id="password"
                 type="password"
+                placeholder="••••••••"
                 {...register("password")}
                 disabled={isLoading}
+                className="h-10 w-full rounded-md border border-border bg-background px-3.5 text-sm text-foreground outline-none disabled:opacity-50"
               />
-              {errors.password && (
-                <p className="text-sm text-red-600">{errors.password.message}</p>
-              )}
+              {errors.password && <p className="mt-1 text-sm text-dn">{errors.password.message}</p>}
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Checkbox
+            <div className="flex items-center justify-between text-[12.5px] text-sub">
+              <label htmlFor="remember" className="flex cursor-pointer items-center gap-2">
+                <input
                   id="remember"
+                  type="checkbox"
                   checked={rememberMe}
-                  onCheckedChange={(checked) => setValue("remember", checked as boolean)}
+                  onChange={(e) => setValue("remember", e.target.checked)}
                   disabled={isLoading}
+                  style={{ accentColor: "var(--foreground)" }}
                 />
-                <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
-                  Remember me
-                </Label>
-              </div>
-              <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+                Remember me
+              </label>
+              <Link href="/forgot-password" className="border-b border-border">
                 Forgot password?
               </Link>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="flex h-11 items-center justify-center gap-2 rounded-full bg-btnbg text-[13.5px] font-medium text-btnfg disabled:opacity-50"
+            >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Signing in…
                 </>
               ) : (
                 "Sign in"
               )}
-            </Button>
+            </button>
+
+            <div className="text-center text-[12.5px] text-mut">
+              Don&rsquo;t have an account?{" "}
+              <Link href="/register" className="border-b border-border text-foreground">
+                Create account
+              </Link>
+            </div>
           </form>
-        </CardContent>
-        <CardFooter className="flex justify-center">
-          <p className="text-sm text-gray-600">
-            Don't have an account?{" "}
-            <Link href="/register" className="text-blue-600 hover:underline">
-              Create account
-            </Link>
-          </p>
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

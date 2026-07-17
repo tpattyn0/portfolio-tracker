@@ -3,9 +3,6 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   ComposedChart,
   Line,
@@ -50,29 +47,21 @@ export function PriceChart({ symbol, name, showSummary = true, currency }: Price
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Price History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-[400px] w-full" />
-        </CardContent>
-      </Card>
+      <div className="rounded-lg border border-border bg-card px-7 py-6">
+        <div className="mb-4 font-serif text-xl">Price history</div>
+        <div className="h-[400px] w-full animate-pulse rounded bg-fill" />
+      </div>
     );
   }
 
   if (error || !data) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Price History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[400px] flex items-center justify-center text-gray-500">
-            Failed to load chart data
-          </div>
-        </CardContent>
-      </Card>
+      <div className="rounded-lg border border-border bg-card px-7 py-6">
+        <div className="mb-4 font-serif text-xl">Price history</div>
+        <div className="flex h-[400px] items-center justify-center text-mut">
+          Failed to load chart data
+        </div>
+      </div>
     );
   }
 
@@ -120,47 +109,53 @@ export function PriceChart({ symbol, name, showSummary = true, currency }: Price
   }));
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle>{name}</CardTitle>
-            <p className="text-sm text-gray-600">{symbol}</p>
-            <div className="mt-2">
-              <span className="text-2xl font-bold">
-                {formatCurrency(lastValue, currency)}
-              </span>
-              <span
-                className={cn(
-                  "ml-2 text-sm",
-                  change >= 0 ? "text-green-600" : "text-red-600"
-                )}
-              >
-                {change >= 0 ? "+" : ""}
-                {formatCurrency(change, currency)} ({changePercent >= 0 ? "+" : ""}
-                {changePercent.toFixed(2)}%)
-              </span>
-            </div>
+    <div className="rounded-lg border border-border bg-card px-7 py-6">
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="font-serif text-xl">{name}</div>
+          <p className="text-sm text-mut">{symbol}</p>
+          <div className="mt-2">
+            <span className="text-2xl font-bold">
+              {formatCurrency(lastValue, currency)}
+            </span>
+            <span
+              className={cn(
+                "ml-2 text-sm",
+                change >= 0 ? "text-up" : "text-dn"
+              )}
+            >
+              {change >= 0 ? "+" : ""}
+              {formatCurrency(change, currency)} ({changePercent >= 0 ? "+" : ""}
+              {changePercent.toFixed(2)}%)
+            </span>
           </div>
-          <Tabs value={period} onValueChange={setPeriod}>
-            <TabsList>
-              {periods.map((p) => (
-                <TabsTrigger key={p.value} value={p.value}>
-                  {p.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
         </div>
-      </CardHeader>
-      <CardContent>
+        <div className="flex gap-[18px]">
+          {periods.map((p) => (
+            <button
+              key={p.value}
+              type="button"
+              onClick={() => setPeriod(p.value)}
+              className={cn(
+                "border-b pb-0.5 text-[10.5px] tracking-[0.12em]",
+                p.value === period
+                  ? "border-foreground font-semibold text-foreground"
+                  : "border-transparent font-normal text-mut"
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="mt-5">
         <div className="h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={enhancedChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--line2)" vertical={false} />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 12 }}
+                tick={{ fontSize: 12, fill: "var(--mut)" }}
                 tickFormatter={(value) => {
                   const date = new Date(value);
                   if (period === "1D") {
@@ -180,7 +175,7 @@ export function PriceChart({ symbol, name, showSummary = true, currency }: Price
               />
               <YAxis
                 domain={["dataMin", "dataMax"]}
-                tick={{ fontSize: 12 }}
+                tick={{ fontSize: 12, fill: "var(--mut)" }}
                 tickFormatter={(value) => {
                   const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency || '$';
                   return `${currencySymbol}${value.toFixed(2)}`;
@@ -200,30 +195,34 @@ export function PriceChart({ symbol, name, showSummary = true, currency }: Price
                     day: "numeric",
                   });
                 }}
+                contentStyle={{
+                  background: "var(--card)",
+                  border: "1px solid var(--border)",
+                  fontSize: 12,
+                }}
               />
               <Line
                 type="monotone"
                 dataKey="value"
-                stroke={change >= 0 ? "#10b981" : "#ef4444"}
-                strokeWidth={2}
+                stroke="var(--foreground)"
+                strokeWidth={1.5}
                 dot={false}
                 name="Price"
               />
-              
             </ComposedChart>
           </ResponsiveContainer>
         </div>
         {showSummary && (
-          <div className="mt-4 space-y-4 border-t pt-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="mt-4 space-y-4 border-t border-border pt-4">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               <div>
-                <p className="text-sm text-gray-600">RSI (14)</p>
+                <p className="text-sm text-sub">RSI (14)</p>
                 <p className="font-medium">
                   {indicators.rsi14?.toFixed(2) || "-"}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {indicators.rsi14 
-                    ? indicators.rsi14 > 70 
+                <p className="mt-1 text-xs text-mut">
+                  {indicators.rsi14
+                    ? indicators.rsi14 > 70
                       ? "Overbought - potential sell signal"
                       : indicators.rsi14 < 30
                       ? "Oversold - potential buy signal"
@@ -232,11 +231,11 @@ export function PriceChart({ symbol, name, showSummary = true, currency }: Price
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">SMA (20)</p>
+                <p className="text-sm text-sub">SMA (20)</p>
                 <p className="font-medium">
                   {indicators.sma20 ? formatCurrency(indicators.sma20, currency) : "-"}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="mt-1 text-xs text-mut">
                   {indicators.sma20
                     ? lastValue > indicators.sma20
                       ? "Price above SMA - bullish"
@@ -245,11 +244,11 @@ export function PriceChart({ symbol, name, showSummary = true, currency }: Price
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">SMA (50)</p>
+                <p className="text-sm text-sub">SMA (50)</p>
                 <p className="font-medium">
                   {indicators.sma50 ? formatCurrency(indicators.sma50, currency) : "-"}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="mt-1 text-xs text-mut">
                   {indicators.sma50
                     ? lastValue > indicators.sma50
                       ? "Above medium-term trend"
@@ -258,25 +257,25 @@ export function PriceChart({ symbol, name, showSummary = true, currency }: Price
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Signal</p>
+                <p className="text-sm text-sub">Signal</p>
                 <p className={cn(
                   "font-medium",
-                  score >= 7 ? "text-green-600" :
-                  score <= 3 ? "text-red-600" : "text-gray-600"
+                  score >= 7 ? "text-up" :
+                  score <= 3 ? "text-dn" : "text-sub"
                 )}>
                   {indicators.signal?.replace("_", " ") || "HOLD"}
                 </p>
-                <p className="text-xs font-medium mt-1">
+                <p className="mt-1 text-xs font-medium">
                   Score: {score}/10
                 </p>
               </div>
             </div>
 
             {/* Overall interpretation */}
-            <div className="bg-gray-50 p-3 rounded-md">
-              <p className="text-sm font-medium text-gray-700">Technical Analysis Summary</p>
-              <p className="text-sm text-gray-600 mt-1">
-                {score >= 7 
+            <div className="rounded-md bg-fill p-3">
+              <p className="text-sm font-medium text-sub">Technical Analysis Summary</p>
+              <p className="mt-1 text-sm text-sub">
+                {score >= 7
                   ? `Strong buy signals with ${buySignals} out of ${totalSignals} indicators positive. The stock shows strong momentum and is trading above key moving averages.`
                   : score >= 5
                   ? `Mixed signals with ${buySignals} out of ${totalSignals} indicators positive. Consider waiting for a clearer trend or use fundamental analysis to guide decisions.`
@@ -287,7 +286,7 @@ export function PriceChart({ symbol, name, showSummary = true, currency }: Price
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

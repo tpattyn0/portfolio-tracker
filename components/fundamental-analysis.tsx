@@ -59,7 +59,7 @@ export function FundamentalAnalysis({ symbol, currency }: FundamentalAnalysisPro
   if (error || !data) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-center h-64 text-gray-500">
+        <CardContent className="flex items-center justify-center h-64 text-mut">
           <AlertCircle className="mr-2 h-5 w-5" />
           Unable to load fundamental analysis
         </CardContent>
@@ -68,9 +68,9 @@ export function FundamentalAnalysis({ symbol, currency }: FundamentalAnalysisPro
   }
 
   const getScoreColor = (score: number) => {
-    if (score >= 7) return "text-green-600";
-    if (score >= 5) return "text-yellow-600";
-    return "text-red-600";
+    if (score >= 7) return "text-up";
+    if (score >= 5) return "text-amber";
+    return "text-dn";
   };
 
   const getScoreBadge = (score: number) => {
@@ -98,7 +98,7 @@ export function FundamentalAnalysis({ symbol, currency }: FundamentalAnalysisPro
           <div className="space-y-4">
             <Progress value={data.score.total * 10} className="h-3" />
 
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-sub">
               {data.score.interpretation}
             </p>
 
@@ -157,7 +157,7 @@ export function FundamentalAnalysis({ symbol, currency }: FundamentalAnalysisPro
               <div className="space-y-6">
                 {/* Valuation Ratios Section */}
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">
+                  <h3 className="text-sm font-semibold text-sub mb-3 pb-2 border-b">
                     Valuation Ratios
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
@@ -237,7 +237,7 @@ export function FundamentalAnalysis({ symbol, currency }: FundamentalAnalysisPro
 
                 {/* Per-Share Metrics Section */}
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">
+                  <h3 className="text-sm font-semibold text-sub mb-3 pb-2 border-b">
                     Per-Share Metrics
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
@@ -267,7 +267,7 @@ export function FundamentalAnalysis({ symbol, currency }: FundamentalAnalysisPro
 
                 {/* Company Size Section */}
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-2 border-b">
+                  <h3 className="text-sm font-semibold text-sub mb-3 pb-2 border-b">
                     Company Size
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
@@ -463,7 +463,7 @@ export function FundamentalAnalysis({ symbol, currency }: FundamentalAnalysisPro
                   )}
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-mut">
                   <Wallet className="mx-auto h-12 w-12 mb-2 opacity-30" />
                   <p>No dividend data available</p>
                   <p className="text-sm mt-1">This company may not pay dividends</p>
@@ -475,10 +475,10 @@ export function FundamentalAnalysis({ symbol, currency }: FundamentalAnalysisPro
       </Tabs>
 
       {/* Key Insights */}
-      <Card className="bg-blue-50 border-blue-200">
+      <Card className="bg-fill border-border">
         <CardHeader>
           <CardTitle className="flex items-center">
-            <Info className="mr-2 h-5 w-5 text-blue-600" />
+            <Info className="mr-2 h-5 w-5 text-foreground" />
             Key Insights
           </CardTitle>
         </CardHeader>
@@ -486,7 +486,7 @@ export function FundamentalAnalysis({ symbol, currency }: FundamentalAnalysisPro
           <ul className="space-y-2 text-sm">
             {generateInsights(data).map((insight, index) => (
               <li key={index} className="flex items-start">
-                <span className="text-blue-600 mr-2">•</span>
+                <span className="text-foreground mr-2">•</span>
                 <span>{insight}</span>
               </li>
             ))}
@@ -506,15 +506,15 @@ interface ScoreCardProps {
 
 function ScoreCard({ title, score, icon: Icon }: ScoreCardProps) {
   const getColor = (score: number) => {
-    if (score >= 7) return "text-green-600 bg-green-50";
-    if (score >= 5) return "text-yellow-600 bg-yellow-50";
-    return "text-red-600 bg-red-50";
+    if (score >= 7) return "text-up bg-fill";
+    if (score >= 5) return "text-amber bg-fill";
+    return "text-dn bg-fill";
   };
 
   return (
     <div className={cn("p-3 rounded-lg text-center", getColor(score).split(" ")[1])}>
       <Icon className={cn("h-5 w-5 mx-auto mb-1", getColor(score).split(" ")[0])} />
-      <p className="text-xs text-gray-600">{title}</p>
+      <p className="text-xs text-sub">{title}</p>
       <p className={cn("text-lg font-bold", getColor(score).split(" ")[0])}>
         {score.toFixed(1)}
       </p>
@@ -561,7 +561,7 @@ function MetricRow({
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="text-sm text-gray-600 cursor-help flex items-center">
+              <span className="text-sm text-sub cursor-help flex items-center">
                 {label}
                 {tooltip && <Info className="ml-1 h-3 w-3 opacity-50" />}
               </span>
@@ -573,7 +573,7 @@ function MetricRow({
             )}
           </Tooltip>
         </TooltipProvider>
-        <span className="text-sm text-gray-400">N/A</span>
+        <span className="text-sm text-mut">N/A</span>
       </div>
     );
   }
@@ -581,23 +581,23 @@ function MetricRow({
   let formattedValue = "";
 
   // Color Logic
-  let colorClass = "text-gray-900"; // default
+  let colorClass = "text-foreground"; // default
 
   if (goodThreshold !== undefined && badThreshold !== undefined) {
     // 3-tier logic
     if (inverse) {
-      if (value <= goodThreshold) colorClass = "text-green-600";
-      else if (value >= badThreshold) colorClass = "text-red-600";
-      else colorClass = "text-yellow-600";
+      if (value <= goodThreshold) colorClass = "text-up";
+      else if (value >= badThreshold) colorClass = "text-dn";
+      else colorClass = "text-amber";
     } else {
-      if (value >= goodThreshold) colorClass = "text-green-600";
-      else if (value <= badThreshold) colorClass = "text-red-600";
-      else colorClass = "text-yellow-600";
+      if (value >= goodThreshold) colorClass = "text-up";
+      else if (value <= badThreshold) colorClass = "text-dn";
+      else colorClass = "text-amber";
     }
   } else if (benchmark !== undefined) {
     // Legacy binary logic
     const isGood = inverse ? value < benchmark : value > benchmark;
-    colorClass = isGood ? "text-green-600" : "text-red-600";
+    colorClass = isGood ? "text-up" : "text-dn";
   }
 
   switch (format) {
@@ -624,7 +624,7 @@ function MetricRow({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="text-sm text-gray-600 cursor-help flex items-center">
+            <span className="text-sm text-sub cursor-help flex items-center">
               {label}
               {tooltip && <Info className="ml-1 h-3 w-3 opacity-50" />}
             </span>
@@ -640,8 +640,8 @@ function MetricRow({
       <div className="flex items-center space-x-2">
         {showTrend && value !== 0 && (
           value > 0
-            ? <ArrowUpRight className="h-4 w-4 text-green-600" />
-            : <ArrowDownRight className="h-4 w-4 text-red-600" />
+            ? <ArrowUpRight className="h-4 w-4 text-up" />
+            : <ArrowDownRight className="h-4 w-4 text-dn" />
         )}
         <span className={cn("text-sm font-medium", colorClass)}>
           {formattedValue}

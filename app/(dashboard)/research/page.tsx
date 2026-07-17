@@ -1,111 +1,89 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { TrendingUp, Star, Activity } from "lucide-react";
 import { StockSearch } from "@/components/stock-search";
+
+const popularStocks = [
+  { symbol: "AAPL", name: "Apple", change: 1.24 },
+  { symbol: "MSFT", name: "Microsoft", change: 0.87 },
+  { symbol: "GOOGL", name: "Alphabet", change: 1.1 },
+  { symbol: "AMZN", name: "Amazon", change: 0.62 },
+  { symbol: "NVDA", name: "NVIDIA", change: 2.05 },
+  { symbol: "TSLA", name: "Tesla", change: -0.44 },
+];
+
+const disciplines = [
+  {
+    title: "Technical analysis",
+    description: "Moving averages, RSI, MACD and momentum indicators to time entries and exits.",
+  },
+  {
+    title: "Fundamental analysis",
+    description: "Revenue growth, margins, balance-sheet strength and valuation multiples.",
+  },
+  {
+    title: "Intrinsic value",
+    description: "Discounted cash-flow models estimating what a business is truly worth.",
+  },
+];
 
 export default function ResearchPage() {
   const router = useRouter();
 
-  const popularStocks = [
-    { symbol: "AAPL", name: "Apple Inc." },
-    { symbol: "MSFT", name: "Microsoft Corporation" },
-    { symbol: "GOOGL", name: "Alphabet Inc." },
-    { symbol: "AMZN", name: "Amazon.com Inc." },
-    { symbol: "NVDA", name: "NVIDIA Corporation" },
-    { symbol: "TSLA", name: "Tesla Inc." },
-  ];
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Stock Research</h1>
-        <p className="text-gray-600 mt-1">
-          Research stocks, analyze fundamentals, and calculate intrinsic value
+    <div>
+      <div className="mx-auto max-w-[720px] pt-9 text-center">
+        <div className="text-[11px] uppercase tracking-[0.14em] text-mut">
+          The research desk
+        </div>
+        <h1 className="mt-2.5 font-serif text-[52px] font-medium leading-[1.05]">
+          Know what you own
+        </h1>
+        <p className="mb-7 mt-3 font-serif text-base italic text-mut">
+          Fundamentals, technicals &amp; intrinsic value — before the market opens.
         </p>
+        <StockSearch onSelect={(stock) => router.push(`/research/${stock.symbol}`)} />
       </div>
 
-      {/* Search */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Search Stocks</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <StockSearch onSelect={(stock) => router.push(`/research/${stock.symbol}`)} />
-        </CardContent>
-      </Card>
+      <div className="mt-14 rounded-lg border border-border bg-card px-7 py-6">
+        <div className="flex items-center justify-between border-b border-line2 pb-3.5">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em]">
+            Popular this week
+          </span>
+          <span className="text-[10.5px] uppercase tracking-[0.1em] text-mut">
+            Most researched by Meridian readers
+          </span>
+        </div>
+        <div className="grid grid-cols-1 gap-x-12 sm:grid-cols-2 lg:grid-cols-3">
+          {popularStocks.map((stock) => (
+            <button
+              key={stock.symbol}
+              type="button"
+              onClick={() => router.push(`/research/${stock.symbol}`)}
+              className="flex items-center justify-between border-b border-line2 px-3 py-4 text-left hover:bg-fill/45"
+            >
+              <span>
+                <span className="block font-serif text-base font-medium">{stock.name}</span>
+                <span className="mt-0.5 block text-[10.5px] uppercase tracking-[0.12em] text-mut">
+                  {stock.symbol}
+                </span>
+              </span>
+              <span className={stock.change >= 0 ? "text-[13px] text-up" : "text-[13px] text-dn"}>
+                {stock.change >= 0 ? "▲" : "▼"} {stock.change >= 0 && "+"}
+                {stock.change.toFixed(2)}%
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
 
-      {/* Popular Stocks */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Popular Stocks</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-            {popularStocks.map((stock) => (
-              <Button
-                key={stock.symbol}
-                variant="outline"
-                className="justify-start"
-                onClick={() => router.push(`/research/${stock.symbol}`)}
-              >
-                <TrendingUp className="h-4 w-4 mr-2" />
-                <div className="text-left">
-                  <div className="font-semibold">{stock.symbol}</div>
-                  <div className="text-sm text-gray-600">{stock.name}</div>
-                </div>
-              </Button>
-            ))}
+      <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
+        {disciplines.map((d) => (
+          <div key={d.title} className="rounded-lg border border-border bg-card px-7 py-6">
+            <div className="font-serif text-xl">{d.title}</div>
+            <p className="mt-2 text-sm leading-[1.6] text-sub">{d.description}</p>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Features */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              Technical Analysis
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-600">
-              View technical indicators, moving averages, and RSI signals
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Fundamental Analysis
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-600">
-              Analyze P/E ratios, margins, growth rates, and financial health
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Star className="h-5 w-5" />
-              Intrinsic Value
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-600">
-              Calculate fair value using DCF, Graham Number, and PEG methods
-            </p>
-          </CardContent>
-        </Card>
+        ))}
       </div>
     </div>
   );

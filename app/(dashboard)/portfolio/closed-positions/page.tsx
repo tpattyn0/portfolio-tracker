@@ -1,36 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { TickerFilter, TickerOption } from "@/components/closed-positions/ticker-filter";
-import {
-  Download,
-  TrendingUp,
-  TrendingDown,
-  Calendar,
-  DollarSign,
-  Percent,
-  ArrowUpDown,
-  ArrowLeft,
-} from "lucide-react";
 import Link from "next/link";
 import { formatCurrency, formatPercent, formatNumber } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
@@ -62,13 +34,18 @@ interface Aggregates {
   medianReturn: number;
 }
 
+const outcomeTabs: { value: "all" | "winners" | "losers"; label: string }[] = [
+  { value: "all", label: "All trades" },
+  { value: "winners", label: "Winning" },
+  { value: "losers", label: "Losing" },
+];
+
 export default function ClosedPositionsPage() {
   const [sortBy, setSortBy] = useState("closeDate");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [outcomeFilter, setOutcomeFilter] = useState<"all" | "winners" | "losers">("all");
   const [selectedTickers, setSelectedTickers] = useState<string[]>([]);
 
-  // Fetch closed positions
   const { data, isLoading, error } = useQuery({
     queryKey: ["closed-positions", sortBy, sortOrder, outcomeFilter, selectedTickers],
     queryFn: async () => {
@@ -76,9 +53,9 @@ export default function ClosedPositionsPage() {
         sortBy,
         sortOrder,
         ...(outcomeFilter !== "all" && { outcome: outcomeFilter }),
-        ...(selectedTickers.length > 0 && { tickers: selectedTickers.join(',') }),
+        ...(selectedTickers.length > 0 && { tickers: selectedTickers.join(",") }),
       });
-      
+
       const res = await fetch(`/api/portfolio/closed-positions?${params}`);
       if (!res.ok) throw new Error("Failed to fetch closed positions");
       return res.json() as Promise<{
@@ -90,11 +67,6 @@ export default function ClosedPositionsPage() {
   });
 
   const { tickerOptions = [] } = data || {};
-
-  // Handle ticker filter change
-  const handleTickerFilterChange = (values: string[]) => {
-    setSelectedTickers(values);
-  };
 
   const handleSort = (field: string) => {
     if (sortBy === field) {
@@ -109,23 +81,23 @@ export default function ClosedPositionsPage() {
     if (!data?.positions) return;
 
     const csv = [
-      // Headers
       ["Ticker", "Name", "First Buy Date", "Close Date", "Holding Days", "Shares Sold", "Avg Cost", "Avg Sell Price", "Realized P/L", "Realized P/L %", "Total Return", "Total Return %"].join(","),
-      // Data rows
-      ...data.positions.map(p => [
-        p.ticker,
-        `"${p.name}"`,
-        new Date(p.firstBuyDate).toLocaleDateString(),
-        new Date(p.closeDate).toLocaleDateString(),
-        p.holdingDays,
-        p.totalSharesSold,
-        p.avgCostBasis.toFixed(2),
-        p.avgSellPrice.toFixed(2),
-        p.realizedPL.toFixed(2),
-        p.realizedPLPercent.toFixed(2),
-        p.totalReturn.toFixed(2),
-        p.totalReturnPercent.toFixed(2),
-      ].join(","))
+      ...data.positions.map((p) =>
+        [
+          p.ticker,
+          `"${p.name}"`,
+          new Date(p.firstBuyDate).toLocaleDateString(),
+          new Date(p.closeDate).toLocaleDateString(),
+          p.holdingDays,
+          p.totalSharesSold,
+          p.avgCostBasis.toFixed(2),
+          p.avgSellPrice.toFixed(2),
+          p.realizedPL.toFixed(2),
+          p.realizedPLPercent.toFixed(2),
+          p.totalReturn.toFixed(2),
+          p.totalReturnPercent.toFixed(2),
+        ].join(",")
+      ),
     ].join("\n");
 
     const blob = new Blob([csv], { type: "text/csv" });
@@ -136,7 +108,6 @@ export default function ClosedPositionsPage() {
     a.click();
   };
 
-  // Define default values
   const defaultAggregates: Aggregates = {
     totalClosedPositions: 0,
     totalRealizedPL: 0,
@@ -146,283 +117,282 @@ export default function ClosedPositionsPage() {
     medianReturn: 0,
   };
 
-  // Set display values
   const displayAggregates = data?.aggregates || defaultAggregates;
   const displayPositions = data?.positions || [];
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading closed positions...</p>
-        </div>
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="text-center text-mut">Loading closed positions…</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-600">Error loading closed positions</p>
-      </div>
+      <div className="py-12 text-center text-dn">Error loading closed positions</div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="grid grid-cols-[1fr_auto] items-end gap-12 pb-10">
         <div>
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-2"
-          >
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back to Dashboard
-          </Link>
-          <h1 className="text-2xl font-bold">Closed Positions</h1>
-          <p className="text-gray-600 mt-1">
-            Track and analyze your completed trades
-          </p>
+          <div className="text-[11px] uppercase tracking-[0.14em] text-mut">
+            The ledger · completed trades
+          </div>
+          <h1 className="mt-2.5 font-serif text-[52px] font-medium leading-[1.05]">
+            Closed positions
+          </h1>
+          <div className="mt-3.5 flex items-baseline gap-7 text-[14.5px]">
+            <span className={cn(displayAggregates.totalRealizedPL >= 0 ? "text-up" : "text-dn")}>
+              Realized to date: {displayAggregates.totalRealizedPL >= 0 && "+"}
+              {formatCurrency(displayAggregates.totalRealizedPL)}
+            </span>
+            <span className="font-serif italic text-mut">
+              {displayAggregates.totalClosedPositions} trade
+              {displayAggregates.totalClosedPositions === 1 ? "" : "s"} settled
+            </span>
+          </div>
         </div>
-        <Button onClick={handleExport} disabled={displayPositions.length === 0}>
-          <Download className="h-4 w-4 mr-2" />
-          Export CSV
-        </Button>
+        <button
+          type="button"
+          onClick={handleExport}
+          disabled={displayPositions.length === 0}
+          className="h-[38px] rounded-full border border-border bg-card px-5 text-[13px] font-medium text-foreground disabled:opacity-50"
+        >
+          ⤓ Export CSV
+        </button>
       </div>
 
-      {/* Aggregates */}
-      {displayPositions.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Total Positions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatNumber(displayAggregates.totalClosedPositions)}
-              </div>
-            </CardContent>
-          </Card>
+      {/* 6-col summary card */}
+      <div className="mb-5 grid grid-cols-6 rounded-lg border border-border bg-card">
+        <SummaryCell label="Positions" value={formatNumber(displayAggregates.totalClosedPositions, 0)} />
+        <SummaryCell
+          label="Realized P/L"
+          value={`${displayAggregates.totalRealizedPL >= 0 ? "+" : ""}${formatCurrency(displayAggregates.totalRealizedPL)}`}
+          color={displayAggregates.totalRealizedPL >= 0 ? "up" : "dn"}
+        />
+        <SummaryCell label="Win rate" value={`${Math.round(displayAggregates.winRate * 100)}%`} />
+        <SummaryCell
+          label="Avg holding"
+          value={
+            <>
+              {Math.round(displayAggregates.avgHoldingDays)}{" "}
+              <span className="text-[15px] text-mut">days</span>
+            </>
+          }
+        />
+        <SummaryCell
+          label="Avg return"
+          value={formatPercent(displayAggregates.avgReturn)}
+          color={displayAggregates.avgReturn >= 0 ? "up" : "dn"}
+        />
+        <SummaryCell
+          label="Median return"
+          value={formatPercent(displayAggregates.medianReturn)}
+          color={displayAggregates.medianReturn >= 0 ? "up" : "dn"}
+          last
+        />
+      </div>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Total Realized P/L</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={cn(
-                "text-2xl font-bold",
-                displayAggregates.totalRealizedPL >= 0 ? "text-green-600" : "text-red-600"
-              )}>
-                {formatCurrency(displayAggregates.totalRealizedPL)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatPercent(displayAggregates.winRate)}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Avg Holding Period</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {Math.round(displayAggregates.avgHoldingDays)} days
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Avg Return</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={cn(
-                "text-2xl font-bold",
-                displayAggregates.winRate >= 0.5 ? "text-green-600" : "text-red-600"
-              )}>
-                {formatPercent(displayAggregates.winRate)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Median Return</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={cn(
-                "text-2xl font-bold",
-                displayAggregates.medianReturn >= 0 ? "text-green-600" : "text-red-600"
-              )}>
-                {formatPercent(displayAggregates.medianReturn)}
-              </div>
-            </CardContent>
-          </Card>
+      {/* Filter row */}
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <div className="w-full max-w-[320px]">
+          <TickerFilter
+            options={tickerOptions}
+            selectedValues={selectedTickers}
+            onSelect={setSelectedTickers}
+            placeholder="Filter by ticker or name…"
+          />
         </div>
-      )}
-      <div className="flex flex-col gap-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="w-full">
-            <TickerFilter
-              options={tickerOptions}
-              selectedValues={selectedTickers}
-              onSelect={handleTickerFilterChange}
-              placeholder="Filter by ticker or name..."
-            />
-          </div>
-          <div className="w-full sm:w-48">
-            <Select
-              value={outcomeFilter}
-              onValueChange={(value: "all" | "winners" | "losers") =>
-                setOutcomeFilter(value)
-              }
+        <div className="flex gap-[22px] text-[10.5px] uppercase tracking-[0.12em] text-mut">
+          {outcomeTabs.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => setOutcomeFilter(tab.value)}
+              className={cn(
+                "cursor-pointer pb-0.5",
+                outcomeFilter === tab.value
+                  ? "border-b-2 border-foreground font-semibold text-foreground"
+                  : "border-b-2 border-transparent"
+              )}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by outcome" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Trades</SelectItem>
-                <SelectItem value="winners">Winning Trades</SelectItem>
-                <SelectItem value="losers">Losing Trades</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Table */}
       {displayPositions.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-12">
-            <p className="text-gray-600 mb-4">
-              {selectedTickers.length > 0 
-                ? "No closed positions match the selected filters"
-                : "No closed positions yet"
-              }
-            </p>
-            <div className="flex justify-center gap-4">
-              <Link href="/dashboard">
-                <Button variant="outline">View Portfolio</Button>
-              </Link>
-              <Link href="/research">
-                <Button>Research Stocks</Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border border-border bg-card py-12 text-center">
+          <p className="mb-4 text-sub">
+            {selectedTickers.length > 0
+              ? "No closed positions match the selected filters"
+              : "No closed positions yet"}
+          </p>
+          <div className="flex justify-center gap-4">
+            <Link
+              href="/dashboard"
+              className="h-10 rounded-full border border-border px-5 py-2.5 text-[13px] font-medium text-foreground"
+            >
+              View Portfolio
+            </Link>
+            <Link
+              href="/research"
+              className="h-10 rounded-full bg-btnbg px-5 py-2.5 text-[13px] font-medium text-btnfg"
+            >
+              Research Stocks
+            </Link>
+          </div>
+        </div>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ticker</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead 
-                      className="cursor-pointer"
-                      onClick={() => handleSort("holdingDays")}
-                    >
-                      <div className="flex items-center">
-                        Holding Period
-                        <ArrowUpDown className="ml-1 h-4 w-4" />
-                      </div>
-                    </TableHead>
-                    <TableHead>Shares Sold</TableHead>
-                    <TableHead>Avg Cost</TableHead>
-                    <TableHead>Avg Sell Price</TableHead>
-                    <TableHead 
-                      className="cursor-pointer"
-                      onClick={() => handleSort("realizedPL")}
-                    >
-                      <div className="flex items-center">
-                        Realized P/L
-                        <ArrowUpDown className="ml-1 h-4 w-4" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer"
-                      onClick={() => handleSort("realizedPLPercent")}
-                    >
-                      <div className="flex items-center">
-                        Return %
-                        <ArrowUpDown className="ml-1 h-4 w-4" />
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer"
-                      onClick={() => handleSort("closeDate")}
-                    >
-                      <div className="flex items-center">
-                        Close Date
-                        <ArrowUpDown className="ml-1 h-4 w-4" />
-                      </div>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {displayPositions.map((position) => (
-                    <TableRow key={position.id}>
-                      <TableCell className="font-medium">
-                        <Link 
-                          href={`/research/${position.ticker}`}
-                          className="hover:underline"
-                        >
-                          {position.ticker}
-                        </Link>
-                      </TableCell>
-                      <TableCell>{position.name}</TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <div>{position.holdingDays} days</div>
-                          <div className="text-gray-500 text-xs">
-                            {new Date(position.firstBuyDate).toLocaleDateString()} → {new Date(position.closeDate).toLocaleDateString()}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{formatNumber(position.totalSharesSold)}</TableCell>
-                      <TableCell>{formatCurrency(position.avgCostBasis)}</TableCell>
-                      <TableCell>{formatCurrency(position.avgSellPrice)}</TableCell>
-                      <TableCell>
-                        <div className={cn(
-                          "font-medium",
-                          position.realizedPL >= 0 ? "text-green-600" : "text-red-600"
-                        )}>
-                          {formatCurrency(position.realizedPL)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={position.realizedPLPercent >= 0 ? "default" : "destructive"}
-                        >
-                          {position.realizedPLPercent >= 0 ? (
-                            <TrendingUp className="h-3 w-3 mr-1" />
-                          ) : (
-                            <TrendingDown className="h-3 w-3 mr-1" />
-                          )}
-                          {formatPercent(position.realizedPLPercent)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(position.closeDate).toLocaleDateString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border border-border bg-card px-7 py-3">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <Th align="left">Position</Th>
+                <Th align="left">Opened</Th>
+                <Th align="left" onClick={() => handleSort("closeDate")} sortable>
+                  Closed
+                </Th>
+                <Th align="right" onClick={() => handleSort("holdingDays")} sortable>
+                  Held
+                </Th>
+                <Th align="right">Shares</Th>
+                <Th align="right">Avg cost</Th>
+                <Th align="right">Avg sell</Th>
+                <Th align="right" onClick={() => handleSort("realizedPL")} sortable>
+                  Realized P/L
+                </Th>
+                <Th align="right" onClick={() => handleSort("realizedPLPercent")} sortable last>
+                  Return
+                </Th>
+              </tr>
+            </thead>
+            <tbody>
+              {displayPositions.map((position, idx) => (
+                <tr
+                  key={position.id}
+                  className={cn(
+                    "cursor-pointer hover:bg-fill/45",
+                    idx !== displayPositions.length - 1 && "border-b border-line2"
+                  )}
+                  onClick={() => window.location.assign(`/research/${position.ticker}`)}
+                >
+                  <td className="py-[15px]">
+                    <div className="font-serif text-base font-medium">{position.name}</div>
+                    <div className="mt-0.5 text-[10.5px] uppercase tracking-[0.12em] text-mut">
+                      {position.ticker}
+                    </div>
+                  </td>
+                  <td className="py-[15px] text-sub">
+                    {new Date(position.firstBuyDate).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </td>
+                  <td className="py-[15px] text-sub">
+                    {new Date(position.closeDate).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </td>
+                  <td className="py-[15px] text-right text-sub">{position.holdingDays} d</td>
+                  <td className="py-[15px] text-right text-sub">
+                    {formatNumber(position.totalSharesSold)}
+                  </td>
+                  <td className="py-[15px] text-right text-sub">
+                    {formatCurrency(position.avgCostBasis, position.currency)}
+                  </td>
+                  <td className="py-[15px] text-right text-sub">
+                    {formatCurrency(position.avgSellPrice, position.currency)}
+                  </td>
+                  <td
+                    className={cn(
+                      "py-[15px] text-right font-medium",
+                      position.realizedPL >= 0 ? "text-up" : "text-dn"
+                    )}
+                  >
+                    {position.realizedPL >= 0 && "+"}
+                    {formatCurrency(position.realizedPL, position.currency)}
+                  </td>
+                  <td
+                    className={cn(
+                      "py-[15px] text-right",
+                      position.realizedPLPercent >= 0 ? "text-up" : "text-dn"
+                    )}
+                  >
+                    {position.realizedPLPercent >= 0 ? "▲" : "▼"}{" "}
+                    {formatPercent(position.realizedPLPercent)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
+  );
+}
+
+function SummaryCell({
+  label,
+  value,
+  color,
+  last,
+}: {
+  label: string;
+  value: React.ReactNode;
+  color?: "up" | "dn";
+  last?: boolean;
+}) {
+  return (
+    <div className={cn("px-6 py-[22px]", !last && "border-r border-line2")}>
+      <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">{label}</div>
+      <div
+        className={cn(
+          "mt-1.5 font-serif text-[28px]",
+          color === "up" && "text-up",
+          color === "dn" && "text-dn"
+        )}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function Th({
+  children,
+  align,
+  onClick,
+  sortable,
+  last,
+}: {
+  children: React.ReactNode;
+  align: "left" | "right";
+  onClick?: () => void;
+  sortable?: boolean;
+  last?: boolean;
+}) {
+  return (
+    <th
+      onClick={onClick}
+      className={cn(
+        "py-[11px] text-[10.5px] font-normal uppercase tracking-[0.1em] text-mut",
+        align === "right" ? "text-right" : "text-left",
+        sortable && "cursor-pointer",
+        last && "w-[85px]"
+      )}
+    >
+      {children}
+      {sortable && " ↕"}
+    </th>
   );
 }

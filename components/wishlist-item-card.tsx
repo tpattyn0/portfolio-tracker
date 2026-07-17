@@ -92,17 +92,19 @@ export function WishlistItemCard({ item }: WishlistItemCardProps) {
           : null;
       })();
 
+  // Meridian presentational bands (DESIGN.md "Score figure") — recolors an
+  // already-computed number, no scoring logic changes.
   const getScoreColor = (score: number | null) => {
-    if (score === null) return "text-gray-400";
-    if (score >= 7) return "text-green-600";
-    if (score >= 5) return "text-yellow-600";
-    return "text-red-600";
+    if (score === null) return "text-mut";
+    if (score >= 7) return "text-up";
+    if (score >= 4) return "text-amber";
+    return "text-dn";
   };
 
   const getScoreLabel = (score: number | null) => {
     if (score === null) return "N/A";
     if (score >= 7) return "Strong Buy";
-    if (score >= 5) return "Hold";
+    if (score >= 4) return "Hold";
     return "Weak";
   };
 

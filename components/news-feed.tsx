@@ -127,17 +127,17 @@ export function NewsFeed({ symbol, companyName, articles: propArticles }: NewsFe
   };
   
   const getSentimentIcon = (sentiment: number | null | undefined) => {
-    if (!sentiment) return <Minus className="h-4 w-4 text-gray-400" />;
-    if (sentiment > 0.2) return <TrendingUp className="h-4 w-4 text-green-500" />;
-    if (sentiment < -0.2) return <TrendingDown className="h-4 w-4 text-red-500" />;
-    return <Minus className="h-4 w-4 text-gray-400" />;
+    if (!sentiment) return <Minus className="h-4 w-4 text-mut" />;
+    if (sentiment > 0.2) return <TrendingUp className="h-4 w-4 text-up" />;
+    if (sentiment < -0.2) return <TrendingDown className="h-4 w-4 text-dn" />;
+    return <Minus className="h-4 w-4 text-mut" />;
   };
   
   const getSentimentColor = (sentiment: number | null | undefined) => {
-    if (!sentiment) return "text-gray-600";
-    if (sentiment > 0.2) return "text-green-600";
-    if (sentiment < -0.2) return "text-red-600";
-    return "text-gray-600";
+    if (!sentiment) return "text-sub";
+    if (sentiment > 0.2) return "text-up";
+    if (sentiment < -0.2) return "text-dn";
+    return "text-sub";
   };
   
   const getSentimentBadge = (article: NewsArticle) => {
@@ -164,7 +164,7 @@ export function NewsFeed({ symbol, companyName, articles: propArticles }: NewsFe
           <span className="ml-1">{label}</span>
         </Badge>
         {confidence > 0 && (
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-mut">
             {Math.round(confidence * 100)}% confidence
           </span>
         )}
@@ -198,7 +198,7 @@ export function NewsFeed({ symbol, companyName, articles: propArticles }: NewsFe
               <Newspaper className="mr-2 h-5 w-5" />
               Latest News & Sentiment
               {companyName && (
-                <span className="ml-2 text-sm font-normal text-gray-600">
+                <span className="ml-2 text-sm font-normal text-sub">
                   for {companyName}
                 </span>
               )}
@@ -247,11 +247,11 @@ export function NewsFeed({ symbol, companyName, articles: propArticles }: NewsFe
                     {companyName && ` (${companyName})`}
                   </p>
                   
-                  <div className="space-y-2 text-sm text-gray-600">
+                  <div className="space-y-2 text-sm text-sub">
                     <p>This may be a smaller company with limited news coverage.</p>
                     
                     <div className="space-y-2 mt-3">
-                      <p className="font-medium text-gray-700">Try these alternative sources:</p>
+                      <p className="font-medium text-sub">Try these alternative sources:</p>
                       <ul className="space-y-1 list-disc list-inside">
                         <li>
                           <strong>Company website:</strong> Check the investor relations section
@@ -355,10 +355,10 @@ export function NewsFeed({ symbol, companyName, articles: propArticles }: NewsFe
                   <TabsTrigger value="all">
                     All ({sentimentCounts.all})
                   </TabsTrigger>
-                  <TabsTrigger value="positive" className="text-green-600">
+                  <TabsTrigger value="positive" className="text-up">
                     Positive ({sentimentCounts.positive})
                   </TabsTrigger>
-                  <TabsTrigger value="negative" className="text-red-600">
+                  <TabsTrigger value="negative" className="text-dn">
                     Negative ({sentimentCounts.negative})
                   </TabsTrigger>
                   <TabsTrigger value="neutral">
@@ -368,7 +368,7 @@ export function NewsFeed({ symbol, companyName, articles: propArticles }: NewsFe
                 
                 <TabsContent value={selectedTab} className="space-y-4 mt-4">
                   {filteredNews.length === 0 ? (
-                    <p className="text-center text-gray-500 py-8">
+                    <p className="text-center text-mut py-8">
                       No {selectedTab !== "all" ? selectedTab : ""} news articles found.
                     </p>
                   ) : (
@@ -378,8 +378,8 @@ export function NewsFeed({ symbol, companyName, articles: propArticles }: NewsFe
                         className={cn(
                           "border rounded-lg p-4 transition-colors",
                           article.relevanceScore && article.relevanceScore < 0.5 
-                            ? "bg-gray-50 border-gray-200" 
-                            : "hover:bg-gray-50"
+                            ? "bg-fill border-border" 
+                            : "hover:bg-fill"
                         )}
                       >
                         <div className="space-y-2">
@@ -416,7 +416,7 @@ export function NewsFeed({ symbol, companyName, articles: propArticles }: NewsFe
                           </div>
                           
                           {article.summary && (
-                            <p className="text-sm text-gray-600 line-clamp-2">
+                            <p className="text-sm text-sub line-clamp-2">
                               {article.summary}
                             </p>
                           )}
@@ -436,7 +436,7 @@ export function NewsFeed({ symbol, companyName, articles: propArticles }: NewsFe
                             </Badge>
                           )}
                           
-                          <div className="flex items-center justify-between text-xs text-gray-500 mt-2">
+                          <div className="flex items-center justify-between text-xs text-mut mt-2">
                             <div className="flex items-center gap-4">
                               <span>{article.source}</span>
                               <span>
@@ -450,7 +450,7 @@ export function NewsFeed({ symbol, companyName, articles: propArticles }: NewsFe
                               href={article.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center text-blue-600 hover:text-blue-800"
+                              className="flex items-center text-foreground hover:text-foreground"
                             >
                               Read more
                               <ExternalLink className="ml-1 h-3 w-3" />

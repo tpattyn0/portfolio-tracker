@@ -1,23 +1,14 @@
 "use client";
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { ArrowUpRight, ArrowDownRight, MoreHorizontal } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
-import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils/format"; // ADD THIS
-import Link from "next/link";
 
 interface Position {
   id: string;
   ticker: string;
   name: string;
+  exchange?: string;
   quantity: number;
   avgCostBasis: number;
   currentPrice: number;
@@ -33,80 +24,88 @@ interface PositionsTableProps {
   baseCurrency?: string;
 }
 
-export function PositionsTable({ positions, baseCurrency = 'EUR' }: PositionsTableProps) {
+export function PositionsTable({ positions, baseCurrency = "EUR" }: PositionsTableProps) {
+  const router = useRouter();
+
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Symbol</TableHead>
-            <TableHead className="text-right">Shares</TableHead>
-            <TableHead className="text-right">Avg Cost</TableHead>
-            <TableHead className="text-right">Current Price</TableHead>
-            <TableHead className="text-right">Market Value</TableHead>
-            <TableHead className="text-right">P/L</TableHead>
-            <TableHead className="text-right">P/L %</TableHead>
-            <TableHead className="w-[50px]"></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {positions.map((position) => (
-            <TableRow key={position.id}>
-              <TableCell>
-                <Link 
-                  href={`/portfolio/${position.ticker}`}
-                  className="hover:underline"
-                >
-                  <div>
-                    <div className="font-medium">{position.ticker}</div>
-                    <div className="text-sm text-gray-600">{position.name}</div>
-                  </div>
-                </Link>
-              </TableCell>
-              <TableCell className="text-right">
-                {formatNumber(position.quantity, position.quantity % 1 === 0 ? 0 : 2)}
-              </TableCell>
-              <TableCell className="text-right">
-                {formatCurrency(position.avgCostBasis, position.currency)}
-              </TableCell>
-              <TableCell className="text-right">
-                {formatCurrency(position.currentPrice, position.currency)}
-              </TableCell>
-              <TableCell className="text-right font-medium">
-                {formatCurrency(position.marketValue, position.currency)}
-              </TableCell>
-              <TableCell className="text-right">
-                <div className={cn(
-                  "flex items-center justify-end space-x-1",
-                  position.unrealizedPL >= 0 ? "text-green-600" : "text-red-600"
-                )}>
-                  {position.unrealizedPL >= 0 ? (
-                    <ArrowUpRight className="h-3 w-3" />
-                  ) : (
-                    <ArrowDownRight className="h-3 w-3" />
-                  )}
-                  <span>
-                    {position.unrealizedPL >= 0 && "+"}
-                    {formatCurrency(position.unrealizedPL, position.originalCurrency || position.currency || baseCurrency)}
-                  </span>
-                </div>
-              </TableCell>
-              <TableCell className="text-right">
-                <span className={cn(
-                  position.unrealizedPLPercent >= 0 ? "text-green-600" : "text-red-600"
-                )}>
-                  {formatPercent(position.unrealizedPLPercent)}
-                </span>
-              </TableCell>
-              <TableCell>
-                <Button variant="ghost" size="sm">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <table className="w-full border-collapse text-sm">
+      <thead>
+        <tr className="border-b border-border">
+          <th className="py-[11px] text-left text-[10.5px] font-normal uppercase tracking-[0.1em] text-mut">
+            Position
+          </th>
+          <th className="py-[11px] text-right text-[10.5px] font-normal uppercase tracking-[0.1em] text-mut">
+            Shares
+          </th>
+          <th className="py-[11px] text-right text-[10.5px] font-normal uppercase tracking-[0.1em] text-mut">
+            Avg cost
+          </th>
+          <th className="py-[11px] text-right text-[10.5px] font-normal uppercase tracking-[0.1em] text-mut">
+            Price
+          </th>
+          <th className="py-[11px] text-right text-[10.5px] font-normal uppercase tracking-[0.1em] text-mut">
+            Market value
+          </th>
+          <th className="py-[11px] text-right text-[10.5px] font-normal uppercase tracking-[0.1em] text-mut">
+            P/L
+          </th>
+          <th className="w-[90px] py-[11px] text-right text-[10.5px] font-normal uppercase tracking-[0.1em] text-mut">
+            Return
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {positions.map((position, idx) => (
+          <tr
+            key={position.id}
+            onClick={() => router.push(`/portfolio/${position.ticker}`)}
+            className={cn(
+              "cursor-pointer hover:bg-fill/45",
+              idx !== positions.length - 1 && "border-b border-line2"
+            )}
+          >
+            <td className="py-[15px]">
+              <div className="font-serif text-base font-medium">{position.name}</div>
+              <div className="mt-0.5 text-[10.5px] uppercase tracking-[0.12em] text-mut">
+                {position.ticker}
+                {position.exchange ? ` · ${position.exchange}` : ""}
+              </div>
+            </td>
+            <td className="py-[15px] text-right text-sub">
+              {formatNumber(position.quantity, position.quantity % 1 === 0 ? 0 : 2)}
+            </td>
+            <td className="py-[15px] text-right text-sub">
+              {formatCurrency(position.avgCostBasis, position.currency)}
+            </td>
+            <td className="py-[15px] text-right text-sub">
+              {formatCurrency(position.currentPrice, position.currency)}
+            </td>
+            <td className="py-[15px] text-right font-medium">
+              {formatCurrency(position.marketValue, position.currency)}
+            </td>
+            <td
+              className={cn(
+                "py-[15px] text-right",
+                position.unrealizedPL >= 0 ? "text-up" : "text-dn"
+              )}
+            >
+              {position.unrealizedPL >= 0 && "+"}
+              {formatCurrency(
+                position.unrealizedPL,
+                position.originalCurrency || position.currency || baseCurrency
+              )}
+            </td>
+            <td
+              className={cn(
+                "py-[15px] text-right",
+                position.unrealizedPLPercent >= 0 ? "text-up" : "text-dn"
+              )}
+            >
+              {formatPercent(position.unrealizedPLPercent)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }

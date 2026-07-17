@@ -113,13 +113,13 @@ export function AddToWishlistModal({ trigger, defaultTicker }: AddToWishlistModa
         {trigger || (
           <Button>
             <Star className="h-4 w-4 mr-2" />
-            Add to Wishlist
+            Add to watchlist
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Add to Wishlist</DialogTitle>
+          <DialogTitle>Add to watchlist</DialogTitle>
           <DialogDescription>
             Add a stock to your watchlist to monitor before investing
           </DialogDescription>
@@ -129,9 +129,9 @@ export function AddToWishlistModal({ trigger, defaultTicker }: AddToWishlistModa
             <Label>Search Stock/ETF *</Label>
             <StockSearch onSelect={handleStockSelect} />
             {selectedStock && (
-              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <div className="mt-2 rounded-r-md border-l-2 border-foreground bg-fill p-3">
                 <div className="font-medium">{selectedStock.symbol}</div>
-                <div className="text-sm text-gray-600">{selectedStock.name}</div>
+                <div className="text-sm text-sub">{selectedStock.name}</div>
                 {selectedStock.price && (
                   <div className="text-sm">
                     Current Price: {formatCurrency(selectedStock.price, selectedStock.currency || 'USD')}

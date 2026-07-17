@@ -56,7 +56,7 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
           <CardTitle>Technical Analysis</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center h-32 text-gray-500">
+          <div className="flex items-center justify-center h-32 text-mut">
             <AlertCircle className="mr-2 h-4 w-4" />
             Unable to load technical analysis
           </div>
@@ -93,7 +93,7 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
                   key={i}
                   className={cn(
                     "h-4 w-4",
-                    i < confidenceStars ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                    i < confidenceStars ? "fill-amber text-amber" : "text-mut"
                   )}
                 />
               ))}
@@ -105,13 +105,13 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 {signal.includes("BUY") ? (
-                  <TrendingUp className="h-5 w-5 text-green-600" />
+                  <TrendingUp className="h-5 w-5 text-up" />
                 ) : signal.includes("SELL") ? (
-                  <TrendingDown className="h-5 w-5 text-red-600" />
+                  <TrendingDown className="h-5 w-5 text-dn" />
                 ) : signal === "INSUFFICIENT_DATA" ? (
-                  <AlertCircle className="h-5 w-5 text-orange-600" />
+                  <AlertCircle className="h-5 w-5 text-amber" />
                 ) : (
-                  <Activity className="h-5 w-5 text-gray-600" />
+                  <Activity className="h-5 w-5 text-sub" />
                 )}
                 <span className="text-lg font-semibold">
                   {signal.replace(/_/g, " ")}
@@ -133,20 +133,20 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
               value={signalScore * 10}
               className={cn(
                 "h-2",
-                signalScore >= 7 ? "[&>div]:bg-green-600" :
-                signalScore <= 3 ? "[&>div]:bg-red-600" :
-                "[&>div]:bg-gray-400"
+                signalScore >= 7 ? "[&>div]:bg-up" :
+                signalScore <= 3 ? "[&>div]:bg-dn" :
+                "[&>div]:bg-mut"
               )}
             />
 
             {/* v2.0: Confidence and Agreement */}
-            <div className="flex items-center justify-between text-xs text-gray-600">
+            <div className="flex items-center justify-between text-xs text-sub">
               <span>
                 Confidence: <span className={cn(
                   "font-medium",
-                  confidence === "HIGH" ? "text-green-600" :
-                  confidence === "MEDIUM" ? "text-blue-600" :
-                  "text-orange-600"
+                  confidence === "HIGH" ? "text-up" :
+                  confidence === "MEDIUM" ? "text-foreground" :
+                  "text-amber"
                 )}>
                   {confidence}
                 </span>
@@ -163,7 +163,7 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
               )}
             </div>
 
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-sub">
               {signalScore >= 8
                 ? "Strong bullish signals across multiple indicators"
                 : signalScore >= 6
@@ -235,13 +235,13 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
             {indicators.sma50 && indicators.sma200 && (
               <div className={cn(
                 "mt-3 p-3 rounded-md",
-                indicators.sma50 > indicators.sma200 ? "bg-green-50" : "bg-red-50"
+                indicators.sma50 > indicators.sma200 ? "bg-fill" : "bg-fill"
               )}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Info className={cn(
                       "h-4 w-4",
-                      indicators.sma50 > indicators.sma200 ? "text-green-600" : "text-red-600"
+                      indicators.sma50 > indicators.sma200 ? "text-up" : "text-dn"
                     )} />
                     <p className="text-sm font-medium">
                       {indicators.sma50 > indicators.sma200 ? "Golden Cross" : "Death Cross"}
@@ -252,15 +252,15 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
                       variant="outline"
                       className={cn(
                         "text-xs",
-                        breakdown.trend.goldenCross.signal === 'bullish' ? "text-green-700 border-green-300" :
-                        breakdown.trend.goldenCross.signal === 'bearish' ? "text-red-700 border-red-300" : ""
+                        breakdown.trend.goldenCross.signal === 'bullish' ? "text-up border-up" :
+                        breakdown.trend.goldenCross.signal === 'bearish' ? "text-dn border-dn" : ""
                       )}
                     >
                       {breakdown.trend.goldenCross.signal === 'bullish' ? '+' : breakdown.trend.goldenCross.signal === 'bearish' ? '-' : ''}{breakdown.trend.goldenCross.points} pts
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-sub mt-1">
                   {indicators.sma50 > indicators.sma200
                     ? "50-day MA above 200-day MA - bullish long-term signal"
                     : "50-day MA below 200-day MA - bearish long-term signal"}
@@ -288,9 +288,9 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
                   <div className="flex items-center space-x-2">
                     <span className={cn(
                       "text-sm font-medium",
-                      indicators.rsi14 > 70 ? "text-red-600" :
-                      indicators.rsi14 < 30 ? "text-green-600" :
-                      "text-gray-600"
+                      indicators.rsi14 > 70 ? "text-dn" :
+                      indicators.rsi14 < 30 ? "text-up" :
+                      "text-sub"
                     )}>
                       {indicators.rsi14.toFixed(2)}
                     </span>
@@ -299,8 +299,8 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
                         variant="outline"
                         className={cn(
                           "text-xs",
-                          breakdown.momentum.rsi.signal === 'bullish' ? "text-green-700 border-green-300" :
-                          breakdown.momentum.rsi.signal === 'bearish' ? "text-red-700 border-red-300" : ""
+                          breakdown.momentum.rsi.signal === 'bullish' ? "text-up border-up" :
+                          breakdown.momentum.rsi.signal === 'bearish' ? "text-dn border-dn" : ""
                         )}
                       >
                         {breakdown.momentum.rsi.signal === 'bullish' ? '+' : breakdown.momentum.rsi.signal === 'bearish' ? '-' : ''}{breakdown.momentum.rsi.points} pts
@@ -312,7 +312,7 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
                   value={indicators.rsi14}
                   className="h-1.5 mt-1"
                 />
-                <div className="mt-1 text-xs text-gray-600">
+                <div className="mt-1 text-xs text-sub">
                   {breakdown.momentum?.rsi?.details?.category ||
                    (indicators.rsi14 > 70 ? "Overbought (Reversal)" :
                     indicators.rsi14 < 30 ? "Oversold (Reversal)" :
@@ -332,8 +332,8 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
                         variant="outline"
                         className={cn(
                           "text-xs",
-                          breakdown.momentum.macd.signal === 'bullish' ? "text-green-700 border-green-300" :
-                          breakdown.momentum.macd.signal === 'bearish' ? "text-red-700 border-red-300" : ""
+                          breakdown.momentum.macd.signal === 'bullish' ? "text-up border-up" :
+                          breakdown.momentum.macd.signal === 'bearish' ? "text-dn border-dn" : ""
                         )}
                       >
                         {breakdown.momentum.macd.signal === 'bullish' ? '+' : breakdown.momentum.macd.signal === 'bearish' ? '-' : ''}{breakdown.momentum.macd.points} pts
@@ -341,10 +341,10 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
                     )}
                   </div>
                 </div>
-                <div className="text-xs text-gray-600">
+                <div className="text-xs text-sub">
                   Signal: {indicators.macd.signal?.toFixed(4) || "-"}
                 </div>
-                <div className="text-xs text-gray-600">
+                <div className="text-xs text-sub">
                   {indicators.macd.value > (indicators.macd.signal || 0)
                     ? "MACD above signal - bullish momentum"
                     : "MACD below signal - bearish momentum"}
@@ -360,9 +360,9 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
                   <div className="flex items-center space-x-2">
                     <span className={cn(
                       "text-sm font-medium",
-                      indicators.stochastic.k > 80 ? "text-red-600" :
-                      indicators.stochastic.k < 20 ? "text-green-600" :
-                      "text-gray-600"
+                      indicators.stochastic.k > 80 ? "text-dn" :
+                      indicators.stochastic.k < 20 ? "text-up" :
+                      "text-sub"
                     )}>
                       %K: {indicators.stochastic.k.toFixed(1)}
                     </span>
@@ -371,8 +371,8 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
                         variant="outline"
                         className={cn(
                           "text-xs",
-                          breakdown.momentum.stochastic.signal === 'bullish' ? "text-green-700 border-green-300" :
-                          breakdown.momentum.stochastic.signal === 'bearish' ? "text-red-700 border-red-300" : ""
+                          breakdown.momentum.stochastic.signal === 'bullish' ? "text-up border-up" :
+                          breakdown.momentum.stochastic.signal === 'bearish' ? "text-dn border-dn" : ""
                         )}
                       >
                         {breakdown.momentum.stochastic.signal === 'bullish' ? '+' : breakdown.momentum.stochastic.signal === 'bearish' ? '-' : ''}{breakdown.momentum.stochastic.points} pts
@@ -384,7 +384,7 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
                   value={indicators.stochastic.k}
                   className="h-1.5 mt-1"
                 />
-                <div className="mt-1 text-xs text-gray-600">
+                <div className="mt-1 text-xs text-sub">
                   %D: {indicators.stochastic.d?.toFixed(1) || "N/A"} | {
                     indicators.stochastic.k > 80 ? "Overbought - potential pullback" :
                     indicators.stochastic.k < 20 ? "Oversold - potential reversal" :
@@ -418,9 +418,9 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
                 label="Lower Band"
                 value={formatCurrency(indicators.bollingerBands.lower || 0, currency)}
               />
-              <div className="mt-3 p-3 bg-gray-50 rounded-md">
+              <div className="mt-3 p-3 bg-fill rounded-md">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs text-sub">
                     {breakdown.volatility?.bollinger?.details?.position ||
                      (currentPrice && currentPrice > indicators.bollingerBands.upper
                       ? "Above Upper Band - Overbought"
@@ -433,8 +433,8 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
                       variant="outline"
                       className={cn(
                         "text-xs",
-                        breakdown.volatility.bollinger.signal === 'bullish' ? "text-green-700 border-green-300" :
-                        breakdown.volatility.bollinger.signal === 'bearish' ? "text-red-700 border-red-300" : ""
+                        breakdown.volatility.bollinger.signal === 'bullish' ? "text-up border-up" :
+                        breakdown.volatility.bollinger.signal === 'bearish' ? "text-dn border-dn" : ""
                       )}
                     >
                       {breakdown.volatility.bollinger.signal === 'bullish' ? '+' : breakdown.volatility.bollinger.signal === 'bearish' ? '-' : ''}{breakdown.volatility.bollinger.points} pts
@@ -467,9 +467,9 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
                 value={formatVolume(indicators.volumeTrend.avgVolume)}
               />
               {indicators.volumeTrend.changePercent !== null && (
-                <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                <div className="mt-3 p-3 bg-fill rounded-md">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-sub">
                       Volume is {indicators.volumeTrend.changePercent > 0 ? 'up' : 'down'}{' '}
                       {Math.abs(indicators.volumeTrend.changePercent).toFixed(1)}% vs 20-day average
                       {breakdown.volume?.volumeTrend?.details?.interpretation && ` - ${breakdown.volume.volumeTrend.details.interpretation}`}
@@ -479,8 +479,8 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
                         variant="outline"
                         className={cn(
                           "text-xs",
-                          breakdown.volume.volumeTrend.signal === 'bullish' ? "text-green-700 border-green-300" :
-                          breakdown.volume.volumeTrend.signal === 'bearish' ? "text-red-700 border-red-300" : ""
+                          breakdown.volume.volumeTrend.signal === 'bullish' ? "text-up border-up" :
+                          breakdown.volume.volumeTrend.signal === 'bearish' ? "text-dn border-dn" : ""
                         )}
                       >
                         {breakdown.volume.volumeTrend.signal === 'bullish' ? '+' : breakdown.volume.volumeTrend.signal === 'bearish' ? '-' : ''}{breakdown.volume.volumeTrend.points} pts
@@ -491,14 +491,14 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
               )}
               {/* Integrated Warnings */}
               {warnings.length > 0 && (
-                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                <div className="mt-4 p-3 bg-fill border border-border rounded-md">
                   <div className="flex items-center space-x-2 mb-2">
-                    <AlertCircle className="h-4 w-4 text-yellow-800" />
-                    <span className="text-sm font-semibold text-yellow-800">Important Considerations</span>
+                    <AlertCircle className="h-4 w-4 text-amber" />
+                    <span className="text-sm font-semibold text-amber">Important Considerations</span>
                   </div>
                   <ul className="space-y-1">
                     {warnings.map((warning: string, idx: number) => (
-                      <li key={idx} className="text-xs text-yellow-800 flex items-start">
+                      <li key={idx} className="text-xs text-amber flex items-start">
                         <span className="mr-2">•</span>
                         <span>{warning}</span>
                       </li>
@@ -512,15 +512,15 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
       )}
 
       {/* Analysis Summary - Enhanced v2.0 */}
-      <Card className="bg-blue-50 border-blue-200">
+      <Card className="bg-fill border-border">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <AlertCircle className="h-5 w-5 text-blue-600" />
+            <AlertCircle className="h-5 w-5 text-foreground" />
             <span>Analysis Summary</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-sub">
             Technical analysis shows a <span className="font-semibold">{signal.replace(/_/g, " ")}</span> signal
             with {confidence.toLowerCase()} confidence ({confidenceStars}/3 stars).
             {signalScore >= 8
@@ -534,13 +534,13 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
               : " Indicators show mixed signals - consider waiting."}
           </p>
           {indicators.bullishPoints > 0 && indicators.bearishPoints > 0 && (
-            <p className="text-xs text-gray-600 mt-2">
+            <p className="text-xs text-sub mt-2">
               Bullish signals: {indicators.bullishPoints.toFixed(1)} pts |
               Bearish signals: {indicators.bearishPoints.toFixed(1)} pts |
               Total weight: {indicators.availableWeight} pts
             </p>
           )}
-          <p className="text-xs text-gray-600 mt-2">
+          <p className="text-xs text-sub mt-2">
             Always combine technical analysis with fundamental research and proper risk management.
           </p>
         </CardContent>
@@ -562,7 +562,7 @@ function IndicatorRow({ label, value, status, signal, points, interpretation }: 
   return (
     <div className="space-y-1">
       <div className="flex justify-between items-center">
-        <span className="text-sm text-gray-600">{label}</span>
+        <span className="text-sm text-sub">{label}</span>
         <div className="flex items-center space-x-2">
           <span className="text-sm font-medium">{value}</span>
           {status && (
@@ -578,8 +578,8 @@ function IndicatorRow({ label, value, status, signal, points, interpretation }: 
               variant="outline"
               className={cn(
                 "text-xs",
-                signal === 'bullish' ? "text-green-700 border-green-300" :
-                signal === 'bearish' ? "text-red-700 border-red-300" : ""
+                signal === 'bullish' ? "text-up border-up" :
+                signal === 'bearish' ? "text-dn border-dn" : ""
               )}
             >
               {signal === 'bullish' ? '+' : signal === 'bearish' ? '-' : ''}{points} pts
@@ -588,7 +588,7 @@ function IndicatorRow({ label, value, status, signal, points, interpretation }: 
         </div>
       </div>
       {interpretation && (
-        <p className="text-xs text-gray-500">{interpretation}</p>
+        <p className="text-xs text-mut">{interpretation}</p>
       )}
     </div>
   );

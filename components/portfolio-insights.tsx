@@ -2,25 +2,27 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Brain,
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle,
-  Lightbulb,
-  Target,
-  Activity,
-  RefreshCw,
-} from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+
+interface PortfolioInsightsData {
+  createdAt: string;
+  marketSentiment: number;
+  marketSummary: string;
+  portfolioImpact: string;
+  topRisks?: string[];
+  opportunities?: string[];
+  recommendations?: string[];
+}
+
+function getSentimentLabel(sentiment: number): { label: string; symbol: string } {
+  if (sentiment > 0.2) return { label: "Positive", symbol: "▲" };
+  if (sentiment < -0.2) return { label: "Negative", symbol: "▼" };
+  return { label: "Neutral", symbol: "—" };
+}
 
 export function PortfolioInsights() {
-  const { data: insights, isLoading, refetch, isRefetching } = useQuery({
+  const { data: insights, isLoading, refetch, isRefetching } = useQuery<PortfolioInsightsData>({
     queryKey: ["portfolio-insights"],
     queryFn: async () => {
       const res = await fetch("/api/insights/portfolio");
@@ -38,189 +40,144 @@ export function PortfolioInsights() {
     return null;
   }
 
-  const getSentimentIcon = (sentiment: number) => {
-    if (sentiment > 0.2) return <TrendingUp className="h-5 w-5 text-green-500" />;
-    if (sentiment < -0.2) return <TrendingDown className="h-5 w-5 text-red-500" />;
-    return <Activity className="h-5 w-5 text-gray-500" />;
-  };
+  const sentiment = getSentimentLabel(insights.marketSentiment);
+  const summary = insights.marketSummary || "";
+  const dropCap = summary.charAt(0);
+  const rest = summary.slice(1);
+  const refreshTime = insights.createdAt
+    ? new Date(insights.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : "";
 
-  const getSentimentText = (sentiment: number) => {
-    if (sentiment > 0.2) return "Positive";
-    if (sentiment < -0.2) return "Negative";
-    return "Neutral";
-  };
-
-  const getSentimentColor = (sentiment: number) => {
-    if (sentiment > 0.2) return "text-green-600";
-    if (sentiment < -0.2) return "text-red-600";
-    return "text-gray-600";
-  };
+  const topRisks = insights.topRisks ?? [];
+  const opportunities = insights.opportunities ?? [];
+  const recommendations = insights.recommendations ?? [];
 
   return (
-    <div className="space-y-4">
-      {/* Market Overview Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center">
-              <Brain className="mr-2 h-5 w-5" />
-              AI Portfolio Insights
+    <div
+      className="rounded-lg border border-border bg-card px-7 pb-7 pt-6"
+      style={{ borderTop: "3px double var(--foreground)" }}
+    >
+      <div className="flex items-center justify-between border-b border-line2 pb-4">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.14em]">
+          The Morning Note
+        </span>
+        <div className="flex items-center gap-[18px] text-[11px] uppercase tracking-[0.1em]">
+          <span className="text-mut">Sentiment</span>
+          <span
+            className={cn(
+              "font-semibold",
+              insights.marketSentiment > 0.2 && "text-up",
+              insights.marketSentiment < -0.2 && "text-dn",
+              Math.abs(insights.marketSentiment) <= 0.2 && "text-mut"
+            )}
+          >
+            {sentiment.symbol} {sentiment.label}
+          </span>
+          <span className="text-mut">·</span>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            disabled={isRefetching}
+            title="Refresh"
+            className="text-mut"
+          >
+            <span className="inline-flex items-center gap-1">
+              <RefreshCw className={cn("h-3 w-3", isRefetching && "animate-spin")} />
+              {refreshTime}
             </span>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs">
-                {new Date(insights.createdAt).toLocaleDateString()}
-              </Badge>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => refetch()}
-                disabled={isRefetching}
-              >
-                <RefreshCw className={cn(
-                  "h-4 w-4",
-                  isRefetching && "animate-spin"
-                )} />
-              </Button>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Market Summary */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium">Market Sentiment</h3>
-              <div className="flex items-center gap-2">
-                {getSentimentIcon(insights.marketSentiment)}
-                <span className={cn(
-                  "font-medium",
-                  getSentimentColor(insights.marketSentiment)
-                )}>
-                  {getSentimentText(insights.marketSentiment)}
-                </span>
-              </div>
-            </div>
-            <p className="text-sm text-gray-600">{insights.marketSummary}</p>
-          </div>
-
-          {/* Portfolio Impact */}
-          <Alert>
-            <AlertDescription>{insights.portfolioImpact}</AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-
-      {/* Risks and Opportunities Grid */}
-      <div className="grid md:grid-cols-2 gap-4">
-        {/* Top Risks */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center text-base">
-              <AlertTriangle className="mr-2 h-4 w-4 text-amber-500" />
-              Top Risks
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {(insights.topRisks as string[] || []).map((risk, index) => (
-                <li key={index} className="flex items-start">
-                  <span className="text-amber-500 mr-2">•</span>
-                  <span className="text-sm">{risk}</span>
-                </li>
-              ))}
-              {(!insights.topRisks || insights.topRisks.length === 0) && (
-                <li className="text-sm text-gray-500">No significant risks identified</li>
-              )}
-            </ul>
-          </CardContent>
-        </Card>
-
-        {/* Opportunities */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center text-base">
-              <Lightbulb className="mr-2 h-4 w-4 text-blue-500" />
-              Opportunities
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {(insights.opportunities as string[] || []).map((opportunity, index) => (
-                <li key={index} className="flex items-start">
-                  <span className="text-blue-500 mr-2">•</span>
-                  <span className="text-sm">{opportunity}</span>
-                </li>
-              ))}
-              {(!insights.opportunities || insights.opportunities.length === 0) && (
-                <li className="text-sm text-gray-500">No specific opportunities identified</li>
-              )}
-            </ul>
-          </CardContent>
-        </Card>
+          </button>
+        </div>
       </div>
 
-      {/* Recommendations */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center text-base">
-            <Target className="mr-2 h-4 w-4 text-green-500" />
-            Recommendations
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2">
-            {(insights.recommendations as string[] || []).map((recommendation, index) => (
-              <li key={index} className="flex items-start">
-                <span className="text-green-500 mr-2 font-bold">{index + 1}.</span>
-                <span className="text-sm">{recommendation}</span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-[1.3fr_1fr] gap-12 py-7 pb-3">
+        <p className="m-0 font-serif text-[19px] leading-[1.6] text-sub">
+          {dropCap && (
+            <span className="float-left pr-2.5 pt-1.5 font-serif text-[56px] leading-[0.82] text-foreground">
+              {dropCap}
+            </span>
+          )}
+          {rest}
+        </p>
+        {insights.portfolioImpact && (
+          <div className="flex flex-col justify-center border-l border-border pl-8">
+            <div className="font-serif text-[17px] italic leading-[1.55] text-sub">
+              &ldquo;{insights.portfolioImpact}&rdquo;
+            </div>
+            <div className="mt-2.5 text-[10.5px] uppercase tracking-[0.12em] text-mut">
+              — Portfolio impact
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-5 grid grid-cols-3 border-t border-line2">
+        <div className="pb-1 pr-8 pt-6">
+          <div className="mb-3 border-b border-line2 pb-2 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-amber">
+            ⚠ Top risks
+          </div>
+          {topRisks.length === 0 ? (
+            <div className="font-serif text-[15.5px] leading-[1.5] text-mut">No significant risks identified</div>
+          ) : (
+            topRisks.map((risk, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "font-serif text-[15.5px] leading-[1.5] text-sub",
+                  i > 0 && "mt-3 border-t border-line2 pt-3"
+                )}
+              >
+                {risk}
+              </div>
+            ))
+          )}
+        </div>
+        <div className="border-l border-line2 pb-1 pt-6 px-8">
+          <div className="mb-3 border-b border-line2 pb-2 text-[10.5px] font-semibold uppercase tracking-[0.16em]">
+            ◇ Opportunities
+          </div>
+          {opportunities.length === 0 ? (
+            <div className="font-serif text-[15.5px] leading-[1.5] text-mut">No specific opportunities identified</div>
+          ) : (
+            opportunities.map((opportunity, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "font-serif text-[15.5px] leading-[1.5] text-sub",
+                  i > 0 && "mt-3 border-t border-line2 pt-3"
+                )}
+              >
+                {opportunity}
+              </div>
+            ))
+          )}
+        </div>
+        <div className="border-l border-line2 pb-1 pl-8 pt-6">
+          <div className="mb-3 border-b border-line2 pb-2 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-up">
+            → Recommendations
+          </div>
+          {recommendations.map((recommendation, i) => (
+            <div
+              key={i}
+              className={cn(
+                "flex items-baseline gap-3",
+                i > 0 && "mt-3 border-t border-line2 pt-3"
+              )}
+            >
+              <span className="font-serif text-[15px] text-mut">№{i + 1}</span>
+              <span className="font-serif text-[15.5px] leading-[1.5] text-sub">{recommendation}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
 function PortfolioInsightsSkeleton() {
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-48" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-20 w-full" />
-        </CardContent>
-      </Card>
-      
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-5 w-24" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-5 w-32" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+    <div className="animate-pulse rounded-lg border border-border bg-card p-7">
+      <div className="mb-4 h-4 w-40 rounded bg-fill" />
+      <div className="h-24 w-full rounded bg-fill" />
     </div>
   );
 }

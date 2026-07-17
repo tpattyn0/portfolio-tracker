@@ -24,8 +24,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Card, CardContent } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -360,83 +358,64 @@ export function SellPositionModal({
               )}
             />
 
-            {/* P/L Preview */}
-            <Card className={cn(
-              "border-2",
-              realizedPL >= 0 ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"
-            )}>
-              <CardContent className="pt-6">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Sale Proceeds</span>
-                    <span className="font-medium">{formatCurrency(totalSaleValue)}</span>
+            {/* P/L Preview — order-summary total row per DESIGN.md */}
+            <div className="rounded-md border border-border bg-fill px-4 py-3">
+              <div className="space-y-2 text-[13.5px]">
+                <div className="flex items-center justify-between text-sub">
+                  <span>Sale proceeds</span>
+                  <span className="font-medium text-foreground">{formatCurrency(totalSaleValue)}</span>
+                </div>
+
+                <div className="flex items-center justify-between text-sub">
+                  <span>Cost basis</span>
+                  <span className="font-medium text-foreground">-{formatCurrency(totalCostBasis)}</span>
+                </div>
+
+                {sellFees > 0 && (
+                  <div className="flex items-center justify-between text-sub">
+                    <span>Fees</span>
+                    <span className="font-medium text-foreground">-{formatCurrency(sellFees)}</span>
                   </div>
-                  
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Cost Basis</span>
-                    <span className="font-medium">-{formatCurrency(totalCostBasis)}</span>
-                  </div>
-                  
-                  {sellFees > 0 && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Fees</span>
-                      <span className="font-medium">-{formatCurrency(sellFees)}</span>
-                    </div>
-                  )}
-                  
-                  <div className="border-t pt-3">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">Realized P/L</span>
-                      <div className="text-right">
-                        <div className={cn(
-                          "text-xl font-bold",
-                          realizedPL >= 0 ? "text-green-600" : "text-red-600"
-                        )}>
-                          {realizedPL >= 0 ? "+" : ""}{formatCurrency(realizedPL)}
-                        </div>
-                        <div className={cn(
-                          "text-sm",
-                          realizedPLPercent >= 0 ? "text-green-600" : "text-red-600"
-                        )}>
-                          {realizedPLPercent >= 0 ? "+" : ""}{formatPercent(realizedPLPercent)}
-                        </div>
+                )}
+
+                <div className="pt-3" style={{ borderTop: "3px double var(--foreground)" }}>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Realized P/L</span>
+                    <div className="text-right">
+                      <div className={cn("font-serif text-xl font-medium", realizedPL >= 0 ? "text-up" : "text-dn")}>
+                        {realizedPL >= 0 ? "+" : ""}{formatCurrency(realizedPL)}
+                      </div>
+                      <div className={cn("text-sm", realizedPLPercent >= 0 ? "text-up" : "text-dn")}>
+                        {realizedPLPercent >= 0 ? "+" : ""}{formatPercent(realizedPLPercent)}
                       </div>
                     </div>
                   </div>
-
-                  {!isFullSale && (
-                    <Alert className="bg-blue-50 border-blue-200">
-                      <AlertCircle className="h-4 w-4 text-blue-600" />
-                      <AlertDescription>
-                        You'll have {formatNumber(remainingShares)} shares remaining after this sale
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  
-                  {isFullSale && (
-                    <Alert className="bg-yellow-50 border-yellow-200">
-                      <AlertCircle className="h-4 w-4 text-yellow-600" />
-                      <AlertDescription>
-                        This will close your entire position in {position.ticker}
-                      </AlertDescription>
-                    </Alert>
-                  )}
                 </div>
-              </CardContent>
-            </Card>
+
+                {!isFullSale && (
+                  <div className="flex items-start gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm text-sub">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-mut" />
+                    <span>You&rsquo;ll have {formatNumber(remainingShares)} shares remaining after this sale</span>
+                  </div>
+                )}
+
+                {isFullSale && (
+                  <div className="flex items-start gap-2 rounded-md border border-amber/40 bg-card px-3 py-2 text-sm text-sub">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber" />
+                    <span>This will close your entire position in {position.ticker}</span>
+                  </div>
+                )}
+              </div>
+            </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={sellMutation.isPending}
-                className={cn(
-                  realizedPL >= 0 
-                    ? "bg-green-600 hover:bg-green-700" 
-                    : "bg-red-600 hover:bg-red-700"
-                )}
+                className={cn(realizedPL >= 0 ? "bg-up hover:bg-up/90" : "bg-dn hover:bg-dn/90", "text-background")}
               >
                 {sellMutation.isPending ? (
                   <>

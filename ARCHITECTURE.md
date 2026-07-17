@@ -7,7 +7,7 @@
 - **Database**: PostgreSQL (Supabase-hosted), accessed via Prisma.
 - **Market data**: Yahoo Finance (`yahoo-finance2`), NewsAPI.
 - **AI**: Google Gemini (`@google/generative-ai`) for news-sentiment scoring and daily portfolio insights.
-- **UI**: Tailwind CSS, Radix UI primitives, Tremor (charts), Recharts, `lucide-react` icons.
+- **UI**: Tailwind CSS, Radix UI primitives (via `components/ui/*`, shadcn-derived), Recharts (`components/price-chart.tsx`), a purpose-built inline-SVG chart (`components/portfolio-chart.tsx`, see ADR-10), `next/font/google` (Libre Franklin, Newsreader — self-hosted), `next-themes` (light/dark persistence), `lucide-react` icons. `@tremor/react` is a `package.json` dependency with zero imports anywhere — it was never the charting library; see `TECH_DEBT.md` TD-30. Design system: `DESIGN.md` (Meridian — see ADR-8/9/10).
 - **Client state/data**: React Query for server-state caching; local `useState` elsewhere. (`zustand` is a dependency but unused — see `TECH_DEBT.md`.)
 - **Caching**: in-memory (`node-cache` in `news.service.ts`; a separate hand-rolled `Map` in `market-data.service.ts`; another separate `Map` in `rate-limit.ts`) plus DB-backed 24h caches on `FundamentalData`/`AnalystRating`. No shared/external cache (e.g. Redis) — see ADR-4.
 

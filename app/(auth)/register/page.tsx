@@ -7,11 +7,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 
 const registerSchema = z.object({
@@ -56,7 +51,6 @@ export default function RegisterPage() {
         throw new Error(result.error || "Registration failed");
       }
 
-      // Auto-login after successful registration
       const signInResult = await signIn("credentials", {
         email: data.email,
         password: data.password,
@@ -67,7 +61,6 @@ export default function RegisterPage() {
         throw new Error("Registration successful but login failed. Please log in manually.");
       }
 
-      // Redirect to dashboard
       router.push("/dashboard");
       router.refresh();
     } catch (error) {
@@ -77,85 +70,99 @@ export default function RegisterPage() {
     }
   };
 
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Create an account</CardTitle>
-          <CardDescription className="text-center">
-            Enter your details to start tracking your investments
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <div className="flex min-h-screen items-center justify-center bg-background p-6">
+      <div className="w-full max-w-[420px]">
+        <div className="text-center pb-5" style={{ borderBottom: "3px double var(--foreground)" }}>
+          <div className="text-[10px] uppercase tracking-[0.16em] text-mut">
+            Est. 2026 · European edition
+          </div>
+          <div className="mt-2 font-serif text-[38px] font-medium">Meridian</div>
+        </div>
+
+        <div className="mt-8 rounded-lg border border-border bg-card p-9">
+          <div className="text-center font-serif text-[26px] font-medium">Create an account</div>
+          <p className="mb-7 mt-2 text-center font-serif text-[14.5px] italic text-mut">
+            Enter your details to start tracking your investments.
+          </p>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-[22px]">
             {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
+              <div className="rounded-md border border-dn/40 bg-fill p-3 text-sm text-dn">
+                {error}
+              </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
+            <div>
+              <label htmlFor="email" className="mb-2 block text-[10.5px] uppercase tracking-[0.12em] text-mut">
+                Email
+              </label>
+              <input
                 id="email"
                 type="email"
-                placeholder="john@example.com"
+                placeholder="you@example.com"
                 {...register("email")}
                 disabled={isLoading}
+                className="h-10 w-full rounded-md border border-border bg-background px-3.5 text-sm text-foreground outline-none disabled:opacity-50"
               />
-              {errors.email && (
-                <p className="text-sm text-red-600">{errors.email.message}</p>
-              )}
+              {errors.email && <p className="mt-1 text-sm text-dn">{errors.email.message}</p>}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="name">Name (optional)</Label>
-              <Input
+            <div>
+              <label htmlFor="name" className="mb-2 block text-[10.5px] uppercase tracking-[0.12em] text-mut">
+                Name (optional)
+              </label>
+              <input
                 id="name"
-                placeholder="John Doe"
+                placeholder="Jane Doe"
                 {...register("name")}
                 disabled={isLoading}
+                className="h-10 w-full rounded-md border border-border bg-background px-3.5 text-sm text-foreground outline-none disabled:opacity-50"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
+            <div>
+              <label htmlFor="password" className="mb-2 block text-[10.5px] uppercase tracking-[0.12em] text-mut">
+                Password
+              </label>
+              <input
                 id="password"
                 type="password"
+                placeholder="••••••••"
                 {...register("password")}
                 disabled={isLoading}
+                className="h-10 w-full rounded-md border border-border bg-background px-3.5 text-sm text-foreground outline-none disabled:opacity-50"
               />
-              {errors.password && (
-                <p className="text-sm text-red-600">{errors.password.message}</p>
-              )}
-              <p className="text-xs text-gray-600">
+              {errors.password && <p className="mt-1 text-sm text-dn">{errors.password.message}</p>}
+              <p className="mt-1.5 font-serif text-[11px] italic text-mut">
                 Must be at least 8 characters with uppercase, number, and special character
               </p>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="flex h-11 items-center justify-center gap-2 rounded-full bg-btnbg text-[13.5px] font-medium text-btnfg disabled:opacity-50"
+            >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating account...
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Creating account…
                 </>
               ) : (
                 "Create account"
               )}
-            </Button>
+            </button>
+
+            <div className="text-center text-[12.5px] text-mut">
+              Already have an account?{" "}
+              <Link href="/login" className="border-b border-border text-foreground">
+                Sign in
+              </Link>
+            </div>
           </form>
-        </CardContent>
-        <CardFooter className="flex justify-center">
-          <p className="text-sm text-gray-600">
-            Already have an account?{" "}
-            <Link href="/login" className="text-blue-600 hover:underline">
-              Sign in
-            </Link>
-          </p>
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

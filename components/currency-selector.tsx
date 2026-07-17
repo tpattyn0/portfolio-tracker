@@ -2,15 +2,8 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const CURRENCIES = [
   { code: "EUR", name: "Euro", symbol: "€" },
@@ -28,6 +21,14 @@ interface CurrencySelectorProps {
   onCurrencyChange?: (currency: string) => void;
 }
 
+/**
+ * Meridian dashboard-hero segmented control. Per DESIGN.md, the dashboard hero
+ * shows only EUR/USD as a two-segment pill — but the underlying preference
+ * covers 8 currencies (CurrencySelector historically rendered all of them via
+ * a <Select>). If the user's current currency isn't EUR or USD, it is shown as
+ * a third (non-interactive) segment rather than silently rewritten to EUR —
+ * see plan Assumptions ("Currency toggle").
+ */
 export function CurrencySelector({
   currentCurrency,
   onCurrencyChange,
@@ -63,7 +64,7 @@ export function CurrencySelector({
       }
 
       toast({
-        title: "Currency Updated",
+        title: "Currency updated",
         description: `Portfolio currency changed to ${data.baseCurrency}`,
       });
       setIsUpdating(false);
@@ -79,42 +80,42 @@ export function CurrencySelector({
   });
 
   const handleCurrencyChange = (newCurrency: string) => {
+    if (newCurrency === currentCurrency || isUpdating) return;
     updateCurrencyMutation.mutate(newCurrency);
   };
 
+  // Show EUR/USD always; if the active currency is something else, surface it
+  // as a third segment so the control never silently claims EUR is active.
+  const segments = CURRENCIES.filter((c) => c.code === "EUR" || c.code === "USD");
+  if (currentCurrency !== "EUR" && currentCurrency !== "USD") {
+    const active = CURRENCIES.find((c) => c.code === currentCurrency);
+    segments.push(active ?? { code: currentCurrency, name: currentCurrency, symbol: currentCurrency });
+  }
+
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-sm font-medium text-gray-700">Display in:</span>
-      <Select
-        value={currentCurrency}
-        onValueChange={handleCurrencyChange}
-        disabled={isUpdating}
-      >
-        <SelectTrigger className="w-[180px]">
-          <SelectValue>
-            {isUpdating ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Updating...
-              </span>
-            ) : (
-              CURRENCIES.find((c) => c.code === currentCurrency)?.name ||
-              currentCurrency
+    <div
+      title="Display in"
+      className="flex h-10 items-center rounded-full border border-border bg-card p-[3px]"
+    >
+      {segments.map((c) => {
+        const isActive = c.code === currentCurrency;
+        return (
+          <button
+            key={c.code}
+            type="button"
+            disabled={isUpdating}
+            onClick={() => handleCurrencyChange(c.code)}
+            className={cn(
+              "flex h-8 items-center rounded-full px-4 text-xs tracking-[0.06em]",
+              isActive
+                ? "bg-btnbg font-semibold text-btnfg"
+                : "font-medium text-mut hover:text-foreground"
             )}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {CURRENCIES.map((currency) => (
-            <SelectItem key={currency.code} value={currency.code}>
-              <span className="flex items-center gap-2">
-                <span className="font-medium">{currency.symbol}</span>
-                <span>{currency.name}</span>
-                <span className="text-xs text-gray-500">({currency.code})</span>
-              </span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+          >
+            {c.code}
+          </button>
+        );
+      })}
     </div>
   );
 }
