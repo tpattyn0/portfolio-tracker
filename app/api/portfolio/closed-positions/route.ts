@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUserWithPortfolio } from "@/lib/utils/auth";
 import { prisma } from "@/lib/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
-import { matchFifoLots, calculateRealizedPL, type Lot } from "@/lib/services/realized-pl.service";
+import {
+  matchFifoLots,
+  calculateRealizedPL,
+  resolveCostBasisWithFallback,
+  type Lot,
+} from "@/lib/services/realized-pl.service";
 
 interface ClosedPosition {
   id: string;
@@ -86,22 +91,19 @@ export async function GET(request: NextRequest) {
       // Process each sell transaction as a separate closed position
       for (const sell of sellTransactions) {
         const sellQuantity = new Decimal(sell.quantity.toString());
-        const { totalBuyCost, firstBuyDate, unmatchedQuantity } = matchFifoLots(buyLots, sellQuantity);
+        const matchResult = matchFifoLots(buyLots, sellQuantity);
+        const { firstBuyDate } = matchResult;
 
         // AUD-04: previously this `continue`d whenever unmatched > 0, which made
         // `isPartial` dead code (always false by the time it was read below) and
         // silently dropped the sell from the list. Now: match what we can against
         // available lots, fall back to the position's average cost basis for any
         // unmatched remainder (data inconsistency), and always include the entry.
-        if (unmatchedQuantity.gt(0)) {
-          console.warn(
-            `Couldn't match ${unmatchedQuantity.toString()} of ${sellQuantity.toString()} sold shares for position ${position.id} against FIFO buy lots — using average cost basis for the unmatched portion.`
-          );
-        }
-        const fallbackCost = unmatchedQuantity.gt(0)
-          ? unmatchedQuantity.mul(position.avgCostBasis)
-          : new Decimal(0);
-        const totalCostBasis = totalBuyCost.plus(fallbackCost);
+        const { totalCostBasis, unmatchedQuantity } = resolveCostBasisWithFallback(
+          matchResult,
+          position.avgCostBasis,
+          `Position ${position.id}: couldn't match ${sellQuantity.toString()} sold shares`
+        );
 
         // Calculate metrics for this closed position
         const sellPrice = new Decimal(sell.price.toString());
@@ -135,7 +137,9 @@ export async function GET(request: NextRequest) {
           closeDate: sell.executedAt,
           holdingDays,
           totalSharesSold: Number(sell.quantity),
-          avgCostBasis: Number(totalCostBasis.dividedBy(sell.quantity)),
+          avgCostBasis: sellQuantity.gt(0)
+            ? Number(totalCostBasis.dividedBy(sellQuantity))
+            : 0,
           avgSellPrice: Number(sellPrice),
           realizedPL: Number(realizedPL),
           realizedPLPercent: Number(realizedPLPercent),

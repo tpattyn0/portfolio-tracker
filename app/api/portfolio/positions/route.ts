@@ -34,9 +34,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const totalCost = data.quantity * data.price + data.fees;
-    const avgCostWithFees = data.price + (data.fees / data.quantity);
-
     if (existingPosition) {
       // Delegate to the same buy-more logic as positions/[ticker]/buy (AUD-02):
       // wrapped in a transaction, Decimal arithmetic throughout, market value
@@ -56,16 +53,15 @@ export async function POST(request: NextRequest) {
         });
       });
 
-      const updatedPosition = await prisma.position.findUnique({
-        where: { id: existingPosition.id },
-      });
-
       return NextResponse.json({
-        position: updatedPosition,
+        position: result.position,
         transaction: result.transaction,
         message: "Position updated successfully"
       });
     } else {
+      const totalCost = data.quantity * data.price + data.fees;
+      const avgCostWithFees = data.price + (data.fees / data.quantity);
+
       // Fetch stock info to get the correct currency
       let stockCurrency = "USD"; // Default to USD
       let exchange = "NASDAQ";

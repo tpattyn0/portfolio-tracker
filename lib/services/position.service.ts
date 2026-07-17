@@ -28,6 +28,7 @@ export interface ApplyBuyParams {
 
 export interface ApplyBuyResult {
   transaction: Transaction;
+  position: Position;
   newAvgCostBasis: Decimal;
   newTotalQuantity: Decimal;
 }
@@ -82,7 +83,7 @@ export async function applyBuyToPosition({
     ? new Decimal(0)
     : newUnrealizedPL.div(newTotalCost).mul(100);
 
-  await tx.position.update({
+  const updatedPosition = await tx.position.update({
     where: { id: position.id },
     data: {
       quantity: newTotalQuantity,
@@ -97,7 +98,7 @@ export async function applyBuyToPosition({
   // 3. Recalculate portfolio totals from all positions
   await recalculatePortfolioTotals(tx, portfolioId);
 
-  return { transaction, newAvgCostBasis, newTotalQuantity };
+  return { transaction, position: updatedPosition, newAvgCostBasis, newTotalQuantity };
 }
 
 /** Recomputes and persists `totalValue`/`totalCost`/`unrealizedPL` on the portfolio from its current positions. */

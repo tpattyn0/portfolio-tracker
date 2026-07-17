@@ -61,6 +61,38 @@ export function matchFifoLots(lots: Lot[], sellQuantity: Decimal): FifoMatchResu
   return { totalBuyCost, firstBuyDate, unmatchedQuantity: remaining };
 }
 
+export interface CostBasisResult {
+  /** Total cost basis for the full sell quantity: matched FIFO cost plus any
+   * unmatched-remainder fallback at average cost basis. */
+  totalCostBasis: Decimal;
+  /** Quantity that could not be matched against available lots (data inconsistency). */
+  unmatchedQuantity: Decimal;
+}
+
+/**
+ * Covers a FIFO match's unmatched remainder (a sell that exceeds available buy
+ * lots — a data inconsistency) with the position's average cost basis, so
+ * callers never silently drop value from realized-P/L calculations. Shared by
+ * the sell route and the closed-positions route (AUD-FIX-03) so both surfaces
+ * apply the exact same fallback instead of duplicating the arithmetic.
+ */
+export function resolveCostBasisWithFallback(
+  matchResult: FifoMatchResult,
+  avgCostBasis: Decimal,
+  context: string
+): CostBasisResult {
+  const { totalBuyCost, unmatchedQuantity } = matchResult;
+  if (unmatchedQuantity.gt(0)) {
+    console.warn(
+      `${context}: ${unmatchedQuantity.toString()} shares couldn't be matched against FIFO buy lots — using average cost basis for the unmatched portion.`
+    );
+  }
+  const fallbackCost = unmatchedQuantity.gt(0)
+    ? unmatchedQuantity.mul(avgCostBasis)
+    : new Decimal(0);
+  return { totalCostBasis: totalBuyCost.plus(fallbackCost), unmatchedQuantity };
+}
+
 export interface RealizedPLResult {
   realizedPL: Decimal;
   realizedPLPercent: Decimal;

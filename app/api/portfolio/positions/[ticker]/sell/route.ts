@@ -3,7 +3,12 @@ import { z } from "zod";
 import { getAuthenticatedUserWithPortfolio } from "@/lib/utils/auth";
 import { prisma } from "@/lib/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
-import { matchFifoLots, calculateRealizedPL, type Lot } from "@/lib/services/realized-pl.service";
+import {
+  matchFifoLots,
+  calculateRealizedPL,
+  resolveCostBasisWithFallback,
+  type Lot,
+} from "@/lib/services/realized-pl.service";
 
 // AUD-08: validate the body instead of trusting raw JSON.
 const sellSchema = z.object({
@@ -49,14 +54,24 @@ export async function POST(
       );
     }
 
-    // AUD-03: realized P/L is now computed via the same FIFO-including-fees
-    // method used by /api/portfolio/closed-positions, so the two surfaces no
-    // longer disagree. Match this sell against the position's BUY lots in
-    // chronological order.
-    const buyTransactions = await prisma.transaction.findMany({
-      where: { positionId: position.id, type: "BUY" },
-      orderBy: { executedAt: "asc" },
-    });
+    // AUD-03/AUD-FIX-01: realized P/L is computed via the same FIFO-including-fees
+    // method used by /api/portfolio/closed-positions, so the two surfaces don't
+    // disagree. That requires matching against lots already depleted by prior
+    // sells on this position — not the raw, undepleted BUY lots — otherwise a
+    // second sell re-matches against lot 1 instead of continuing where the
+    // previous sell left off. Load prior SELLs (chronological order) and run
+    // them through matchFifoLots first purely to advance the FIFO cursor, then
+    // match the new sell against what remains.
+    const [buyTransactions, priorSellTransactions] = await Promise.all([
+      prisma.transaction.findMany({
+        where: { positionId: position.id, type: "BUY" },
+        orderBy: { executedAt: "asc" },
+      }),
+      prisma.transaction.findMany({
+        where: { positionId: position.id, type: "SELL" },
+        orderBy: { executedAt: "asc" },
+      }),
+    ]);
 
     const lots: Lot[] = buyTransactions.map((t) => ({
       quantity: new Decimal(t.quantity.toString()),
@@ -65,18 +80,18 @@ export async function POST(
       date: t.executedAt,
     }));
 
-    const { totalBuyCost, unmatchedQuantity } = matchFifoLots(lots, new Decimal(quantity));
-    if (unmatchedQuantity.gt(0)) {
-      console.warn(
-        `Sell of ${quantity} ${ticker} exceeds matchable FIFO buy lots by ${unmatchedQuantity.toString()} — falling back to average cost basis for the unmatched portion.`
-      );
+    // Deplete lots by every prior sell, in chronological order, before matching
+    // the new sell — mirrors the closed-positions route's cumulative FIFO walk.
+    for (const priorSell of priorSellTransactions) {
+      matchFifoLots(lots, new Decimal(priorSell.quantity.toString()));
     }
-    // Cover any unmatched remainder (data inconsistency) with avg cost basis so the
-    // route never silently drops value from the calculation.
-    const fallbackCost = unmatchedQuantity.gt(0)
-      ? unmatchedQuantity.mul(position.avgCostBasis)
-      : new Decimal(0);
-    const totalCostBasis = totalBuyCost.plus(fallbackCost);
+
+    const matchResult = matchFifoLots(lots, new Decimal(quantity));
+    const { totalCostBasis } = resolveCostBasisWithFallback(
+      matchResult,
+      position.avgCostBasis,
+      `Sell of ${quantity} ${ticker}`
+    );
 
     const { realizedPL } = calculateRealizedPL(
       new Decimal(quantity),
