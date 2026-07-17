@@ -41,8 +41,12 @@ export function buildPath(
     return "";
   }
 
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+  // Computed from finiteValues (identical to values here, since the guard
+  // above already bailed on any non-finite entry) so the finiteness safety
+  // is local to this computation rather than relying on reasoning across the
+  // early return above (MDO-04).
+  const min = Math.min(...finiteValues);
+  const max = Math.max(...finiteValues);
   const range = max - min || 1;
 
   const points: ChartPoint[] = values.map((v, i) => ({

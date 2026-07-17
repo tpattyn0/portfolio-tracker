@@ -4,7 +4,7 @@ Status:
 
 ## Summary
 Findings: 0 BLOCKERs, 3 ISSUEs, 2 SUGGESTIONs, 1 QUESTION
-Requires owner decision: MDO-Q1 (PR #13 carries the unrelated AUD-01..10 audit-fix commit #12 that never merged to main — decide how to land this)
+Requires owner decision: MDO-Q1 — resolved/withdrawn as a false positive (see resolution note under the finding below); no owner decision needed.
 Ready for Coding agent: MDO-01 (plans/INDEX.md lifecycle drift), MDO-02 (STATUS.md template deviation), MDO-03 (dateline hydration guard), MDO-04 (chart-path min/max derivation clarity), MDO-05 (reviews/INDEX.md row for this review)
 
 The Meridian overhaul itself is well-executed and scope-clean. Reviewing the design commits in isolation (`a85c88da..HEAD`), the implementation touches **zero** off-limits files: no `components/ui/**`, no `lib/services/**`, no `app/api/**`, no `prisma/schema.prisma`, no `app/page.tsx`, no `app/(dashboard)/portfolio/[ticker]/page.tsx`, and no `reviews/2026-07-17-scoring-methodology.md`. The plan's settled decisions all hold in the code:
@@ -27,6 +27,8 @@ The one thing the owner must weigh is not about the design work at all — it is
 **File:** PR #13 (branch `feature/meridian-design-overhaul`, base `main`)
 **Problem:** The branch was cut from `main@1f370f21`, but its history includes commit `dda8a396 "fix: act on full-audit findings AUD-01..AUD-10 (#12)"`, which is **not** on `main`. As a result PR #13 (base `main`) carries two unrelated bodies of work: the Meridian overhaul *and* the entire AUD-01..10 audit fix — roughly 24 extra files including `app/api/**` route changes, `lib/services/**` changes (new `position.service.ts`, `realized-pl.service.ts`, `news.service.ts` edits, `wishlist.service.ts` edits), their tests, and three audit review files (`reviews/2026-07-17-full-audit*.md`). Those files look like off-limits-scope violations in the raw `main...HEAD` diff, but they belong to #12, not to this overhaul. This is not a defect in the Meridian implementation — it is a merge-hygiene problem: reviewing/merging #13 as-is silently lands the #12 work under a "design overhaul" title, and the design work cannot be reviewed or reverted independently of the audit fix.
 **Recommendation:** Owner decision on how to land this. Options, in rough order of cleanliness: (a) merge PR #12 to `main` first, then rebase `feature/meridian-design-overhaul` onto the updated `main` so #13's diff reduces to design-only; (b) if #12 is already intended to ship with #13, retitle/re-scope PR #13's description to state it also merges AUD-01..10 so the merge is intentional and reviewers know both were audited; (c) split into two PRs. The design overhaul commits themselves require no code change for this — the resolution is entirely at the git/PR level.
+
+**Resolution (2026-07-17):** False positive — computed against a stale `main`. Against current origin/main the merge base is dda8a396 and `git diff --name-only origin/main...HEAD` is design-only (no app/api, lib/services, or prisma files). No action required.
 
 ### MDO-01 — ISSUE
 **File:** `plans/INDEX.md:5`

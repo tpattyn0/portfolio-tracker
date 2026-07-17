@@ -45,7 +45,18 @@ export function Navigation() {
       <div className="mx-auto max-w-[1400px] px-8">
         {/* Top row */}
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 border-b border-border py-3.5">
-          <div className="truncate text-[10.5px] uppercase tracking-[0.12em] text-mut">
+          {/* Purely decorative and computed from `new Date()`, which is evaluated
+              separately during SSR and during hydration — at the exact
+              midnight/day-of-year boundary the two can disagree (different
+              issue №, different long-form date), producing a hydration
+              mismatch warning (MDO-03). suppressHydrationWarning accepts that
+              narrow, cosmetic mismatch instead of forcing a client-only
+              render, keeping the correct server-rendered value visible with
+              no flash or layout shift in the common case. */}
+          <div
+            className="truncate text-[10.5px] uppercase tracking-[0.12em] text-mut"
+            suppressHydrationWarning
+          >
             {dateline}
           </div>
 
