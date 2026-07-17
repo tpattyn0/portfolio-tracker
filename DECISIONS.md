@@ -36,8 +36,8 @@
 - **Confidence:** High
 
 ## ADR-6 — Dev and production share one database
-- **Decision:** dev and production currently point at the same Supabase database. `.env`/`.env.local` hold two connection strings for it — one direct, one pooled — selected based on which network the developer is on, not which environment is running.
-- **Evidence:** owner confirmation, 2026-07-16 (see `reviews/2026-07-16-onboarding.md` ONB-11); `.env`, `.env.local`
+- **Decision:** dev and production currently point at the same Supabase database. `.env`/`.env.local` hold two connection strings for it, used simultaneously for different purposes: `DATABASE_URL` (transaction-mode pooler, port 6543) for the running app, `DIRECT_URL` (session-mode pooler, port 5432) for `prisma migrate`/`prisma db push`. (An earlier version of this entry described the two strings as selected based on which network the developer is on — that described the pre-reconnect Supabase project, not the current one; corrected 2026-07-17 per AUD-01.)
+- **Evidence:** owner confirmation, 2026-07-16 (see `reviews/2026-07-16-onboarding.md` ONB-11); `.env`, `.env.local`, `.env.example`, `prisma/schema.prisma:7,10`
 - **Tradeoffs:** simplest possible setup for a single-developer project; but any dev-side mutation (manual testing, a bad migration, a seed script) affects real user data with no isolation, and there is no way to test schema changes safely before they hit production.
 - **Status:** accepted-but-flagged
 - **Confidence:** High

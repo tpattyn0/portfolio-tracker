@@ -1,6 +1,6 @@
 # Review: full codebase audit
 Date: 2026-07-17
-Status:
+Status: IMPLEMENTED — 2026-07-17 (AUD-01..10 fixed via PR #12; see reviews/2026-07-17-full-audit-fixes.md and reviews/2026-07-17-full-audit-fixes-v2.md for the fix-verification chain)
 
 ## Summary
 Findings: 0 BLOCKERs, 7 ISSUEs, 3 SUGGESTIONs, 0 QUESTIONs

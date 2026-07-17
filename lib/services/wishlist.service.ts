@@ -2,6 +2,8 @@ import { prisma } from '@/lib/prisma';
 import { marketDataService } from './market-data.service';
 import { fundamentalAnalysisService } from './fundamental-analysis.service';
 import { technicalAnalysisService } from './technical-analysis.service';
+import { newsService } from './news.service';
+import { IntrinsicValueService } from './intrinsic-value.service';
 import yahooFinance from '@/lib/yahoo-finance';
 
 export interface WishlistItemWithScores {
@@ -225,25 +227,31 @@ export class WishlistService {
           }
 
           // Get sentiment score
+          // AUD-05: previously called this app's own /api/news/[symbol] route via
+          // `fetch()` with no session cookie forwarded — since that route requires
+          // auth (ONB-05, 2026-07-16), the call always 401'd and this score was
+          // silently always null. Call the service directly instead.
           let sentimentScore: number | null = null;
           try {
-            const newsRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/news/${item.ticker}?analyze=true&limit=20`);
-            if (newsRes.ok) {
-              const articles = await newsRes.json();
-              sentimentScore = this.calculateSentimentScore(articles);
-            }
+            const articles = await newsService.getAnalyzedNewsForSymbol(item.ticker, {
+              analyze: true,
+              limit: 20,
+            });
+            sentimentScore = this.calculateSentimentScore(articles);
           } catch (error) {
             console.error(`Failed to fetch sentiment data for ${item.ticker}:`, error);
           }
 
           // Get intrinsic value score
+          // AUD-05: same self-fetch issue as sentiment above — call the service
+          // directly instead of hitting our own now-authenticated route over HTTP.
           let intrinsicScore: number | null = null;
           try {
-            const intrinsicRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/research/${item.ticker}/intrinsic-value?price=${currentPrice}`);
-            if (intrinsicRes.ok) {
-              const intrinsicData = await intrinsicRes.json();
-              intrinsicScore = this.upsideToScore(intrinsicData.upsidePercent);
-            }
+            const intrinsicData = await IntrinsicValueService.calculateIntrinsicValue(
+              item.ticker,
+              currentPrice
+            );
+            intrinsicScore = this.upsideToScore(intrinsicData.upsidePercent);
           } catch (error) {
             console.error(`Failed to fetch intrinsic value for ${item.ticker}:`, error);
           }
@@ -262,12 +270,16 @@ export class WishlistService {
               analyst: 0.15,
             };
 
+            // AUD-05: `?? 5` instead of `|| 5` — a legitimate score of 0 (e.g.
+            // maximally bearish sentiment or a fully-overvalued intrinsic
+            // estimate) must not be treated as "missing" and replaced with a
+            // neutral 5.
             const sum =
-              (intrinsicScore || 5) * weights.intrinsicValue +
-              (fundamentalScore || 5) * weights.fundamental +
-              (technicalScore || 5) * weights.technical +
-              (sentimentScore || 5) * weights.sentiment +
-              (analystScore || 5) * weights.analyst;
+              (intrinsicScore ?? 5) * weights.intrinsicValue +
+              (fundamentalScore ?? 5) * weights.fundamental +
+              (technicalScore ?? 5) * weights.technical +
+              (sentimentScore ?? 5) * weights.sentiment +
+              (analystScore ?? 5) * weights.analyst;
 
             compositeScore = Math.round(sum * 10) / 10;
           }
@@ -337,7 +349,7 @@ export class WishlistService {
     return Math.round(normalized * 10 * 10) / 10;
   }
 
-  private calculateSentimentScore(articles: Array<{ sentiment?: number; impact?: string; relevanceScore?: number }>): number {
+  private calculateSentimentScore(articles: Array<{ sentiment?: number | null; impact?: string | null; relevanceScore?: number | null }>): number {
     if (!Array.isArray(articles) || articles.length === 0) return 5;
 
     let weighted = 0;

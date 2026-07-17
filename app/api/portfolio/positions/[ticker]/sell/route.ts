@@ -1,7 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getAuthenticatedUserWithPortfolio } from "@/lib/utils/auth";
 import { prisma } from "@/lib/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
+import {
+  matchFifoLots,
+  calculateRealizedPL,
+  resolveCostBasisWithFallback,
+  type Lot,
+} from "@/lib/services/realized-pl.service";
+
+// AUD-08: validate the body instead of trusting raw JSON.
+const sellSchema = z.object({
+  quantity: z.number().positive(),
+  price: z.number().positive(),
+  date: z.string().optional(),
+  fees: z.number().min(0).default(0),
+  notes: z.string().optional().default(""),
+});
 
 export async function POST(
   request: NextRequest,
@@ -14,15 +30,7 @@ export async function POST(
     const { ticker } = await params;
 
     const body = await request.json();
-    const { quantity, price, date, fees = 0, notes = "" } = body;
-
-    // Validate input
-    if (!quantity || quantity <= 0) {
-      return NextResponse.json({ error: "Invalid quantity" }, { status: 400 });
-    }
-    if (!price || price <= 0) {
-      return NextResponse.json({ error: "Invalid price" }, { status: 400 });
-    }
+    const { quantity, price, date, fees, notes } = sellSchema.parse(body);
 
     // Get the position
     const position = await prisma.position.findUnique({
@@ -46,10 +54,51 @@ export async function POST(
       );
     }
 
-    // Calculate realized P/L before the transaction
-    const totalSaleValue = new Decimal(quantity).mul(price);
-    const costBasis = position.avgCostBasis.mul(quantity);
-    const realizedPL = totalSaleValue.minus(costBasis).minus(fees);
+    // AUD-03/AUD-FIX-01: realized P/L is computed via the same FIFO-including-fees
+    // method used by /api/portfolio/closed-positions, so the two surfaces don't
+    // disagree. That requires matching against lots already depleted by prior
+    // sells on this position — not the raw, undepleted BUY lots — otherwise a
+    // second sell re-matches against lot 1 instead of continuing where the
+    // previous sell left off. Load prior SELLs (chronological order) and run
+    // them through matchFifoLots first purely to advance the FIFO cursor, then
+    // match the new sell against what remains.
+    const [buyTransactions, priorSellTransactions] = await Promise.all([
+      prisma.transaction.findMany({
+        where: { positionId: position.id, type: "BUY" },
+        orderBy: { executedAt: "asc" },
+      }),
+      prisma.transaction.findMany({
+        where: { positionId: position.id, type: "SELL" },
+        orderBy: { executedAt: "asc" },
+      }),
+    ]);
+
+    const lots: Lot[] = buyTransactions.map((t) => ({
+      quantity: new Decimal(t.quantity.toString()),
+      price: new Decimal(t.price.toString()),
+      fees: new Decimal(t.fees.toString()),
+      date: t.executedAt,
+    }));
+
+    // Deplete lots by every prior sell, in chronological order, before matching
+    // the new sell — mirrors the closed-positions route's cumulative FIFO walk.
+    for (const priorSell of priorSellTransactions) {
+      matchFifoLots(lots, new Decimal(priorSell.quantity.toString()));
+    }
+
+    const matchResult = matchFifoLots(lots, new Decimal(quantity));
+    const { totalCostBasis } = resolveCostBasisWithFallback(
+      matchResult,
+      position.avgCostBasis,
+      `Sell of ${quantity} ${ticker}`
+    );
+
+    const { realizedPL } = calculateRealizedPL(
+      new Decimal(quantity),
+      new Decimal(price),
+      new Decimal(fees),
+      totalCostBasis
+    );
 
     // Wrap all writes in a transaction so they either ALL succeed or ALL fail.
     const result = await prisma.$transaction(async (tx) => {
@@ -63,7 +112,7 @@ export async function POST(
           name: position.name,
           quantity: new Decimal(quantity),
           price: new Decimal(price),
-          totalAmount: totalSaleValue,
+          totalAmount: new Decimal(quantity).mul(price),
           fees: new Decimal(fees),
           executedAt: new Date(date || Date.now()),
           notes,
@@ -150,6 +199,14 @@ export async function POST(
     });
   } catch (error) {
     console.error("Sell position error:", error);
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Invalid input", details: error.errors },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to sell position" },
       { status: 500 }

@@ -57,4 +57,10 @@ Two routes are intentionally public, with no auth guard — every other route re
 
 ## Environment separation
 
-Dev and production currently point at the same Supabase database (confirmed by the owner, 2026-07-16) — `.env` and `.env.local` hold two connection strings (one direct, one pooled) for the same underlying database, not separate dev/prod instances. See `TECH_DEBT.md`.
+Dev and production currently point at the same Supabase database (confirmed by the owner, 2026-07-16) — this is a single-instance limitation, not separate dev/prod instances. See `TECH_DEBT.md` (TD-02).
+
+`DATABASE_URL` and `DIRECT_URL` are two connection strings to that *same* database, serving different purposes simultaneously (not selected by network, as an earlier version of this doc stated — see ADR-6):
+- `DATABASE_URL` — transaction-mode pooler (port 6543, `pgbouncer=true`), used by Prisma Client at runtime.
+- `DIRECT_URL` — session-mode pooler (port 5432), required by `prisma migrate`/`prisma db push`, which need prepared-statement support that transaction-mode pooling doesn't provide.
+
+Both must be set in `.env`/`.env.local` (see `.env.example`) or migrations will fail on a fresh clone.

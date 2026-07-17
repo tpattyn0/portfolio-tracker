@@ -285,6 +285,91 @@ export class NewsAggregationService {
       }
     }
   }
+
+  /**
+   * DB-first fetch of relevant, sentiment-analyzed articles for a symbol —
+   * refreshes from upstream sources if the cache is thin, and runs sentiment
+   * analysis (Gemini, if configured) on a batch of unanalyzed articles.
+   *
+   * Extracted from app/api/news/[symbol]/route.ts (AUD-05, 2026-07-17 audit)
+   * so callers running server-side (e.g. wishlist scoring) can get the same
+   * data without an HTTP round-trip to their own route.
+   */
+  async getAnalyzedNewsForSymbol(
+    symbol: string,
+    options: { companyName?: string; limit?: number; analyze?: boolean } = {}
+  ) {
+    const { companyName, limit = 20, analyze = true } = options;
+
+    let articles = await prisma.newsArticle.findMany({
+      where: {
+        symbols: { has: symbol },
+        publishedAt: {
+          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        },
+        relevanceScore: { gte: 0.5 },
+      },
+      orderBy: [{ relevanceScore: 'desc' }, { publishedAt: 'desc' }],
+      take: limit,
+    });
+
+    if (articles.length < 2) {
+      const freshNews = await this.fetchNewsForSymbol(symbol, companyName);
+      const relevantNews = freshNews.filter(
+        (article) => (article.relevanceScore || 0) >= 0.4
+      );
+
+      if (relevantNews.length > 0) {
+        await this.saveArticlesToDatabase(relevantNews);
+      }
+
+      articles = await prisma.newsArticle.findMany({
+        where: {
+          symbols: { has: symbol },
+          relevanceScore: { gte: 0.5 },
+        },
+        orderBy: [{ relevanceScore: 'desc' }, { publishedAt: 'desc' }],
+        take: limit,
+      });
+    }
+
+    if (articles.length === 0) {
+      return [];
+    }
+
+    if (analyze && process.env.GEMINI_API_KEY) {
+      const unanalyzedArticles = articles.filter((a) => a.sentiment === null);
+
+      if (unanalyzedArticles.length > 0) {
+        const articlesToAnalyze = unanalyzedArticles.slice(0, 3);
+
+        // Lazy import avoids a hard module-scope dependency on
+        // GEMINI_API_KEY for every caller of news.service.ts (see AGENT.md
+        // fragile surfaces — sentiment.service throws at import time if the
+        // key is unset).
+        const { sentimentService } = await import('./sentiment.service');
+
+        for (const article of articlesToAnalyze) {
+          try {
+            await sentimentService.analyzeAndUpdateArticle(article.id);
+          } catch (error) {
+            console.error(`Failed to analyze article ${article.id}:`, error);
+          }
+        }
+
+        articles = await prisma.newsArticle.findMany({
+          where: {
+            symbols: { has: symbol },
+            relevanceScore: { gte: 0.5 },
+          },
+          orderBy: [{ relevanceScore: 'desc' }, { publishedAt: 'desc' }],
+          take: limit,
+        });
+      }
+    }
+
+    return articles;
+  }
 }
 
 export const newsService = new NewsAggregationService();

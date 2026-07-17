@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUserWithPortfolio } from "@/lib/utils/auth";
 import { prisma } from "@/lib/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
+import {
+  matchFifoLots,
+  calculateRealizedPL,
+  resolveCostBasisWithFallback,
+  type Lot,
+} from "@/lib/services/realized-pl.service";
 
 interface ClosedPosition {
   id: string;
@@ -73,52 +79,42 @@ export async function GET(request: NextRequest) {
       const buyTransactions = position.transactions.filter(t => t.type === "BUY");
       const sellTransactions = position.transactions.filter(t => t.type === "SELL");
       
-      // Track remaining buy lots (FIFO method)
-      const buyLots = [...buyTransactions].map(t => ({
+      // Track remaining buy lots (FIFO method) — fees included per lot so
+      // realized P/L matches the sell route's accounting (AUD-03).
+      const buyLots: Lot[] = buyTransactions.map(t => ({
         quantity: new Decimal(t.quantity.toString()),
         price: new Decimal(t.price.toString()),
-        totalAmount: new Decimal(t.totalAmount.toString()),
+        fees: new Decimal(t.fees.toString()),
         date: t.executedAt
       }));
-      
+
       // Process each sell transaction as a separate closed position
       for (const sell of sellTransactions) {
-        let remainingSellQuantity = new Decimal(sell.quantity.toString());
-        let totalBuyCost = new Decimal(0);
-        let firstBuyDate: Date | null = null;
-        
-        // Process buy lots in FIFO order to match with this sell
-        for (let i = 0; i < buyLots.length && remainingSellQuantity.gt(0); i++) {
-          const buyLot = buyLots[i];
-          if (buyLot.quantity.lte(0)) continue;
-          
-          const quantityToSell = Decimal.min(remainingSellQuantity, buyLot.quantity);
-          const costForThisLot = quantityToSell.times(buyLot.price);
-          
-          totalBuyCost = totalBuyCost.plus(costForThisLot);
-          buyLot.quantity = buyLot.quantity.minus(quantityToSell);
-          remainingSellQuantity = remainingSellQuantity.minus(quantityToSell);
-          
-          // Track buy dates for this position
-          if (!firstBuyDate || buyLot.date < firstBuyDate) {
-            firstBuyDate = buyLot.date;
-          }
-        }
-        
-        // If we couldn't match all sells (shouldn't happen with proper data validation)
-        if (remainingSellQuantity.gt(0)) {
-          console.warn(`Couldn't match all sell quantities for position ${position.id}`);
-          continue;
-        }
-        
+        const sellQuantity = new Decimal(sell.quantity.toString());
+        const matchResult = matchFifoLots(buyLots, sellQuantity);
+        const { firstBuyDate } = matchResult;
+
+        // AUD-04: previously this `continue`d whenever unmatched > 0, which made
+        // `isPartial` dead code (always false by the time it was read below) and
+        // silently dropped the sell from the list. Now: match what we can against
+        // available lots, fall back to the position's average cost basis for any
+        // unmatched remainder (data inconsistency), and always include the entry.
+        const { totalCostBasis, unmatchedQuantity } = resolveCostBasisWithFallback(
+          matchResult,
+          position.avgCostBasis,
+          `Position ${position.id}: couldn't match ${sellQuantity.toString()} sold shares`
+        );
+
         // Calculate metrics for this closed position
         const sellPrice = new Decimal(sell.price.toString());
-        const sellValue = new Decimal(sell.quantity.toString()).times(sellPrice);
-        const realizedPL = sellValue.minus(totalBuyCost);
-        const realizedPLPercent = totalBuyCost.equals(0) 
-          ? new Decimal(0) 
-          : realizedPL.dividedBy(totalBuyCost).times(100);
-        
+        const sellFees = new Decimal(sell.fees.toString());
+        const { realizedPL, realizedPLPercent } = calculateRealizedPL(
+          sellQuantity,
+          sellPrice,
+          sellFees,
+          totalCostBasis
+        );
+
         // Calculate holding period in days
         const buyDate = firstBuyDate || position.firstBuyDate;
         const closeDate = sell.executedAt;
@@ -141,13 +137,15 @@ export async function GET(request: NextRequest) {
           closeDate: sell.executedAt,
           holdingDays,
           totalSharesSold: Number(sell.quantity),
-          avgCostBasis: Number(totalBuyCost.dividedBy(sell.quantity)),
+          avgCostBasis: sellQuantity.gt(0)
+            ? Number(totalCostBasis.dividedBy(sellQuantity))
+            : 0,
           avgSellPrice: Number(sellPrice),
           realizedPL: Number(realizedPL),
           realizedPLPercent: Number(realizedPLPercent),
           totalReturn: Number(realizedPL),
           totalReturnPercent: Number(realizedPLPercent),
-          isPartial: remainingSellQuantity.gt(0),
+          isPartial: unmatchedQuantity.gt(0),
         });
 
         if (position.ticker) {

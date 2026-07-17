@@ -4,6 +4,7 @@ import { getAuthenticatedUserWithPortfolio } from "@/lib/utils/auth";
 import { prisma } from "@/lib/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
 import { marketDataService } from "@/lib/services/market-data.service";
+import { applyBuyToPosition } from "@/lib/services/position.service";
 
 const addPositionSchema = z.object({
   ticker: z.string(),
@@ -33,52 +34,34 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const totalCost = data.quantity * data.price + data.fees;
-    const avgCostWithFees = data.price + (data.fees / data.quantity);
-
     if (existingPosition) {
-      // Update existing position
-      const oldQuantity = existingPosition.quantity.toNumber();
-      const oldCostBasis = existingPosition.avgCostBasis.toNumber();
-      const newTotalQuantity = oldQuantity + data.quantity;
-      const oldTotalCost = oldQuantity * oldCostBasis;
-      const newAvgCost = (oldTotalCost + totalCost) / newTotalQuantity;
-
-      // Create transaction
-      const transaction = await prisma.transaction.create({
-        data: {
+      // Delegate to the same buy-more logic as positions/[ticker]/buy (AUD-02):
+      // wrapped in a transaction, Decimal arithmetic throughout, market value
+      // computed against the position's current price (not purchase price),
+      // and portfolio totals recalculated.
+      const result = await prisma.$transaction(async (tx) => {
+        return applyBuyToPosition({
+          tx,
           portfolioId: portfolio.id,
-          positionId: existingPosition.id,
-          type: "BUY",
+          position: existingPosition,
           ticker: data.ticker,
           name: data.name,
-          quantity: new Decimal(data.quantity),
-          price: new Decimal(data.price),
-          totalAmount: new Decimal(totalCost),
-          fees: new Decimal(data.fees),
-          executedAt: new Date(data.date),
-        },
+          quantity: data.quantity,
+          price: data.price,
+          fees: data.fees,
+          date: new Date(data.date),
+        });
       });
 
-      // Update position
-      const updatedPosition = await prisma.position.update({
-        where: { id: existingPosition.id },
-        data: {
-          quantity: new Decimal(newTotalQuantity),
-          avgCostBasis: new Decimal(newAvgCost),
-          marketValue: new Decimal(newTotalQuantity * data.price), // Using purchase price for now
-          unrealizedPL: new Decimal(0), // Will be calculated with market data
-          unrealizedPLPercent: new Decimal(0),
-          lastActivity: new Date(),
-        },
-      });
-
-      return NextResponse.json({ 
-        position: updatedPosition,
-        transaction: transaction,
-        message: "Position updated successfully" 
+      return NextResponse.json({
+        position: result.position,
+        transaction: result.transaction,
+        message: "Position updated successfully"
       });
     } else {
+      const totalCost = data.quantity * data.price + data.fees;
+      const avgCostWithFees = data.price + (data.fees / data.quantity);
+
       // Fetch stock info to get the correct currency
       let stockCurrency = "USD"; // Default to USD
       let exchange = "NASDAQ";
@@ -149,13 +132,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
-    }
-
+    // AUD-06: don't echo raw error.message to the client — it can leak
+    // Prisma/upstream internals (model/field names, hostnames). Detail stays
+    // in console.error above; the client gets a generic message.
     return NextResponse.json(
       { error: "Failed to add position" },
       { status: 500 }
