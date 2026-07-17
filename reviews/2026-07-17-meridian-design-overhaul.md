@@ -1,6 +1,6 @@
 # Review: Meridian design overhaul (PR #13)
 Date: 2026-07-17
-Status:
+Status: IMPLEMENTED — 2026-07-17
 
 ## Summary
 Findings: 0 BLOCKERs, 3 ISSUEs, 2 SUGGESTIONs, 1 QUESTION
