@@ -8,3 +8,4 @@
 | 2026-07-17-full-audit.md | 2026-07-17 | IMPLEMENTED — 2026-07-17 (AUD-01..10 fixed via PR #12) |
 | 2026-07-17-full-audit-fixes.md | 2026-07-17 | IMPLEMENTED — 2026-07-17 (AUD-FIX-01..04 fixed and re-verified in v2) |
 | 2026-07-17-full-audit-fixes-v2.md | 2026-07-17 | IMPLEMENTED — 2026-07-17 (REV2-01 fixed inline; REV2-02 no-action-needed) |
+| 2026-07-17-scoring-methodology.md | 2026-07-17 | (methodology review — SCM-01..13 ready for Coding agent; SCM-Q1..Q3 await owner) |
