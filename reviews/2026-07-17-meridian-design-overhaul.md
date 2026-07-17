@@ -57,3 +57,30 @@ The one thing the owner must weigh is not about the design work at all — it is
 
 ## Proposed DECISIONS.md entries
 None. ADR-8, ADR-9, and ADR-10 are already present, marked `accepted`, and carry accurate evidence that I verified against the branch (ADR-8's "components/ui diff empty" proof holds; ADR-9's route/schema-unchanged claim holds; ADR-10's `buildPath` + retained-Recharts split holds). No new architectural decisions were introduced by this implementation that are not already recorded.
+
+---
+
+## Iteration 2 outcome (2026-07-17)
+
+Fix pass reviewed: commit `e4ac2ac5` (the code/doc fixes) plus the STATUS.md chore commits since iteration 1. Scope of this iteration was narrow — verify the fixes landed correctly and introduced no new correctness/security/scope problem — not a full re-review of the overhaul.
+
+**Working tree:** clean (`git status --porcelain` empty). Reviewed at branch HEAD `60e5a5ec`.
+
+**Verify block:** `npm run verify` passes — typecheck ok, lint ok (pre-existing warnings only), 42/42 tests, secret-scan clean.
+
+**Off-limits set:** still untouched. `git diff --name-only origin/main...HEAD` contains no `components/ui/**`, `app/page.tsx`, `app/(dashboard)/portfolio/[ticker]/page.tsx`, `lib/services/**`, `app/api/**`, `prisma/schema.prisma`, or `reviews/2026-07-17-scoring-methodology.md`. The fix commit touched only `components/navigation.tsx`, `lib/utils/chart-path.ts`, `plans/INDEX.md`, and this review file — all in-scope. No new scope violation introduced.
+
+**Security:** re-ran the security pass (skill + manual) against the fix diff. No HIGH/MEDIUM findings. `suppressHydrationWarning` is not a security-relevant attribute (affects only hydration reconciliation, introduces no sink); the chart-path change is a pure numeric edit with no untrusted-input surface. No new `dangerouslySetInnerHTML`/`eval`/`innerHTML`; external news link keeps `rel="noopener noreferrer"`.
+
+### Per-finding resolution
+
+- **MDO-01 — RESOLVED.** `plans/INDEX.md` row now reads `in review` (was `planned`). Correct interim state; it becomes `implemented` only when this review is stamped `Status: IMPLEMENTED` with the Review column filled.
+- **MDO-03 — RESOLVED.** `suppressHydrationWarning` is applied to the dateline `<div>` alone (`components/navigation.tsx:56-61`), scoped to that single node plus its `{dateline}` text child. It does **not** wrap the header or any sibling nav element, so warnings elsewhere in the subtree are not suppressed. This removes the midnight/day-of-year boundary mismatch risk while keeping the correct server-rendered value visible (no client-only render, no flash). Verified as correctly scoped.
+- **MDO-04 — RESOLVED.** `min`/`max` now computed from `finiteValues` (`lib/utils/chart-path.ts:48-49`). Because the guard above bails whenever `finiteValues.length !== values.length`, `finiteValues` is content-identical to `values` at this point — behavior is unchanged and all 42 tests still pass. The safety is now local to the computation, addressing the future-edit robustness concern.
+- **MDO-Q1 — CONFIRMED RESOLVED (false positive verified independently).** I re-ran the checks myself: `git merge-base origin/main HEAD` = `dda8a396...`, which **equals** `git rev-parse origin/main` (`dda8a396...`). `git diff --name-only origin/main...HEAD` is design-only — no `app/api/**`, `lib/services/**`, or `prisma/**` files. The prior QUESTION was computed against a stale `main`; against current origin/main it genuinely does not apply. The resolution note in the finding is accurate. No owner decision required.
+- **MDO-02 — orchestrator-owned (unchanged).** STATUS.md template deviation remains flagged for the orchestrator, not a Coding-agent fix; I was instructed not to edit STATUS.md this iteration. Not a blocker.
+- **MDO-05 — RESOLVED.** `reviews/INDEX.md` now carries a row for this review (Status blank, pending IMPLEMENTED stamp).
+
+### Iteration-2 verdict
+
+0 BLOCKERs, 0 ISSUEs, 0 SUGGESTIONs, 0 QUESTIONs remaining. All actionable findings from iteration 1 are resolved; MDO-Q1 is confirmed a false positive; MDO-02 is orchestrator-owned. Branch is clean and Verify is green. No new correctness, security, or scope problem introduced by the fix pass. Nothing requires owner decision — the orchestrator can finalize (merge PR #13; the Coding agent then stamps this file `Status: IMPLEMENTED` and advances `plans/INDEX.md` to `implemented`).
