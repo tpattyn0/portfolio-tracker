@@ -45,38 +45,32 @@ export async function GET() {
 
     const geminiKey = process.env.GEMINI_API_KEY;
 
+    // AUD-10: don't persist the "not configured" placeholder as today's cached
+    // insight — a single request made before the key is set would otherwise
+    // pin this message in PortfolioInsight for the rest of the day (the
+    // userId_date unique key + existing-insight early-return above means the
+    // next request just returns the stale row). Return it transiently instead;
+    // a later request the same day can still succeed once the key is set.
     if (!geminiKey) {
-      const basicInsight = await prisma.portfolioInsight.create({
-        data: {
-          userId: auth.userId,
-          date: today,
-          marketSummary: 'Configure Gemini API key for AI-powered insights',
-          marketSentiment: 0,
-          portfolioImpact: 'AI analysis not available - API key missing',
-          topRisks: ['AI service not configured'],
-          opportunities: [],
-          recommendations: ['Add GEMINI_API_KEY to environment variables'],
-        },
+      return NextResponse.json({
+        marketSummary: 'Configure Gemini API key for AI-powered insights',
+        marketSentiment: 0,
+        portfolioImpact: 'AI analysis not available - API key missing',
+        topRisks: ['AI service not configured'],
+        opportunities: [],
+        recommendations: ['Add GEMINI_API_KEY to environment variables'],
       });
-      return NextResponse.json(basicInsight);
     }
 
     try {
       const genAI = new GoogleGenerativeAI(geminiKey);
-
-      // Try different model names
-      let model;
-      const modelName = "gemini-1.5-flash";
-
-      try {
-        model = genAI.getGenerativeModel({ model: modelName });
-      } catch {
-        try {
-          model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
-        } catch {
-          model = genAI.getGenerativeModel({ model: "gemini-pro" });
-        }
-      }
+      // AUD-07: this was the only Gemini call site with a nested-fallback
+      // try/catch. `getGenerativeModel` never throws on an unrecognized model
+      // name (it only fails at `generateContent` time), so the fallback
+      // branches were dead code — removed. Both Gemini call sites in this repo
+      // (here and sentiment.service.ts) now use gemini-1.5-flash as their only
+      // model.
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
       const prompt = `
         You are a financial analyst. Analyze this portfolio and provide brief insights.
@@ -123,25 +117,23 @@ export async function GET() {
     } catch (aiError: unknown) {
       console.error('AI generation error:', aiError instanceof Error ? aiError.message : aiError);
 
-      const fallbackInsight = await prisma.portfolioInsight.create({
-        data: {
-          userId: auth.userId,
-          date: today,
-          marketSummary: 'AI analysis temporarily unavailable',
-          marketSentiment: 0,
-          portfolioImpact: 'Unable to generate AI insights at this time',
-          topRisks: ['Service temporarily unavailable'],
-          opportunities: [],
-          recommendations: ['Try again later for AI-powered insights'],
-        },
+      // AUD-10: return the fallback without persisting it — a transient
+      // Gemini failure should not pin "AI analysis temporarily unavailable"
+      // as the cached result for the rest of the day.
+      return NextResponse.json({
+        marketSummary: 'AI analysis temporarily unavailable',
+        marketSentiment: 0,
+        portfolioImpact: 'Unable to generate AI insights at this time',
+        topRisks: ['Service temporarily unavailable'],
+        opportunities: [],
+        recommendations: ['Try again later for AI-powered insights'],
       });
-
-      return NextResponse.json(fallbackInsight);
     }
   } catch (error: unknown) {
     console.error('Insights API error:', error);
+    // AUD-06: don't echo raw error.message to the client.
     return NextResponse.json(
-      { error: 'Failed to generate insights', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Failed to generate insights' },
       { status: 500 }
     );
   }
