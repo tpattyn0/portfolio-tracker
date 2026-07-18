@@ -39,7 +39,7 @@ aliases it already uses (`bg-card`, `text-muted-foreground`, `border-border`, et
 | `--mut` | *(new: `--mut`)* | `#8a8478` | `#8d8578` | muted text / labels / kickers |
 | `--line` | `--border` / `--input` | `#e5e0d6` | `#2e2921` | primary rules & borders |
 | `--line2` | *(new: `--line2`)* | `#eee9df` | `#28231c` | hairline rules (row dividers, cell separators) |
-| `--fill` | *(new: `--fill`)* | `#f3f0e9` | `#252019` | hover fills, at 45% alpha via `color-mix` |
+| `--fill` | *(new: `--fill`)* | `#f3f0e9` | `#252019` | hover fills (solid, full alpha — see "Row hover" below) and muted/secondary/accent surface fills |
 | `--up` | *(new: `--up`)* | `oklch(0.55 0.1 155)` | `oklch(0.72 0.11 155)` | gains (green) |
 | `--dn` | *(new: `--dn`)* | `oklch(0.55 0.14 25)` | `oklch(0.7 0.15 25)` | losses (red) |
 | `--amber` | *(new: `--amber`)* | `oklch(0.62 0.12 80)` | `oklch(0.62 0.12 80)`† | middling scores (4–7 band) |
@@ -168,9 +168,19 @@ Kickers and muted labels always use `--mut`.
   right padding, so the band aligns flush with the container edges.
 - **Hairline row dividers:** 1px `--line2` between table rows and between insight
   sub-items; the last row in a table/list has no bottom rule.
-- **Row hover:** `background: color-mix(in srgb, var(--fill) 45%, transparent)` on
-  every clickable table row / list row. No border or inset change on hover — background
-  only.
+- **Row hover:** `background: var(--fill)` (Tailwind `hover:bg-fill`, full alpha — no
+  `color-mix`/opacity) on every clickable table row / list row. No border or inset
+  change on hover — background only. Applies identically to ALL clickable table/list
+  rows across the app: dashboard positions table, closed-positions table, watchlist
+  table, research index rows, news coverage list, and the stock-search results list —
+  one row-hover treatment, not several idioms.
+  **Correction note:** this supersedes the handoff README's "very subtle" wording and
+  the originally-recorded `color-mix(in srgb, var(--fill) 45%, transparent)` (45%
+  alpha) value. At 45% alpha, `--fill` (`#f3f0e9`) over `--bg` (`#faf8f4`) was nearly
+  invisible in practice — the owner's mock-up screenshot reads as a distinct visible
+  band, so the hover is deliberately bumped to solid `--fill` (owner-approved,
+  `plans/2026-07-18-meridian-dashboard-detail-fixes.md`). Still a warm neutral, no new
+  token.
 - **Theme transition:** `body { transition: background-color .25s, color .25s }` — the
   only animated property besides the chart morph.
 
@@ -230,8 +240,9 @@ line, `TICKER · EXCHANGE` (10.5px uppercase, 0.12em, `--mut`, `margin-top:2px`)
 second. Table shell: `border-collapse:collapse`, header row 1px `--line` bottom border,
 header cells 10.5px uppercase `--mut` (600/`--ink` only for an emphasized sortable
 column, e.g. Watchlist's Score), body rows 1px `--line2` bottom border (omit on the
-last row), `15px 0` cell padding, row hover per the Row hover rule above, `cursor:
-pointer`, whole row clickable through to research detail. Numeric cells right-aligned;
+last row), `15px 0` cell padding, row hover per the Row hover rule above (solid
+`--fill`), `cursor: pointer`, whole row clickable through to research detail. Numeric
+cells right-aligned;
 signed cells (P/L, Return, Change) colored `--up`/`--dn`; Market value / Realized P/L
 bold (weight 500).
 
@@ -317,9 +328,13 @@ coloring) — treat as a sibling pattern, not a fork: both are "N equal columns,
 ### Detail price chart (`DetailPriceChart`)
 The research-detail Overview/Technical chart — same drawing primitives as the
 Dashboard SVG performance chart (`buildPath`/`buildAreaPath`, ink line, `--ink`
-0.05 area fill, `--line` baseline) but a **distinct component**: no range-morph
-animation, and it adds hover/y-axis behavior the hero chart intentionally does not
-have (see the hero chart's own entry below).
+0.05 area fill, `--line` baseline) and, as of
+`plans/2026-07-18-meridian-dashboard-detail-fixes.md`, the same hover-crosshair
+and y-axis-label approach — but still a **distinct component** from the hero chart:
+no range-morph animation, and a variable viewBox (see below) instead of the hero's
+fixed 220-tall one. The two charts share the `niceYTicks` helper and the crosshair/
+tooltip approach; they are not merged (see the hero chart's own entry below for what
+stays different).
 
 - **ViewBox** — `0 0 1300 190` on Overview (1-year, no range tabs, static); `0 0
   1000 190` on Technical (6-month). Both `preserveAspectRatio="none"`, `height:190px`
@@ -346,17 +361,21 @@ have (see the hero chart's own entry below).
   (e.g. "Jul 2025 · Oct 2025 · Jan 2026 · Apr 2026 · Jul 2026").
 
 Distinct from `portfolio-chart.tsx` (dashboard hero): the hero has the range-morph
-tab row and 220-tall viewBox but no hover marker/crosshair/tooltip and no y-axis
-labels — do not merge the two components or backport one's exclusive behavior into
-the other without a Designer decision (adding hover/y-axis to the hero is logged in
-`future_ideas.md`, out of scope here).
+tab row and a fixed 220-tall viewBox; the detail chart has a variable viewBox (190,
+either 1300 or 1000 wide) and, on Technical, reference lines + legend. As of
+`plans/2026-07-18-meridian-dashboard-detail-fixes.md`, both charts now share the same
+hover-crosshair/tooltip and y-axis-label treatment (via `niceYTicks` and the same
+pixel-mapping approach) — see the hero chart's own entry ("Dashboard SVG performance
+chart" → "Y-axis price labels" / "Hover crosshair + tooltip") for its exact values.
+Do not merge the two components — they stay separate per ADR-11 and the hero's
+range-morph.
 
 ### Editorial coverage list
 Hairline-divided list for News & sentiment's "Latest coverage": each row
 `justify-content:space-between`, `align-items:baseline`, `gap:32px`, `padding:18px
 0`, `1px --line2` bottom border (omit on the last row), `cursor:pointer`, row hover
-per the standard rule (`background: color-mix(in srgb, var(--fill) 45%,
-transparent)`, no border/inset change). Row content:
+per the standard rule (`background: var(--fill)`, solid, no border/inset change).
+Row content:
 - **Left** — serif headline, Newsreader 17px/500, line-height 1.35, over a kicker
   line `{source} · {date}` (10.5px uppercase, 0.12em, `--mut`, `margin-top:6px`).
 - **Right** — a single uppercase tag, sans 10.5px/600, 0.14em letter-spacing,
@@ -470,14 +489,46 @@ baseline rule at the bottom. Range-change morph: 500ms, ease-in-out
 point in the 20-point series from its previous value to its new value — not a snap
 re-render.
 
+**Y-axis price labels (added per `plans/2026-07-18-meridian-dashboard-detail-fixes.md`):**
+same treatment as `DetailPriceChart`'s y-axis (3 `--mut` labels via `niceYTicks`,
+`formatCurrency`-formatted, positioned as HTML text absolutely against a `relative
+pl-14` container — not inside the SVG, which would distort under
+`preserveAspectRatio="none"`) but at the hero's own gridline y-fractions: y=55/110/165
+of 220 (NOT the detail chart's 47/94/141 of 190 — the two charts have different
+viewBoxes, so the fractions differ). Labels are computed from the currently
+*displayed* (animating) series and update live as the range-morph runs.
+
+**Hover crosshair + tooltip (added per `plans/2026-07-18-meridian-dashboard-detail-fixes.md`):**
+same three overlay elements as `DetailPriceChart`'s hover — a thin vertical `--line`
+crosshair, an `--ink` (foreground) marker dot on the line at the nearest data point,
+and a small `--card`/`border-border` shadow-free tooltip showing the hovered point's
+date and `formatCurrency(value)` — shown on `mousemove` over the plotted area, all
+three hidden on `mouseleave`. During a range-change morph the marker rides the
+animating line (reads `animatedValues[hoverIndex]`, not a static array) — this is
+correct behavior, not a bug; the crosshair must never interrupt or restart the morph
+animation.
+
 **Superseded note (ADR-11):** the prior sentence here said research detail's chart
 (`price-chart.tsx`) keeps Recharts, retokenized only. Per
 `plans/2026-07-18-meridian-research-detail.md` and ADR-11, that is no longer current
 — the research-detail Overview and Technical charts now use `DetailPriceChart` (see
 Components → "Detail price chart"), which shares this component's `buildPath`/
-`buildAreaPath` primitives but is a separate component (no range-morph; adds hover/
-y-axis/reference-line behavior this hero chart does not have). `price-chart.tsx`
-(Recharts) is retired once no importer remains — do not build new screens against it.
+`buildAreaPath` primitives but is a separate component (no range-morph; adds a
+variable viewBox and reference-line/legend behavior this hero chart does not have).
+`price-chart.tsx` (Recharts) is retired once no importer remains — do not build new
+screens against it.
+
+**Correction note (supersedes the "no hover/y-axis" distinction above the
+ADR-11 note):** this hero chart originally shipped with neither a y-axis nor hover
+behavior, distinguishing it from `DetailPriceChart`. Per
+`plans/2026-07-18-meridian-dashboard-detail-fixes.md`, the hero now has BOTH the
+y-axis price labels and the hover crosshair/tooltip described above, ported from
+`DetailPriceChart`'s pixel-mapping approach and sharing the `niceYTicks` helper. The
+two charts remain distinct components — do not merge them — but the hero no longer
+lacks hover/y-axis; the only behaviors still exclusive to `DetailPriceChart` are its
+variable viewBox and the Technical tab's reference lines/legend. Any prior wording
+elsewhere in this file describing the hero as having "no hover/y-axis" is superseded
+by this note.
 
 ---
 
@@ -624,10 +675,37 @@ figure).
    line — omitted when history is too thin to compute, data gap). Below: the
    Editorial coverage list ("Latest coverage").
 
-**Explicitly out of scope for this pass** (unchanged, stock-shadcn look retained):
-`app/page.tsx` (marketing landing page, not behind auth) and
-`app/(dashboard)/portfolio/[ticker]/page.tsx` (position detail — reachable from the
-dashboard but not one of the 7 designed screens; logged as tech debt).
+**Explicitly out of scope for this pass:** `app/page.tsx` (marketing landing page,
+not behind auth) — unchanged, stock-shadcn look retained.
+
+**Position detail (`/portfolio/[ticker]`) — shares research-detail chrome (TD-32).**
+This route is reachable from the dashboard/closed-positions tables but is not one of
+the 7 designed screens above; it has no dedicated mock-up. Per
+`plans/2026-07-18-meridian-dashboard-detail-fixes.md` (Task 7), its header +
+quote-card + tab-bar region is reskinned to Meridian by **reusing the Research
+detail screen's existing named patterns** — no new pattern is introduced for this
+page:
+- **Header** — the Research detail company header (serif 52px company name over a
+  `TICKER · EXCHANGE` `--mut` kicker; see "Research detail — tab-by-tab" above),
+  with pill action buttons (primary `--btnbg`/`--btnfg`, secondary transparent +
+  `--line` border — see Spacing/shape → Buttons) in place of Buy more / Sell /
+  Delete.
+- **Quote card** — either the Research detail **4-col ruled quote grid** (Current
+  price / Day range / 52-week range / Market cap pattern, restyled with this page's
+  own metrics: Market value / Unrealized P/L / Realized P/L / Today's change / Avg
+  cost) or the **Ruled stat band**'s card-wrapped variant (see Components → "Ruled
+  stat band") — either is faithful; whichever is used, signed figures are colored via
+  the `--up`/`--dn` token aliases (never `text-green-600`/`text-red-600`), no lucide
+  icons, no shadows.
+- **Tab bar** — the Research detail **Segmented tabs** research-detail variant (see
+  Components → "Segmented tabs"): `flex gap-8|32px border-b`, uppercase 11px kicker
+  tabs, active = weight 600 + 2px `--ink` underline. Tab bodies keep rendering the
+  existing shared Meridian tab components (Overview, Technical, etc.) — only the tab
+  chrome changes.
+
+No new tokens or components are defined for this page. Any lower section of
+`/portfolio/[ticker]` not covered by this header/quote-card/tab-bar scope remains
+tracked under TD-32 until reskinned in a later pass.
 
 **Edge cases carried over unchanged:** empty/loading/error states on the dashboard
 chart, sorting on every Watchlist column, add/remove mutations, CSV export, currency
