@@ -533,6 +533,33 @@ route's real layout changes later, its `loading.tsx` composition must be updated
 the same change (flag as an out-of-sync skeleton is a design regression, not just a
 missed polish item).
 
+**Confirmed as a first-class navigation state** (Designer review,
+`plans/2026-07-19-meridian-nav-responsiveness.md`): this pattern was originally
+specced for the hard/first-load case; `plans/2026-07-19-meridian-nav-responsiveness.md`
+removes the render-blocking layout-level session check that was preventing these
+same six `loading.tsx` boundaries from ever painting during intra-group
+navigation (nav clicks, position/row clicks). No skeleton markup changed — only
+when they become visible. Reviewed all six against their now-shipped pages
+(`dashboard`, `wishlist`, `research`, `research/[symbol]`,
+`portfolio/closed-positions`, `portfolio/[ticker]`) and confirmed, using only
+tokens/components already named above:
+- **Shape fidelity** — each skeleton's column count, card count, and block order
+  still matches its page 1:1 (e.g. `portfolio/[ticker]/loading.tsx`'s 3 pill
+  blocks vs. `research/[symbol]/loading.tsx`'s 2, correctly reflecting that page's
+  extra Buy-more/Sell/Delete action) — swap to content is not a jarring reflow.
+- **Shimmer at short durations** — `SkeletonBlock` is still exactly `bg-fill` +
+  Tailwind's stock `animate-pulse` (verified no custom keyframes override it in
+  `tailwind.config.js`); a smooth opacity-only cycle reads calm even when visible
+  for only a few hundred ms, unlike a sweep/gradient shimmer would.
+- **Masthead coherence** — `<Navigation>` (the Masthead component) never itself
+  carries `animate-pulse`; it stays static `bg-background` chrome above the
+  pulsing `bg-fill` skeleton body, the same stable-chrome-over-loading-region
+  relationship the rest of the app already uses (e.g. Card loading states).
+
+No new token, color, spacing value, or component was introduced by this
+confirmation — this note only records that the existing pattern is now reachable
+on every intra-group navigation, not only on a hard reload.
+
 ### Order-summary total row
 Label/value rows at 13.5px `--sub`, `4px 0` padding each. Final "Total cost" row sits
 above a `3px double var(--ink)` top rule with `12px` margin-top / `14px` padding-top,
