@@ -309,7 +309,33 @@ fixes come first; the position-detail reskin (larger, presentational) comes afte
    `text-green-600`/`red-600`) + Meridian tab bar; all tabs still render; delete/buy/
    sell modals still open; `npm run verify` green.
 
-8. [~] **Playwright end-to-end verification pass + doc updates.** Drive dashboard
+8. [x] **Playwright end-to-end verification pass + doc updates.** Driven via a
+   disposable test account (`meridian-verify-tmp@example.com`, pre-existing
+   from a prior verification session) with fresh AAPL + ENGI.PA positions
+   added for the session and deleted afterward (confirmed zero remaining
+   positions/closed-positions/wishlist items). Results: dashboard chart shows
+   3 `--mut` y-axis labels + crosshair/dot/tooltip on hover (date + value,
+   date from the raw series not the sparse labels array), survives a range
+   change + hover during/after the morph; positions-table row hover shows a
+   visible warm `--fill` band (`grep -rn "bg-fill/45"` returns nothing
+   repo-wide, confirming all six call sites). `/research/ENGI.PA` Overview
+   renders the composite (5.3/10) + 5-dimension band with Fundamental as a
+   `--mut` em-dash once the query's retries exhaust (no full-card "Some data
+   failed to load"); `/research/AAPL` Overview shows five real subscores.
+   `/research/ENGI.PA` Intrinsic value renders the shell with em-dash
+   placeholders + "No fundamental data available for this symbol."
+   (200-with-null per ADR-12); `/research/AAPL` Intrinsic value shows a real
+   $134.26 fair value even when opened FIRST (cold-cache path).
+   `/research/ENGI.PA` Fundamental shows a scoped styled empty state ("Unable
+   to load fundamental analysis") on the genuine Yahoo 500 — not a crash —
+   and switching tabs afterward still works. `/portfolio/AAPL` and
+   `/portfolio/ENGI.PA` show the Meridian serif header, pill actions, ruled
+   quote card with `--up`/`--dn` signed figures, and Meridian tab bar (no
+   rounded shadowed cards, no lucide icons, no `text-green-600`/`red-600`);
+   Buy-more/Sell modals still open (shadcn-styled, correctly out of scope,
+   see narrowed TD-32). Screenshots in `scratch/shots/` (gitignored).
+   Docs updated: `future_ideas.md` (hero hover/y-axis item cleared),
+   `AGENT.md` + `ARCHITECTURE.md` (hero fragile-surface note corrected). Drive dashboard
    (chart hover, chart y-axis, table-row hovers) and both detail routes for AAPL
    (well-covered) and ENGI.PA (thin coverage) across all 7 tabs, confirming no
    full-card "failed to load" blanking and correct Meridian styling. Update
