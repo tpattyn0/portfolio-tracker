@@ -437,6 +437,102 @@ carrying: a colored eyebrow (`--amber` for risks, `--ink`-default for opportunit
 border-`--line2`, then stacked 15.5px serif lines each preceded (Recommendations only)
 by a `№{n}` serif index in `--mut`.
 
+### Loading skeleton (route-level `loading.tsx`)
+Per `plans/2026-07-18-performance-audit-remediation.md` Task 7: every
+`app/(dashboard)/**` route that fetches on mount gets a `loading.tsx` streaming
+boundary so navigation shows a Meridian-shaped placeholder instantly instead of a
+blank frame, then swaps to the real content with no layout jump. This is a shimmer
+skeleton, not a spinner — reserve the spinner idiom (`Loader2` centered in a
+`min-h-[400px]` box) for **secondary in-page loads only** (e.g. a tab's own data
+after the shell has already painted), never for the initial route boundary.
+
+**Drift note (flag for the Coding agent, not a decision the Coding agent should
+re-litigate):** `app/(dashboard)/dashboard/loading.tsx` currently on disk is stale —
+it predates the Meridian re-skin and uses stock-shadcn primitives (`components/ui/
+skeleton.tsx`'s `Skeleton`, `components/ui/card.tsx`'s `Card`) with generic block
+proportions that no longer match the shipped Dashboard layout (hero figure, 3-col
+ruled stat band, positions table). The actual Meridian-consistent pattern already
+exists, but only as an **inline** `DashboardSkeleton()` function at the bottom of
+`app/(dashboard)/dashboard/page.tsx` (used via `if (isLoading) return
+<DashboardSkeleton />` for the in-page React Query loading state, not the route
+boundary) — and a second, independently-written inline `WishlistSkeleton()` at the
+bottom of `app/(dashboard)/wishlist/page.tsx` doing the same job with slightly
+different markup. Task 7 must not keep three divergent hand-rolled skeletons: it
+introduces the one shared primitive below, ports `dashboard/loading.tsx` and both
+inline skeleton functions onto it, and deletes the duplicated inline versions once
+the route-level file covers the same loading state. Confirm with the Coding agent's
+own judgment whether an inline in-page skeleton is still needed anywhere once the
+`loading.tsx` boundary exists for that route — if React Query's `isLoading` window
+is fully covered by the Suspense boundary already, the inline copy is dead code.
+
+**Shared primitive — `components/ui/loading-skeleton.tsx` (new file, Coding agent
+introduces it in Task 7):**
+- **`SkeletonBlock`** — the one shimmer primitive every skeleton composes from: a
+  `div` with `bg-fill` (never `bg-muted` — `bg-muted` is the correct token
+  *value* per the shadcn mapping table but `bg-fill` is the Meridian alias name
+  components should read; both currently resolve to the same CSS variable, so this
+  is a naming-consistency fix, not a new token) and Tailwind's built-in
+  `animate-pulse`. No new color token is introduced — this reuses `--fill` (already
+  named in Colors above) exactly as the Row hover treatment and both existing inline
+  skeletons already do. Radius follows the shape being mimicked: `rounded` (4px) for
+  text-line blocks, `rounded-full` for pill-shaped blocks (buttons, badges),
+  `rounded-lg` (8px, matching Card) for card-shaped blocks.
+- **Shimmer treatment is exactly `animate-pulse` — do not add a sweep/gradient
+  shimmer.** Meridian has no motion vocabulary beyond the theme-transition fade and
+  the hero chart's range-morph (see Spacing/shape → Theme transition); a moving
+  gradient shimmer would be a new, unapproved motion idiom. Opacity pulse only.
+  Tailwind's `animate-pulse` already respects `prefers-reduced-motion` only if the
+  project's global CSS says so — DESIGN.md does not yet define a
+  `prefers-reduced-motion` rule for any animated property (the theme-transition fade
+  or the chart morph either), so this is a pre-existing gap, not one introduced
+  here. Flag it in `TECH_DEBT.md` rather than solving it ad hoc inside the skeleton
+  primitive alone.
+- **`SkeletonText`** — a `SkeletonBlock` sized to one line of a named type-scale row
+  (pass a `variant` prop mapped to the Typography table's rows, e.g. `variant="h1"`
+  → `h-[52px] w-64`, `variant="kicker"` → `h-[11px] w-40`, `variant="body"` →
+  `h-[13.5px] w-full`) so every skeleton's line-heights trace back to the Type scale
+  table rather than ad hoc heights.
+- **Composed block helpers** (all built from `SkeletonBlock`, matching existing
+  Components patterns 1:1 so a skeleton and its real content occupy identical
+  geometry — this is what makes the swap calm instead of a jump):
+  - `SkeletonStatBand` (props: `columns`) — mirrors **Ruled stat band**: `border-y
+    border-border` row, N equal columns, `border-l border-line2` after the first,
+    each cell a kicker-height block over a 26px-tall value block over a 12px detail
+    block, first/last cell flush padding — same geometry as the real band, same
+    column count the real screen will render.
+  - `SkeletonCard` — mirrors **Card**: `rounded-lg border border-border bg-card`
+    wrapper with internal `SkeletonBlock` rows; accepts an `editorial` boolean to add
+    the `border-t-[3px] border-double border-foreground` treatment for screens whose
+    real content is an Editorial card (e.g. Headline score card, Morning Note).
+  - `SkeletonTable` (props: `rows`) — mirrors the **Position/Watchlist table row**
+    shell: header row (`border-b border-border`) of kicker-height blocks, then
+    `rows` body rows each `border-b border-line2` (omit on the last), each row a
+    horizontal flex of blocks approximating name+ticker (two-line cell), numeric
+    columns right-aligned. Default `rows={5}`.
+  - `SkeletonTabBar` — mirrors the research-detail **Segmented tabs** bar: a `flex
+    gap-8 border-b border-border` row of 7 pill-free label-width blocks
+    (`h-[11px]`, varied widths sampling the real tab labels' lengths), no active
+    state (skeletons never show an active/selected treatment — there is nothing
+    selected yet).
+
+**Per-route composition (each `loading.tsx` composes the shared primitives above —
+none defines new one-off markup):**
+
+| Route | `loading.tsx` composition |
+|---|---|
+| `dashboard/loading.tsx` | H1-height block + kicker above it (hero "Portfolio value" figure), a 40px pill block (currency toggle) beside it, `SkeletonStatBand columns={3}`, then a `SkeletonCard` sized to the chart's `220`-tall box, then `SkeletonTable rows={5}` for the positions table. Replaces the stale stock-shadcn file; matches the existing inline `DashboardSkeleton` shape (which the Coding agent may now delete in favor of this shared file, or leave calling the shared primitives — see Drift note). |
+| `research/loading.tsx` | Centered column (`mx-auto max-w-[720px] pt-9 text-center`): kicker block, H1-height block, italic-subline-height block, a pill-shaped block sized to the search input; below, a `SkeletonCard` containing 6 `SkeletonBlock` rows in the `research index` popular-stocks 3-col grid shape; below that, 3 `SkeletonCard`s side by side (the discipline cards). |
+| `research/[symbol]/loading.tsx` | Kicker-height back-link block; H1-height block (company name) + kicker block beneath (ticker/exchange) on the left, two pill-shaped blocks on the right (Watchlist / Add to portfolio actions) — mirrors the company header; a `SkeletonCard` in the 4-col quote-stat-card shape (`grid grid-cols-4`, `border-r border-line2` between, same cell geometry as `SkeletonStatBand` but card-wrapped, matching the quote card's own card+internal-rule treatment); `SkeletonTabBar` for the 7-tab bar; a `SkeletonCard editorial` sized to the Headline score card (kicker+meta row, then the 84px-score-column-width block beside a wide content block) as the tab body placeholder — always render the Overview tab's shape since it is the default active tab. |
+| `wishlist/loading.tsx` | Kicker block + H1-height block on the left, one pill block (add-to-watchlist) on the right; `SkeletonStatBand columns={3}`; `SkeletonTable rows={5}`. Replaces the inline `WishlistSkeleton` (same shape, now shared). |
+| `portfolio/closed-positions/loading.tsx` | Kicker block + H1-height block + a detail-line block (realized-to-date line) on the left, one pill block (Export CSV) on the right; a `SkeletonCard` in the 6-col summary shape (reuse `SkeletonStatBand columns={6}`, card-wrapped per the Ruled stat band card-wrapped variant); a filter row (one pill-shaped block for the ticker filter, three short label blocks for All/Winning/Losing); `SkeletonTable rows={6}`. |
+| `portfolio/[ticker]/loading.tsx` | Same header/quote-card/tab-bar composition as `research/[symbol]/loading.tsx` (TD-32: this page reuses the Research detail screen's chrome, see UX flows → "Position detail" — its skeleton reuses the *same* skeleton composition for the same reason), with the quote card's 4 cells relabeled in spirit only (skeletons never render real cell labels, so this is a non-issue — the geometry is identical: 4 equal columns, card-wrapped, `border-line2` verticals). |
+
+**Rule for the Coding agent:** every skeleton mirrors its real page's column
+count, card count, and block order — never a generic "3 boxes" placeholder. If a
+route's real layout changes later, its `loading.tsx` composition must be updated in
+the same change (flag as an out-of-sync skeleton is a design regression, not just a
+missed polish item).
+
 ### Order-summary total row
 Label/value rows at 13.5px `--sub`, `4px 0` padding each. Final "Total cost" row sits
 above a `3px double var(--ink)` top rule with `12px` margin-top / `14px` padding-top,
@@ -711,6 +807,15 @@ tracked under TD-32 until reskinned in a later pass.
 chart, sorting on every Watchlist column, add/remove mutations, CSV export, currency
 reconversion, form validation errors on Add position and Login. None of these behaviors
 change — only their visual presentation does.
+
+**Route-level loading state (Task 7, `plans/2026-07-18-performance-audit-remediation.md`):**
+Dashboard, Closed positions, Watchlist, Research detail, and Position detail
+(`/portfolio/[ticker]`) each get a `loading.tsx` streaming boundary shown on
+navigation before the first fetch resolves — see Components → "Loading skeleton
+(route-level `loading.tsx`)" for the shared primitive and exact per-route
+composition. Research index does not currently fetch on mount beyond the static
+popular-stocks list, but still gets one per the plan's blanket Task 7 scope. This is
+a rendering-boundary addition only — no client data-fetching behavior changes.
 
 **Research-detail-specific edge cases (new with the 7-tab structure):** the
 Transactions tab's owned-vs-not-owned empty state (see item 6 above); every data
