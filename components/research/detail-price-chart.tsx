@@ -56,6 +56,7 @@ export function DetailPriceChart({ symbol, period, currency, referenceLines, cla
       if (!res.ok) throw new Error("Failed to fetch chart data");
       return res.json();
     },
+    staleTime: 5 * 60 * 1000,
   });
 
   const points: ChartDataPoint[] = useMemo(() => data?.chart ?? [], [data]);

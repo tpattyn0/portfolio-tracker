@@ -182,23 +182,46 @@ export class WishlistService {
           const priceChange = currentPrice - Number(item.addedPrice);
           const priceChangePercent = (priceChange / Number(item.addedPrice)) * 100;
 
+          // Five independent per-item score fetches — previously sequential
+          // `await`s with no data dependency between them, serializing the
+          // slowest cost (Gemini sentiment + intrinsic value) on top of the
+          // rest for every item. Parallelized with Promise.all (plan Task
+          // 5); each still resolves to `null` on its own failure exactly as
+          // before, so a single dimension failing does not affect the
+          // others or change the composite-score fallback behavior below.
+          const [
+            fundamentalResult,
+            analystResult,
+            technicalResult,
+            sentimentResult,
+            intrinsicResult,
+          ] = await Promise.allSettled([
+            fundamentalAnalysisService.fetchFundamentals(item.ticker),
+            prisma.analystRating.findUnique({ where: { symbol: item.ticker } }),
+            marketDataService.getHistoricalData(item.ticker, '1Y'),
+            // AUD-05: previously called this app's own /api/news/[symbol] route via
+            // `fetch()` with no session cookie forwarded — since that route requires
+            // auth (ONB-05, 2026-07-16), the call always 401'd and this score was
+            // silently always null. Call the service directly instead.
+            newsService.getAnalyzedNewsForSymbol(item.ticker, { analyze: true, limit: 20 }),
+            // AUD-05: same self-fetch issue as sentiment above — call the service
+            // directly instead of hitting our own now-authenticated route over HTTP.
+            IntrinsicValueService.calculateIntrinsicValue(item.ticker, currentPrice),
+          ]);
+
           // Get fundamental score
           let fundamentalScore: number | null = null;
-          try {
-            const fundamentals = await fundamentalAnalysisService.fetchFundamentals(item.ticker);
-            fundamentalScore = fundamentals.score.total;
-          } catch (error) {
-            console.error(`Failed to fetch fundamentals for ${item.ticker}:`, error);
+          if (fundamentalResult.status === 'fulfilled') {
+            fundamentalScore = fundamentalResult.value.score.total;
+          } else {
+            console.error(`Failed to fetch fundamentals for ${item.ticker}:`, fundamentalResult.reason);
           }
 
           // Get analyst score and target price upside
           let analystScore: number | null = null;
           let targetPriceUpside: number | null = null;
-          try {
-            const analystRating = await prisma.analystRating.findUnique({
-              where: { symbol: item.ticker }
-            });
-
+          if (analystResult.status === 'fulfilled') {
+            const analystRating = analystResult.value;
             if (analystRating) {
               analystScore = Number(analystRating.score);
 
@@ -207,14 +230,14 @@ export class WishlistService {
                 targetPriceUpside = ((targetPrice - currentPrice) / currentPrice) * 100;
               }
             }
-          } catch (error) {
-            console.error(`Failed to fetch analyst rating for ${item.ticker}:`, error);
+          } else {
+            console.error(`Failed to fetch analyst rating for ${item.ticker}:`, analystResult.reason);
           }
 
           // Get technical score
           let technicalScore: number | null = null;
-          try {
-            const historicalData = await marketDataService.getHistoricalData(item.ticker, '1Y');
+          if (technicalResult.status === 'fulfilled') {
+            const historicalData = technicalResult.value;
             if (historicalData && historicalData.length > 0) {
               const prices = historicalData.map(d => d.value);
               const volumes = historicalData.map(d => d.volume);
@@ -222,38 +245,24 @@ export class WishlistService {
               // Use the actual calculated score instead of mapping signal
               technicalScore = typeof indicators.score === 'number' ? indicators.score : null;
             }
-          } catch (error) {
-            console.error(`Failed to fetch technical data for ${item.ticker}:`, error);
+          } else {
+            console.error(`Failed to fetch technical data for ${item.ticker}:`, technicalResult.reason);
           }
 
           // Get sentiment score
-          // AUD-05: previously called this app's own /api/news/[symbol] route via
-          // `fetch()` with no session cookie forwarded — since that route requires
-          // auth (ONB-05, 2026-07-16), the call always 401'd and this score was
-          // silently always null. Call the service directly instead.
           let sentimentScore: number | null = null;
-          try {
-            const articles = await newsService.getAnalyzedNewsForSymbol(item.ticker, {
-              analyze: true,
-              limit: 20,
-            });
-            sentimentScore = this.calculateSentimentScore(articles);
-          } catch (error) {
-            console.error(`Failed to fetch sentiment data for ${item.ticker}:`, error);
+          if (sentimentResult.status === 'fulfilled') {
+            sentimentScore = this.calculateSentimentScore(sentimentResult.value);
+          } else {
+            console.error(`Failed to fetch sentiment data for ${item.ticker}:`, sentimentResult.reason);
           }
 
           // Get intrinsic value score
-          // AUD-05: same self-fetch issue as sentiment above — call the service
-          // directly instead of hitting our own now-authenticated route over HTTP.
           let intrinsicScore: number | null = null;
-          try {
-            const intrinsicData = await IntrinsicValueService.calculateIntrinsicValue(
-              item.ticker,
-              currentPrice
-            );
-            intrinsicScore = this.upsideToScore(intrinsicData.upsidePercent);
-          } catch (error) {
-            console.error(`Failed to fetch intrinsic value for ${item.ticker}:`, error);
+          if (intrinsicResult.status === 'fulfilled') {
+            intrinsicScore = this.upsideToScore(intrinsicResult.value.upsidePercent);
+          } else {
+            console.error(`Failed to fetch intrinsic value for ${item.ticker}:`, intrinsicResult.reason);
           }
 
           // Calculate composite score

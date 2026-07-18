@@ -33,12 +33,13 @@ function signalColor(signal: IndicatorRow["signal"]): string {
 
 export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) {
   const { data, isLoading, error } = useQuery({
-    queryKey: ["technical-analysis", symbol],
+    queryKey: ["chart", symbol, "1Y"],
     queryFn: async () => {
       const res = await fetch(`/api/market/chart/${symbol}?period=1Y`);
       if (!res.ok) throw new Error("Failed to fetch analysis");
       return res.json();
     },
+    staleTime: 5 * 60 * 1000,
   });
 
   if (isLoading) {

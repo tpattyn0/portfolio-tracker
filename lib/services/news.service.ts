@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/prisma';
-import axios from 'axios';
 import yahooFinance from '@/lib/yahoo-finance';
 import NodeCache from 'node-cache';
 
@@ -195,23 +194,38 @@ export class NewsAggregationService {
       const query = searchTerms
         .map(term => `"${term}"`)
         .join(' OR ');
-      
-      const response = await axios.get('https://newsapi.org/v2/everything', {
-        params: {
-          q: query,
-          apiKey: process.env.NEWS_API_KEY,
-          language: 'en',
-          sortBy: 'relevancy', // Changed from publishedAt to relevancy
-          pageSize: 10,
-        },
-        timeout: 5000,
+
+      const params = new URLSearchParams({
+        q: query,
+        apiKey: process.env.NEWS_API_KEY,
+        language: 'en',
+        sortBy: 'relevancy', // Changed from publishedAt to relevancy
+        pageSize: '10',
       });
-      
-      if (!response.data.articles) {
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+
+      let response: Response;
+      try {
+        response = await fetch(`https://newsapi.org/v2/everything?${params.toString()}`, {
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      if (!response.ok) {
+        throw new Error(`NewsAPI request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.articles) {
         return [];
       }
-      
-      return response.data.articles
+
+      return data.articles
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .filter((article: any) => article.title && article.url)
         .map((article: any) => ({
@@ -349,13 +363,20 @@ export class NewsAggregationService {
         // key is unset).
         const { sentimentService } = await import('./sentiment.service');
 
-        for (const article of articlesToAnalyze) {
-          try {
-            await sentimentService.analyzeAndUpdateArticle(article.id);
-          } catch (error) {
-            console.error(`Failed to analyze article ${article.id}:`, error);
-          }
-        }
+        // Previously a sequential `for…await` loop — each article's Gemini
+        // round-trip is independent, so a wishlist of N items serialized up
+        // to N×3 calls back-to-back. Bounded to the same up-to-3-articles
+        // batch, now run concurrently (plan Task 5); a single article's
+        // failure is still caught and logged without affecting the others.
+        await Promise.all(
+          articlesToAnalyze.map(async (article) => {
+            try {
+              await sentimentService.analyzeAndUpdateArticle(article.id);
+            } catch (error) {
+              console.error(`Failed to analyze article ${article.id}:`, error);
+            }
+          })
+        );
 
         articles = await prisma.newsArticle.findMany({
           where: {

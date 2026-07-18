@@ -139,28 +139,24 @@ export async function GET(request: NextRequest) {
     const totalReturn = totalValue - totalCost;
     const totalReturnPercent = totalCost > 0 ? (totalReturn / totalCost) * 100 : 0;
 
-    // Calculate today's change by comparing current prices with yesterday's close
+    // Calculate today's change by comparing current prices with yesterday's
+    // close. Previously this fired one uncached `getHistoricalRange` Yahoo
+    // call per position on every dashboard load (plan Task 4) — replaced
+    // with the `previousClose` already returned by `getQuote`, which is
+    // cached 60s in market-data.service and is fetched anyway for live
+    // pricing elsewhere in the app (usePriceSync). No second round-trip per
+    // position.
     let dayChange = 0;
     let dayChangePercent = 0;
 
     try {
-      // For each position, calculate the change from yesterday
       const yesterdayValue = await Promise.all(
         positions.map(async (pos) => {
           try {
-            // Get yesterday's closing price (use 1D historical data)
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
+            const quote = await marketDataService.getQuote(pos.ticker);
+            const yesterdayClose = quote.previousClose;
 
-            const historicalData = await marketDataService.getHistoricalRange(
-              pos.ticker,
-              yesterday,
-              yesterday,
-              '1d'
-            );
-
-            if (historicalData && historicalData.length > 0) {
-              const yesterdayClose = historicalData[historicalData.length - 1].value;
+            if (yesterdayClose && yesterdayClose > 0) {
               const quantity = pos.quantity;
 
               // Apply exchange rate if needed
@@ -170,7 +166,7 @@ export async function GET(request: NextRequest) {
               return quantity * yesterdayClose * rate;
             }
 
-            // If no historical data, use current value (no change)
+            // If no previous-close data, use current value (no change)
             return pos.marketValueInBaseCurrency;
           } catch (error) {
             console.error(`Failed to get yesterday's price for ${pos.ticker}:`, error);

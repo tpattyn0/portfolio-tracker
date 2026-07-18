@@ -82,7 +82,7 @@ Key decisions and tradeoffs:
 
 Work in order. `[ ] todo · [~] in progress · [x] done · [!] blocked`.
 
-1. [ ] **Remove the global 30s refetch storm; set per-query cache policy.**
+1. [x] **Remove the global 30s refetch storm; set per-query cache policy.**
    In `components/providers.tsx:9-16` remove `refetchInterval: 30 * 1000` from the
    `QueryClient` `defaultOptions`; keep a sane default `staleTime` (e.g. 60s) and
    `refetchOnWindowFocus: false` as the default. Then set explicit `staleTime` on the
@@ -96,7 +96,7 @@ Work in order. `[ ] todo · [~] in progress · [x] done · [!] blocked`.
    loading a research page and idling for >60s issues no repeat `/api/market/*`
    requests (observe Network tab / server logs). `npm run verify` green.
 
-2. [ ] **De-duplicate the Overview/Technical chart+indicator fetch.**
+2. [x] **De-duplicate the Overview/Technical chart+indicator fetch.**
    `components/technical-analysis.tsx:36` and `components/overview.tsx:21-28` fetch the
    same `/api/market/chart/[symbol]?period=1Y` under different query keys, so the
    Overview→Technical tab switch refetches identical data and re-runs
@@ -107,7 +107,7 @@ Work in order. `[ ] todo · [~] in progress · [x] done · [!] blocked`.
    `GET /api/market/chart/<sym>?period=1Y` (Network tab). Rendered technical values
    unchanged vs. before. `npm run verify` green.
 
-3. [ ] **Cache computed technical indicators + add HTTP cache headers on the chart route.**
+3. [x] **Cache computed technical indicators + add HTTP cache headers on the chart route.**
    `app/api/market/chart/[symbol]/route.ts:22-30` recomputes `calculateIndicators`
    (SMA/EMA/RSI/MACD/… over 205+ points) on every request even though the underlying
    1Y history is already cached 60s in `market-data.service`. Memoize the computed
@@ -120,7 +120,7 @@ Work in order. `[ ] todo · [~] in progress · [x] done · [!] blocked`.
    same symbol compute indicators once (spy/log). Response carries a `Cache-Control`
    header. `npm run verify` green.
 
-4. [ ] **Fix the dashboard day-change per-position fanout.**
+4. [x] **Fix the dashboard day-change per-position fanout.**
    `app/api/portfolio/route.ts:148-180` fires one `getHistoricalRange(...,'1d')` Yahoo
    call per position on every dashboard load to derive yesterday's close, uncached
    beyond the 60s window and serialized only by `Promise.all`. Replace the per-position
@@ -134,7 +134,7 @@ Work in order. `[ ] todo · [~] in progress · [x] done · [!] blocked`.
    position (server logs); `dayChange`/`dayChangePercent` match the previous
    implementation within rounding for a fixed fixture. `npm run verify` green.
 
-5. [ ] **Parallelize wishlist per-item scoring and its sequential Gemini calls.**
+5. [x] **Parallelize wishlist per-item scoring and its sequential Gemini calls.**
    `lib/services/wishlist.service.ts:168-257`: each item already runs inside
    `Promise.all`, but *within* an item the five score fetches are sequential `await`s
    that are independent (fundamentals, analyst, technical, sentiment, intrinsic) —
@@ -147,7 +147,13 @@ Work in order. `[ ] todo · [~] in progress · [x] done · [!] blocked`.
    score fetches concurrently (assert via timing/mock ordering); composite scores are
    identical to before for a fixed fixture (no math change). `npm run verify` green.
 
-6. [ ] **Add the two missing DB indexes on the closed-positions hot path.**
+6. [x] **Add the two missing DB indexes on the closed-positions hot path.** Migration
+   created only — `20260718152229_add_transaction_position_executedat_index` — NOT
+   applied to the shared dev/prod DB (`prisma migrate status` confirms it is pending).
+   Owner sign-off required before running `prisma migrate deploy`. Only the composite
+   `[positionId, executedAt]` index was added; a query-plan check for `@@index([type])`
+   was not performed (no isolated DB to run `EXPLAIN` against safely) — logged as a
+   follow-up if the owner wants it investigated.
    `app/api/portfolio/closed-positions/route.ts:50-70` queries `Position` filtered by
    `portfolioId` + `transactions.some(type: SELL)` and loads all `transactions`
    ordered by `executedAt`. `Transaction` has `@@index([executedAt])` and
@@ -162,7 +168,7 @@ Work in order. `[ ] todo · [~] in progress · [x] done · [!] blocked`.
    schema still validates (`prisma validate`). Migration is *created, not applied*
    pending owner sign-off. `npm run verify` green.
 
-7. [ ] **Add streaming loading boundaries to the remaining pages.**
+7. [x] **Add streaming loading boundaries to the remaining pages.**
    Only `app/(dashboard)/dashboard/loading.tsx` exists; the research, research-detail,
    wishlist, closed-positions, and portfolio-detail routes have no `loading.tsx`, so
    navigation shows a blank frame until the client component's first fetch resolves.
@@ -172,7 +178,7 @@ Work in order. `[ ] todo · [~] in progress · [x] done · [!] blocked`.
    — Acceptance: each targeted route has a `loading.tsx`; navigating to it shows a
    skeleton immediately (no blank flash) in the browser. `npm run verify` green.
 
-8. [ ] **Remove unused/replaceable heavy dependencies (bundle hygiene).**
+8. [x] **Remove unused/replaceable heavy dependencies (bundle hygiene).**
    `recharts` now has zero imports (`grep -rln recharts app components` → none; ADR-11
    deleted its last caller) yet remains in `package.json`; `@tremor/react` (TD-30) and
    `zustand` (TD-16) are also unused; `axios` (TD-04) has CVEs and is used only in
@@ -183,7 +189,11 @@ Work in order. `[ ] todo · [~] in progress · [x] done · [!] blocked`.
    returns nothing; `package.json` no longer lists them; `npm run verify` green
    (typecheck confirms no dangling imports). Update TD-04/TD-16/TD-30 to Resolved.
 
-9. [ ] **Code-split the heaviest client-only surfaces.**
+9. [x] **Code-split the heaviest client-only surfaces.** Verified via `npm run build`:
+   `/research/[symbol]` route-level First Load JS is 6.31 kB / 155 kB total, vs.
+   `/portfolio/[ticker]` (still statically importing all 7 tabs, TD-32 out of scope
+   here) at 42 kB / 225 kB — confirms the six non-default tabs are deferred out of
+   the initial bundle.
    The research-detail page eagerly imports all seven tab components
    (`research/[symbol]/page.tsx:8-14`) though only one renders at a time. Convert the
    non-default tabs (Technical, Fundamental, Analyst, Intrinsic, Transactions, News) to
