@@ -2,21 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, ArrowLeft } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { StockSearch } from "@/components/stock-search";
 import { format } from "date-fns";
 import { formatCurrency } from "@/lib/utils/format";
+import { cn } from "@/lib/utils";
 
 const addPositionSchema = z.object({
   ticker: z.string().min(1, "Stock symbol is required"),
@@ -31,7 +26,6 @@ type AddPositionForm = z.infer<typeof addPositionSchema>;
 
 // Helper to parse number from input (accepts both . and ,)
 const parseNumberInput = (value: string): string => {
-  // Replace comma with dot for internal processing
   return value.replace(',', '.');
 };
 
@@ -40,8 +34,7 @@ export default function AddPositionPage() {
   const queryClient = useQueryClient();
   const [selectedStock, setSelectedStock] = useState<any>(null);
   const [priceInputMode, setPriceInputMode] = useState<'perShare' | 'total'>('perShare');
-  
-  // Local state for input values (as strings for better control)
+
   const [quantityInput, setQuantityInput] = useState('');
   const [priceInput, setPriceInput] = useState('');
   const [totalInput, setTotalInput] = useState('');
@@ -49,8 +42,6 @@ export default function AddPositionPage() {
 
   const {
     register,
-    handleSubmit,
-    formState: { errors },
     setValue,
     watch,
   } = useForm<AddPositionForm>({
@@ -82,7 +73,6 @@ export default function AddPositionPage() {
     },
   });
 
-  // Calculate values based on input mode
   const calculateValues = () => {
     const quantity = parseFloat(parseNumberInput(quantityInput)) || 0;
     const fees = parseFloat(parseNumberInput(feesInput)) || 0;
@@ -90,24 +80,11 @@ export default function AddPositionPage() {
     if (priceInputMode === 'perShare') {
       const price = parseFloat(parseNumberInput(priceInput)) || 0;
       const subtotal = quantity * price;
-      return { 
-        quantity, 
-        price, 
-        subtotal,
-        fees,
-        total: subtotal + fees 
-      };
+      return { quantity, price, subtotal, fees, total: subtotal + fees };
     } else {
-      // Total amount mode: the entered amount is EXCLUDING fees
       const totalExcludingFees = parseFloat(parseNumberInput(totalInput)) || 0;
       const price = quantity > 0 ? totalExcludingFees / quantity : 0;
-      return { 
-        quantity, 
-        price, 
-        subtotal: totalExcludingFees,
-        fees,
-        total: totalExcludingFees + fees 
-      };
+      return { quantity, price, subtotal: totalExcludingFees, fees, total: totalExcludingFees + fees };
     }
   };
 
@@ -122,215 +99,255 @@ export default function AddPositionPage() {
     }
   };
 
+  const [formError, setFormError] = useState<string | null>(null);
+
   const onSubmit = () => {
+    setFormError(null);
     const calcValues = calculateValues();
-    
-    // Validate and submit
+
     const formData: AddPositionForm = {
       ticker: selectedStock?.symbol || '',
       name: selectedStock?.name || '',
       quantity: calcValues.quantity,
       price: calcValues.price,
       date: watch('date'),
-      fees: calcValues.fees
+      fees: calcValues.fees,
     };
 
-    // Validate manually
     if (!formData.ticker) {
-      alert('Please select a stock');
+      setFormError('Please select a stock');
       return;
     }
     if (formData.quantity <= 0) {
-      alert('Please enter a valid quantity');
+      setFormError('Please enter a valid quantity');
       return;
     }
     if (formData.price <= 0) {
-      alert('Please enter a valid price');
+      setFormError('Please enter a valid price');
       return;
     }
 
     mutation.mutate(formData);
   };
 
+  const inputClass =
+    "w-full h-10 box-border rounded-md border border-border bg-background px-3.5 text-sm text-foreground outline-none";
+
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-6">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
-        >
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Back to Portfolio
-        </Link>
+    <div className="mx-auto max-w-[680px]">
+      <Link href="/dashboard" className="text-[10.5px] uppercase tracking-[0.12em] text-mut">
+        ← Portfolio
+      </Link>
+
+      <div className="my-[18px] mb-6">
+        <div className="text-[11px] uppercase tracking-[0.14em] text-mut">New entry · the ledger</div>
+        <h1 className="mt-2.5 font-serif text-[44px] font-medium leading-[1.05]">
+          Add a position
+        </h1>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Add New Position</CardTitle>
-          <CardDescription>
-            Add a stock or ETF to your portfolio
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className="space-y-6">
-            {mutation.isError && (
-              <Alert variant="destructive">
-                <AlertDescription>
-                  {mutation.error?.message || "Failed to add position"}
-                </AlertDescription>
-              </Alert>
-            )}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit();
+        }}
+        className="flex flex-col gap-7 rounded-lg border border-border bg-card p-8"
+      >
+        {(mutation.isError || formError) && (
+          <div className="rounded-md border border-dn/40 bg-fill p-3 text-sm text-dn">
+            {formError || mutation.error?.message || "Failed to add position"}
+          </div>
+        )}
 
-            {/* Stock Search */}
-            <div className="space-y-2">
-              <Label>Search Stock/ETF</Label>
-              <StockSearch onSelect={handleStockSelect} />
-              {selectedStock && (
-                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                  <div className="font-medium">{selectedStock.symbol}</div>
-                  <div className="text-sm text-gray-600">{selectedStock.name}</div>
-                  <div className="text-sm">
-                    Current Price: {formatCurrency(selectedStock.price, selectedStock.currency || 'USD')}
-                  </div>
-                </div>
+        {/* Stock search */}
+        <div>
+          <div className="mb-2 text-[10.5px] uppercase tracking-[0.12em] text-mut">
+            Search stock or ETF
+          </div>
+          <StockSearch onSelect={handleStockSelect} />
+          {selectedStock && (
+            <div className="mt-3 flex items-baseline justify-between rounded-r-md border-l-2 border-foreground bg-fill px-4 py-2.5">
+              <span>
+                <span className="font-serif text-base font-medium">{selectedStock.name}</span>
+                <span className="ml-2 text-[10.5px] uppercase tracking-[0.12em] text-mut">
+                  {selectedStock.symbol}
+                </span>
+              </span>
+              <span className="text-sm text-sub">
+                {formatCurrency(selectedStock.price, selectedStock.currency || "USD")}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <label htmlFor="quantity" className="mb-2 block text-[10.5px] uppercase tracking-[0.12em] text-mut">
+              Number of shares
+            </label>
+            <input
+              id="quantity"
+              type="text"
+              inputMode="decimal"
+              placeholder="10"
+              value={quantityInput}
+              onChange={(e) => setQuantityInput(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="date" className="mb-2 block text-[10.5px] uppercase tracking-[0.12em] text-mut">
+              Transaction date
+            </label>
+            <input
+              id="date"
+              type="date"
+              max={format(new Date(), "yyyy-MM-dd")}
+              className={inputClass}
+              {...register("date")}
+            />
+          </div>
+        </div>
+
+        {/* Price / total tab pair */}
+        <div>
+          <div className="mb-4.5 flex gap-6 border-b border-line2">
+            <button
+              type="button"
+              onClick={() => setPriceInputMode("perShare")}
+              className={cn(
+                "pb-2 text-[10.5px] uppercase tracking-[0.12em]",
+                priceInputMode === "perShare"
+                  ? "border-b-2 border-foreground font-semibold text-foreground"
+                  : "text-mut"
               )}
-            </div>
+            >
+              Price per share
+            </button>
+            <button
+              type="button"
+              onClick={() => setPriceInputMode("total")}
+              className={cn(
+                "pb-2 text-[10.5px] uppercase tracking-[0.12em]",
+                priceInputMode === "total"
+                  ? "border-b-2 border-foreground font-semibold text-foreground"
+                  : "text-mut"
+              )}
+            >
+              Total amount
+            </button>
+          </div>
 
-            {/* Quantity */}
-            <div className="space-y-2">
-              <Label htmlFor="quantity">Number of Shares</Label>
-              <Input
-                id="quantity"
-                type="text"
-                inputMode="decimal"
-                placeholder="10"
-                value={quantityInput}
-                onChange={(e) => setQuantityInput(e.target.value)}
-              />
-            </div>
-
-            {/* Price Input Mode Toggle */}
-            <div className="space-y-2">
-              <Label>Price Input Method</Label>
-              <Tabs value={priceInputMode} onValueChange={(v) => setPriceInputMode(v as any)}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="perShare">Price per Share</TabsTrigger>
-                  <TabsTrigger value="total">Total Amount</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-
-            {/* Price Input */}
-            {priceInputMode === 'perShare' ? (
-              <div className="space-y-2">
-                <Label htmlFor="price">Price per Share (€)</Label>
-                <Input
+          <div className="grid grid-cols-2 gap-6">
+            {priceInputMode === "perShare" ? (
+              <div>
+                <label htmlFor="price" className="mb-2 block text-[10.5px] uppercase tracking-[0.12em] text-mut">
+                  Price per share (€)
+                </label>
+                <input
                   id="price"
                   type="text"
                   inputMode="decimal"
                   placeholder="150.00"
                   value={priceInput}
                   onChange={(e) => setPriceInput(e.target.value)}
+                  className={inputClass}
                 />
                 {selectedStock && (
-                  <p className="text-xs text-gray-600">
+                  <p className="mt-1.5 font-serif text-[11px] italic text-mut">
                     Current market price: {formatCurrency(selectedStock.price)}
                   </p>
                 )}
               </div>
             ) : (
-              <div className="space-y-2">
-                <Label htmlFor="total">Total Purchase Amount (€)</Label>
-                <Input
+              <div>
+                <label htmlFor="total" className="mb-2 block text-[10.5px] uppercase tracking-[0.12em] text-mut">
+                  Total purchase amount (€)
+                </label>
+                <input
                   id="total"
                   type="text"
                   inputMode="decimal"
                   placeholder="1500.00"
                   value={totalInput}
                   onChange={(e) => setTotalInput(e.target.value)}
+                  className={inputClass}
                 />
-                <p className="text-xs text-gray-600">
-                  Excluding commission & fees
+                <p className="mt-1.5 font-serif text-[11px] italic text-mut">
+                  Excluding commission &amp; fees
                 </p>
               </div>
             )}
 
-            {/* Date */}
-            <div className="space-y-2">
-              <Label htmlFor="date">Transaction Date</Label>
-              <Input
-                id="date"
-                type="date"
-                {...register("date")}
-                max={format(new Date(), "yyyy-MM-dd")}
-              />
-            </div>
-
-            {/* Fees */}
-            <div className="space-y-2">
-              <Label htmlFor="fees">Commission & Fees (€)</Label>
-              <Input
+            <div>
+              <label htmlFor="fees" className="mb-2 block text-[10.5px] uppercase tracking-[0.12em] text-mut">
+                Commission &amp; fees (€)
+              </label>
+              <input
                 id="fees"
                 type="text"
                 inputMode="decimal"
                 placeholder="0.00"
                 value={feesInput}
                 onChange={(e) => setFeesInput(e.target.value)}
+                className={inputClass}
               />
             </div>
+          </div>
+        </div>
 
-            {/* Summary */}
-            <div className="border-t pt-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Shares:</span>
-                <span>{values.quantity.toFixed(4)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Price per share:</span>
-                <span>{formatCurrency(values.price)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Subtotal:</span>
-                <span>{formatCurrency(values.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Commission & Fees:</span>
-                <span>{formatCurrency(values.fees)}</span>
-              </div>
-              <div className="flex justify-between items-center text-lg font-medium border-t pt-2">
-                <span>Total Cost:</span>
-                <span>{formatCurrency(values.total)}</span>
-              </div>
-            </div>
+        {/* Order summary */}
+        <div className="border-t border-border pt-4 text-[13.5px]">
+          <div className="flex justify-between py-1 text-sub">
+            <span>Shares</span>
+            <span>{values.quantity.toFixed(4)}</span>
+          </div>
+          <div className="flex justify-between py-1 text-sub">
+            <span>Price per share</span>
+            <span>{formatCurrency(values.price)}</span>
+          </div>
+          <div className="flex justify-between py-1 text-sub">
+            <span>Subtotal</span>
+            <span>{formatCurrency(values.subtotal)}</span>
+          </div>
+          <div className="flex justify-between py-1 text-sub">
+            <span>Commission &amp; fees</span>
+            <span>{formatCurrency(values.fees)}</span>
+          </div>
+          <div
+            className="mt-3 flex justify-between pt-3.5 font-serif text-[22px]"
+            style={{ borderTop: "3px double var(--foreground)" }}
+          >
+            <span>Total cost</span>
+            <span>{formatCurrency(values.total)}</span>
+          </div>
+        </div>
 
-            {/* Actions */}
-            <div className="flex space-x-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.back()}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={mutation.isPending || !selectedStock}
-                className="flex-1"
-              >
-                {mutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Adding Position...
-                  </>
-                ) : (
-                  "Add Position"
-                )}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+        {/* Actions */}
+        <div className="flex gap-3.5">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="h-11 flex-1 rounded-full border border-border bg-transparent text-[13.5px] font-medium text-foreground"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={mutation.isPending || !selectedStock}
+            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-btnbg text-[13.5px] font-medium text-btnfg disabled:opacity-50"
+          >
+            {mutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Adding position…
+              </>
+            ) : (
+              "Add position"
+            )}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

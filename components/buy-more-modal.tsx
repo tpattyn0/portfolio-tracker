@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -252,25 +251,24 @@ export function BuyMoreModal({
               />
             </div>
 
-            {/* Purchase Summary */}
-            <Card className="bg-blue-50 border-blue-200">
-              <CardContent className="pt-4">
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Cost</span>
-                    <span className="font-medium">{formatCurrency(totalCost)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Current Holdings</span>
-                    <span>{formatNumber(position.quantity)} @ {formatCurrency(position.avgCostBasis)}</span>
-                  </div>
-                  <div className="flex justify-between font-medium pt-2 border-t">
-                    <span>New Position</span>
-                    <span>{formatNumber(newTotalQuantity)} @ {formatCurrency(newAvgCostBasis)}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Purchase Summary — order-summary total row per DESIGN.md */}
+            <div className="rounded-md border border-border bg-fill px-4 py-3 text-[13.5px]">
+              <div className="flex justify-between py-1 text-sub">
+                <span>Total cost</span>
+                <span className="font-medium text-foreground">{formatCurrency(totalCost)}</span>
+              </div>
+              <div className="flex justify-between py-1 text-sub">
+                <span>Current holdings</span>
+                <span>{formatNumber(position.quantity)} @ {formatCurrency(position.avgCostBasis)}</span>
+              </div>
+              <div
+                className="mt-2 flex justify-between pt-2.5 font-medium"
+                style={{ borderTop: "3px double var(--foreground)" }}
+              >
+                <span>New position</span>
+                <span>{formatNumber(newTotalQuantity)} @ {formatCurrency(newAvgCostBasis)}</span>
+              </div>
+            </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>

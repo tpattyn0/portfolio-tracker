@@ -7,7 +7,7 @@
 - **Database**: PostgreSQL (Supabase-hosted), accessed via Prisma.
 - **Market data**: Yahoo Finance (`yahoo-finance2`), NewsAPI.
 - **AI**: Google Gemini (`@google/generative-ai`) for news-sentiment scoring and daily portfolio insights.
-- **UI**: Tailwind CSS, Radix UI primitives, Tremor (charts), Recharts, `lucide-react` icons.
+- **UI**: Tailwind CSS, Radix UI primitives (via `components/ui/*`, shadcn-derived), two purpose-built inline-SVG charts — `components/portfolio-chart.tsx` (dashboard hero, see ADR-10; as of `plans/2026-07-18-meridian-dashboard-detail-fixes.md` also has hover crosshair+tooltip and y-axis price labels, ported from the detail chart's approach) and `components/research/detail-price-chart.tsx` (research-detail Overview/Technical charts, see ADR-11: hover crosshair+tooltip, minimal y-axis labels, optional dashed reference lines; no range-morph — the one behavior still exclusive to the detail chart, along with its variable viewBox). Recharts (`recharts` package) is no longer used anywhere in the app — `components/price-chart.tsx` was the last caller and was deleted once no importer remained (ADR-11). `next/font/google` (Libre Franklin, Newsreader — self-hosted), `next-themes` (light/dark persistence), `lucide-react` icons. `@tremor/react` is a `package.json` dependency with zero imports anywhere — it was never the charting library; see `TECH_DEBT.md` TD-30. Design system: `DESIGN.md` (Meridian — see ADR-8/9/10/11/12).
 - **Client state/data**: React Query for server-state caching; local `useState` elsewhere. (`zustand` is a dependency but unused — see `TECH_DEBT.md`.)
 - **Caching**: in-memory (`node-cache` in `news.service.ts`; a separate hand-rolled `Map` in `market-data.service.ts`; another separate `Map` in `rate-limit.ts`) plus DB-backed 24h caches on `FundamentalData`/`AnalystRating`. No shared/external cache (e.g. Redis) — see ADR-4.
 
@@ -45,7 +45,11 @@
 | `lib/services/sentiment.service.ts` | Gemini-based article sentiment scoring + daily aggregation |
 | `lib/services/analyst-ratings.service.ts` | Analyst rating fetch + scoring |
 | `lib/services/exchange-rate.service.ts` | FX rate fetch/cache/convert |
-| `components/error-boundary.tsx` | `ErrorBoundary` (full-page, currently unused) and `ComponentErrorBoundary` (section-level, used on dashboard and position-detail pages only) |
+| `components/error-boundary.tsx` | `ErrorBoundary` (full-page, currently unused) and `ComponentErrorBoundary` (section-level, used on dashboard, position-detail, and research-detail pages) |
+| `components/research/*` | Shared Meridian research-detail primitives (ADR-11): `headline-score-card.tsx`, `score-figure.tsx` (`ScoreFigure`/`VerdictStamp`), `subscore-band.tsx`, `graded-metric-row.tsx`, `detail-price-chart.tsx`, `transactions-tab.tsx`. Consumed by `overview.tsx`, `technical-analysis.tsx`, `fundamental-analysis.tsx`, `analyst-ratings.tsx`, `intrinsic-value.tsx`, `news-feed.tsx`. |
+| `lib/utils/score-band.ts` | Pure score/metric-grade banding helpers (`scoreBandClass`, `gradingDotClass`, `metricGrade`) shared across the research-detail tabs — presentational only, never changes scoring math |
+| `lib/utils/chart-ticks.ts` | Pure `niceYTicks()` helper for `DetailPriceChart`'s minimal y-axis labels |
+| `lib/utils/research-scores.ts` | Pure `upsideToScore`/`sentimentToScore`/`round1` derivations shared by Overview, Intrinsic value, and News & sentiment tabs; `verdictLabel(score, context)` selects the composite-verdict label set (portfolio vs wishlist wording) — used by `overview.tsx`, whose own `context` prop is now driven by an ownership lookup in `research/[symbol]/page.tsx` rather than hardcoded (MRD-Q1) |
 
 ## API surface
 

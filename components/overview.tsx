@@ -2,11 +2,10 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { PriceChart } from "@/components/price-chart";
-import { cn } from "@/lib/utils";
-import { AlertCircle, BarChart3, Brain, Calculator, LineChart, CheckCircle2, Eye, XCircle, PlusCircle } from "lucide-react";
+import { DetailPriceChart } from "@/components/research/detail-price-chart";
+import { HeadlineScoreCard } from "@/components/research/headline-score-card";
+import { SubscoreBand } from "@/components/research/subscore-band";
+import { round1, sentimentToScore, upsideToScore, verdictLabel } from "@/lib/utils/research-scores";
 
 interface OverviewProps {
   symbol: string;
@@ -14,27 +13,6 @@ interface OverviewProps {
   currentPrice: number;
   context?: "portfolio" | "wishlist";
   currency?: string;
-}
-
-// Helper mappers
-function sentimentToScore(sent: number | null | undefined): number {
-  const s = typeof sent === "number" ? sent : 0; // -1..1
-  const score = (s + 1) * 5; // 0..10
-  return Math.max(0, Math.min(10, score));
-}
-
-function upsideToScore(upsidePercent: number | null | undefined): number {
-  if (upsidePercent === null || upsidePercent === undefined) return 5;
-  // Map -25% -> 0, 0% -> 5, +30% -> 10 (clamped)
-  const min = -25;
-  const max = 30;
-  const clamped = Math.max(min, Math.min(max, upsidePercent));
-  const normalized = (clamped - min) / (max - min); // 0..1
-  return Math.round(normalized * 10 * 10) / 10; // 0..10, 1 decimal
-}
-
-function round1(n: number) {
-  return Math.round(n * 10) / 10;
 }
 
 export function Overview({ symbol, name, currentPrice, context = "portfolio", currency }: OverviewProps) {
@@ -96,31 +74,43 @@ export function Overview({ symbol, name, currentPrice, context = "portfolio", cu
     staleTime: 5 * 60 * 1000,
   });
 
-  // Derive subscores
+  // Derive subscores. Each dimension defaults to a neutral `5` when its query
+  // has *resolved with no usable data* (the pre-existing behavior), but
+  // reports `null` when its query *errored* — the composite math substitutes
+  // a neutral value for a missing input either way (unchanged scoring
+  // behavior), but the SubscoreBand/ScoreFigure render an honest `--mut`
+  // placeholder for `null` instead of a fabricated `5` (DESIGN.md "Score
+  // figure" null/unavailable band). This is presentational-only: no scoring
+  // math changes, only what gets displayed for an errored dimension.
   const technicalScore = useMemo(() => {
+    if (chartQ.isError) return null;
     const indicators = chartQ.data?.indicators;
     if (!indicators) return 5;
     // Use the actual calculated score from technical analysis instead of mapping signal
     return typeof indicators.score === 'number' ? indicators.score : 5;
-  }, [chartQ.data]);
+  }, [chartQ.data, chartQ.isError]);
 
   const fundamentalScore = useMemo(() => {
+    if (fundamentalsQ.isError) return null;
     const s = fundamentalsQ.data?.score?.total;
     return typeof s === "number" ? s : 5;
-  }, [fundamentalsQ.data]);
+  }, [fundamentalsQ.data, fundamentalsQ.isError]);
 
   const analystScore = useMemo(() => {
+    if (analystQ.isError) return null;
     const s = analystQ.data?.score;
     if (typeof s !== "number") return 5;
     return Math.max(0, Math.min(10, s));
-  }, [analystQ.data]);
+  }, [analystQ.data, analystQ.isError]);
 
   const intrinsicScore = useMemo(() => {
+    if (intrinsicQ.isError) return null;
     const up = intrinsicQ.data?.upsidePercent as number | null | undefined;
     return upsideToScore(up);
-  }, [intrinsicQ.data]);
+  }, [intrinsicQ.data, intrinsicQ.isError]);
 
   const sentimentScore = useMemo(() => {
+    if (newsQ.isError) return null;
     const articles = (newsQ.data || []) as Array<{ sentiment: number | null; impact?: string | null; relevanceScore?: number | null }>;
     if (!Array.isArray(articles) || articles.length === 0) return 5;
     // Weighted average like SentimentScore component
@@ -137,9 +127,11 @@ export function Overview({ symbol, name, currentPrice, context = "portfolio", cu
     }
     const avg = totalW > 0 ? weighted / totalW : 0;
     return round1(sentimentToScore(avg));
-  }, [newsQ.data]);
+  }, [newsQ.data, newsQ.isError]);
 
-  // Composite score per user story
+  // Composite score per user story — a `null` (errored) dimension substitutes
+  // a neutral 5 in the weighted sum, same as the pre-existing "no data"
+  // fallback; the composite math itself is unchanged.
   const composite = useMemo(() => {
     const weights = {
       intrinsicValue: 0.25,
@@ -149,173 +141,92 @@ export function Overview({ symbol, name, currentPrice, context = "portfolio", cu
       analyst: 0.15,
     };
     const sum =
-      intrinsicScore * weights.intrinsicValue +
-      fundamentalScore * weights.fundamental +
-      technicalScore * weights.technical +
-      sentimentScore * weights.sentiment +
-      analystScore * weights.analyst;
+      (intrinsicScore ?? 5) * weights.intrinsicValue +
+      (fundamentalScore ?? 5) * weights.fundamental +
+      (technicalScore ?? 5) * weights.technical +
+      (sentimentScore ?? 5) * weights.sentiment +
+      (analystScore ?? 5) * weights.analyst;
     const rounded = round1(sum);
-    let action = "HOLD" as string;
-    if (context === "portfolio") {
-      if (rounded >= 8.5) action = "BUY MORE";
-      else if (rounded >= 7.0) action = "HOLD";
-      else if (rounded >= 5.0) action = "REDUCE";
-      else action = "SELL";
-    } else {
-      if (rounded >= 8.5) action = "STRONG BUY";
-      else if (rounded >= 7.0) action = "BUY";
-      else if (rounded >= 5.0) action = "WATCH";
-      else action = "AVOID";
-    }
+    const action = verdictLabel(rounded, context);
     return { score: rounded, action };
   }, [intrinsicScore, fundamentalScore, technicalScore, sentimentScore, analystScore, context]);
 
-  const isLoading = chartQ.isLoading || fundamentalsQ.isLoading || analystQ.isLoading || intrinsicQ.isLoading || newsQ.isLoading;
-  const hasError = chartQ.isError || fundamentalsQ.isError || analystQ.isError || intrinsicQ.isError || newsQ.isError;
+  // Only the chart query (which also drives the price chart) gates the
+  // initial full-tab loading state — do not gate the whole card on the
+  // slowest of five independent queries (plan Task 4).
+  const isLoading = chartQ.isLoading;
+
+  const insights: string[] = [];
+  if (chartQ.data?.indicators?.signal) {
+    insights.push(`Technical: ${String(chartQ.data.indicators.signal).replace(/_/g, " ")}`);
+  }
+  if (fundamentalsQ.data?.score?.interpretation) {
+    insights.push(`Fundamentals: ${fundamentalsQ.data.score.interpretation}`);
+  }
+  if (analystQ.data?.scoreInterpretation) {
+    insights.push(`Analysts: ${analystQ.data.scoreInterpretation}`);
+  }
+  if (typeof intrinsicQ.data?.upsidePercent === "number") {
+    insights.push(
+      `Intrinsic value suggests ${intrinsicQ.data.upsidePercent >= 0 ? "upside" : "downside"} of ${Math.abs(intrinsicQ.data.upsidePercent).toFixed(1)}%`
+    );
+  }
+  if (typeof sentimentScore === "number") {
+    insights.push(`News & sentiment score: ${sentimentScore.toFixed(1)}/10`);
+  }
+
+  const verdictStamp = composite.action;
+
+  const dimensionItems = [
+    { label: "Technical", score: technicalScore },
+    { label: "Fundamental", score: fundamentalScore },
+    { label: "Analysts", score: analystScore },
+    { label: "Intrinsic", score: intrinsicScore },
+    { label: "Sentiment", score: sentimentScore },
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* Chart without technical footer */}
-      <PriceChart symbol={symbol} name={name} showSummary={false} currency={currency} />
+    <div className="space-y-5">
+      <div className="rounded-lg border border-border bg-card px-7 py-6">
+        <DetailPriceChart symbol={symbol} period="1Y" currency={currency} />
+      </div>
 
-      {/* Composite Score (no progress bar) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Overview & Composite Score
-            </span>
-            <div className="flex items-center gap-3">
-              <span className={cn(
-                "text-3xl font-bold",
-                composite.score >= 8.5 ? "text-green-600" : composite.score >= 7 ? "text-emerald-700" : composite.score >= 5 ? "text-yellow-600" : "text-red-600"
-              )}>
-                {composite.score.toFixed(1)}
-              </span>
-              <span className="text-sm text-gray-500">/10</span>
+      {isLoading ? (
+        <div className="flex h-32 items-center justify-center rounded-lg border border-border bg-card text-mut">
+          Loading overview…
+        </div>
+      ) : (
+        <HeadlineScoreCard
+          kicker="Overview & composite score"
+          metaKicker="Meridian rating · updated daily"
+          score={composite.score}
+          verdictStamp={verdictStamp}
+          leftExtra={
+            <div className="mt-4 text-[10.5px] uppercase tracking-[0.12em] text-mut">
+              Momentum + quality
             </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center h-20 text-gray-500">
-              Loading overview...
-            </div>
-          ) : hasError ? (
-            <div className="flex items-center justify-center h-20 text-gray-500">
-              <AlertCircle className="h-4 w-4 mr-2" />
-              Some data failed to load
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 flex-1">
-                  <CategoryScore label="Technical" score={technicalScore} icon={<LineChart className="h-4 w-4" />} />
-                  <CategoryScore label="Fundamental" score={fundamentalScore} icon={<BarChart3 className="h-4 w-4" />} />
-                  <CategoryScore label="Analyst" score={analystScore} icon={<Brain className="h-4 w-4" />} />
-                  <CategoryScore label="Intrinsic" score={intrinsicScore} icon={<Calculator className="h-4 w-4" />} />
-                  <CategoryScore label="Sentiment" score={sentimentScore} icon={<Brain className="h-4 w-4" />} />
-                </div>
-                <div className="ml-4 whitespace-nowrap">
-                  {renderActionPill(composite.action, context)}
-                </div>
+          }
+        >
+          <SubscoreBand items={dimensionItems} />
+
+          {insights.length > 0 && (
+            <div className="mt-2 border-t border-line2 pt-[18px]">
+              <div className="mb-3 text-[10.5px] uppercase tracking-[0.14em] text-mut">Key insights</div>
+              <div className="max-w-[680px] font-serif text-[15.5px] leading-[1.55] text-sub">
+                {insights.map((insight, i) => (
+                  <div
+                    key={i}
+                    className={i > 0 ? "mt-2.5 flex items-baseline gap-3 border-t border-line2 pt-2.5" : "flex items-baseline gap-3"}
+                  >
+                    <span className="text-sm text-mut">№{i + 1}</span>
+                    <span>{insight}</span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Key Insights from categories */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Key Insights</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="list-disc pl-5 space-y-1 text-sm">
-            {/* Technical */}
-            {chartQ.data?.indicators?.signal && (
-              <li>
-                Technical: {String(chartQ.data.indicators.signal).replace(/_/g, " ")}
-              </li>
-            )}
-            {/* Fundamental */}
-            {fundamentalsQ.data?.score?.interpretation && (
-              <li>
-                Fundamentals: {fundamentalsQ.data.score.interpretation}
-              </li>
-            )}
-            {/* Analyst */}
-            {analystQ.data?.scoreInterpretation && (
-              <li>
-                Analysts: {analystQ.data.scoreInterpretation}
-              </li>
-            )}
-            {/* Intrinsic */}
-            {typeof intrinsicQ.data?.upsidePercent === "number" && (
-              <li>
-                Intrinsic value suggests {intrinsicQ.data.upsidePercent >= 0 ? "upside" : "downside"} of {Math.abs(intrinsicQ.data.upsidePercent).toFixed(1)}%
-              </li>
-            )}
-            {/* Sentiment */}
-            {typeof sentimentScore === "number" && (
-              <li>
-                News & Sentiment score: {sentimentScore.toFixed(1)}/10
-              </li>
-            )}
-          </ul>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function CategoryScore({ label, score, icon }: { label: string; score: number; icon?: React.ReactNode }) {
-  const color = score >= 7 ? "text-green-600 bg-green-50" : score >= 5 ? "text-yellow-600 bg-yellow-50" : "text-red-600 bg-red-50";
-  return (
-    <div className={cn("p-3 rounded-lg text-center", color.split(" ")[1])}>
-      {icon}
-      <p className="text-xs text-gray-600 mt-1">{label}</p>
-      <p className={cn("text-lg font-bold", color.split(" ")[0])}>{score.toFixed(1)}</p>
-    </div>
-  );
-}
-
-function renderActionPill(action: string, context: "portfolio" | "wishlist") {
-  // Map action to styles and icon
-  let classes = "";
-  let Icon: React.ComponentType<{ className?: string }> = CheckCircle2;
-  switch (action) {
-    case "BUY MORE":
-    case "STRONG BUY":
-      classes = "bg-green-600 text-white";
-      Icon = PlusCircle;
-      break;
-    case "HOLD":
-    case "BUY":
-      classes = "bg-emerald-600 text-white";
-      Icon = CheckCircle2;
-      break;
-    case "REDUCE":
-    case "WATCH":
-      classes = "bg-orange-500 text-white";
-      Icon = Eye;
-      break;
-    case "SELL":
-    case "AVOID":
-      classes = "bg-red-600 text-white";
-      Icon = XCircle;
-      break;
-    default:
-      classes = "bg-gray-600 text-white";
-      Icon = CheckCircle2;
-  }
-
-  return (
-    <div className={cn("inline-flex items-center gap-2 px-4 py-2 rounded-full shadow-sm", classes)}>
-      <Icon className="h-4 w-4" />
-      <span className="text-sm font-semibold">{action}</span>
-      <span className="ml-2 text-[10px] uppercase opacity-80">{context}</span>
+        </HeadlineScoreCard>
+      )}
     </div>
   );
 }

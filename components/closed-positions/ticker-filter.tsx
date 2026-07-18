@@ -85,18 +85,18 @@ export function TickerFilter({
     <div className={cn("flex flex-col gap-2 w-full", className)}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button
-            variant="outline"
+          <button
+            type="button"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between h-auto min-h-10 py-2 text-left font-normal"
+            className="flex h-9 w-full items-center justify-between gap-2 rounded-[18px] border border-border bg-card px-4 text-left text-[12.5px] font-normal text-foreground outline-none"
           >
-            <div className="flex flex-wrap gap-1 overflow-hidden max-h-12">
+            <div className="flex max-h-12 flex-wrap gap-1 overflow-hidden">
               {selectedOptions.length > 0 ? (
                 selectedOptions.map((option) => (
                   <div
                     key={option.value}
-                    className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                    className="inline-flex items-center gap-1 rounded-md bg-fill px-2 py-1 text-xs font-medium text-foreground"
                   >
                     <span>{option.display}</span>
                     <div
@@ -109,7 +109,7 @@ export function TickerFilter({
                           handleRemove(option.value, e as any);
                         }
                       }}
-                      className="ml-1 rounded-full hover:bg-muted p-0.5 focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+                      className="ml-1 cursor-pointer rounded-full p-0.5 hover:bg-border focus:outline-none focus:ring-1 focus:ring-ring"
                       aria-label={`Remove ${option.display}`}
                     >
                       <X className="h-3 w-3" />
@@ -117,11 +117,11 @@ export function TickerFilter({
                   </div>
                 ))
               ) : (
-                <span className="text-muted-foreground">{placeholder}</span>
+                <span className="text-mut">{placeholder}</span>
               )}
             </div>
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-mut" />
+          </button>
         </PopoverTrigger>
         <PopoverContent className="w-[300px] p-0" align="start">
           <Command shouldFilter={false}>

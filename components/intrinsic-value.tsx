@@ -1,35 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  TrendingUp,
-  TrendingDown,
-  Info,
-  Calculator,
-  RefreshCw,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-} from "lucide-react";
-import { formatCurrency, formatPercent } from "@/lib/utils/format";
+import { AlertCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { HeadlineScoreCard } from "@/components/research/headline-score-card";
+import { formatCurrency } from "@/lib/utils/format";
+import { upsideToScore } from "@/lib/utils/research-scores";
 import { cn } from "@/lib/utils";
 
 interface ValuationMethod {
@@ -37,7 +12,7 @@ interface ValuationMethod {
   value: number | null;
   formula: string;
   inputs: Record<string, number | null>;
-  confidence: 'high' | 'medium' | 'low';
+  confidence: "high" | "medium" | "low";
 }
 
 interface IntrinsicValueData {
@@ -46,7 +21,7 @@ interface IntrinsicValueData {
   upside: number | null;
   upsidePercent: number | null;
   methods: ValuationMethod[];
-  confidence: 'high' | 'medium' | 'low';
+  confidence: "high" | "medium" | "low";
   lastUpdated: string;
 }
 
@@ -57,279 +32,117 @@ interface IntrinsicValueProps {
 }
 
 export function IntrinsicValue({ symbol, currentPrice, currency }: IntrinsicValueProps) {
-  const [data, setData] = useState<IntrinsicValueData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showDetails, setShowDetails] = useState(false);
-
-  useEffect(() => {
-    fetchIntrinsicValue();
-  }, [symbol, currentPrice]);
-
-  const fetchIntrinsicValue = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const res = await fetch(
-        `/api/research/${symbol}/intrinsic-value?price=${currentPrice}`
-      );
-      
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["intrinsic-value", symbol, currentPrice],
+    queryFn: async (): Promise<IntrinsicValueData> => {
+      const res = await fetch(`/api/research/${symbol}/intrinsic-value?price=${currentPrice}`);
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || "Failed to fetch intrinsic value");
       }
-      
-      const data = await res.json();
-      setData(data);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return res.json();
+    },
+    enabled: currentPrice > 0,
+    staleTime: 60 * 60 * 1000,
+  });
 
-  const getConfidenceColor = (confidence: string) => {
-    switch (confidence) {
-      case 'high':
-        return 'text-green-600 bg-green-50';
-      case 'medium':
-        return 'text-yellow-600 bg-yellow-50';
-      case 'low':
-        return 'text-red-600 bg-red-50';
-      default:
-        return 'text-gray-600 bg-gray-50';
-    }
-  };
-
-  const getUpsideColor = (percent: number | null) => {
-    if (!percent) return '';
-    if (percent >= 30) return 'text-green-600';
-    if (percent >= 15) return 'text-emerald-600';
-    if (percent >= -10) return 'text-blue-600';
-    if (percent >= -25) return 'text-orange-600';
-    return 'text-red-600';
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calculator className="h-5 w-5" />
-            Intrinsic Value
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-8">
-            <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex h-32 items-center justify-center rounded-lg border border-border bg-card text-mut">
+        Loading intrinsic value…
+      </div>
     );
   }
 
+  // A genuine network/parse error (the route itself 500s, or is unreachable)
+  // still shows the full-card failure — distinct from the "no fundamental
+  // data" data-absence case, which the route now returns as a 200 with
+  // intrinsicValue:null/methods:[] so it falls through to the shell below
+  // with scoped em-dash placeholders (plan Task 5).
   if (error || !data) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calculator className="h-5 w-5" />
-            Intrinsic Value
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
-            <AlertCircle className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-gray-600">
-              {error || "Unable to calculate intrinsic value"}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex h-32 items-center justify-center rounded-lg border border-border bg-card text-mut">
+        <AlertCircle className="mr-2 h-4 w-4" />
+        {error instanceof Error ? error.message : "Unable to calculate intrinsic value"}
+      </div>
     );
   }
 
-  const progressPercent = data.intrinsicValue 
-    ? Math.min((currentPrice / data.intrinsicValue) * 100, 200)
-    : 100;
+  const score = upsideToScore(data.upsidePercent);
+  const dcfLite = data.methods.find((m) => m.name === "DCF Lite");
+  const revenueGrowth = dcfLite?.inputs?.growthRate;
+  const discountRate = dcfLite?.inputs?.discountRate;
+
+  const upsideColor = data.upsidePercent === null ? "text-mut" : data.upsidePercent >= 0 ? "text-up" : "text-dn";
+  const upsideLine =
+    data.upsidePercent === null
+      ? "No fair-value estimate available"
+      : `Trading ${Math.abs(data.upsidePercent).toFixed(1)}% ${data.upsidePercent >= 0 ? "below" : "above"} fair value`;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <CardTitle className="flex items-center gap-2">
-            <Calculator className="h-5 w-5" />
-            Intrinsic Value
-          </CardTitle>
-          <Badge className={getConfidenceColor(data.confidence)}>
-            {data.confidence.toUpperCase()} CONFIDENCE
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Main Value Display */}
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-sm text-gray-600">Current Price</p>
-              <p className="text-xl font-semibold">{formatCurrency(currentPrice, currency)}</p>
+    <div className="space-y-5">
+      <HeadlineScoreCard
+        kicker="Intrinsic value"
+        metaKicker="Discounted cash flow · 10-year model"
+        score={score}
+        leftExtra={
+          <>
+            <div className="mt-1 text-[10.5px] uppercase tracking-[0.12em] text-mut">Fair value estimate</div>
+            <div className="mt-1 font-serif text-[34px]">
+              {data.intrinsicValue ? formatCurrency(data.intrinsicValue, currency) : "—"}
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-600">Intrinsic Value</p>
-              <p className="text-xl font-semibold">
-                {data.intrinsicValue ? formatCurrency(data.intrinsicValue, currency) : "—"}
-              </p>
-            </div>
+            <div className={cn("mt-1 text-[13px] font-medium", upsideColor)}>{upsideLine}</div>
+          </>
+        }
+        summary={
+          data.methods.length > 0
+            ? `Confidence-weighted across ${data.methods.length} valuation methods.`
+            : "No fundamental data available for this symbol."
+        }
+      >
+        <div className="grid grid-cols-3 border-t border-line pt-5">
+          <div>
+            <div className="text-[10.5px] uppercase tracking-[0.12em] text-dn">Bear</div>
+            <div className="mt-1.5 font-serif text-[26px] text-mut">—</div>
+            <div className="mt-0.5 text-[12px] text-mut">Single-point estimate</div>
           </div>
-
-          {/* Progress Bar */}
-          {data.intrinsicValue && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs text-gray-600">
-                <span>Undervalued</span>
-                <span>Fair Value</span>
-                <span>Overvalued</span>
-              </div>
-              <Progress value={progressPercent} className="h-2" />
-              <div className="text-center">
-                <span className={cn("text-sm font-medium", getUpsideColor(data.upsidePercent))}>
-                  {progressPercent < 100 ? "▼" : "▲"} {Math.abs(progressPercent - 100).toFixed(0)}% 
-                  {progressPercent < 100 ? " below" : " above"} fair value
-                </span>
-              </div>
+          <div className="border-l border-line2 pl-5">
+            <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Base</div>
+            <div className="mt-1.5 font-serif text-[26px]">
+              {data.intrinsicValue ? formatCurrency(data.intrinsicValue, currency) : "—"}
             </div>
-          )}
-
-          {/* Upside/Downside */}
-          {data.upsidePercent !== null && (
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Potential Return</span>
-                <div className="flex items-center gap-2">
-                  {data.upsidePercent >= 0 ? (
-                    <TrendingUp className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4 text-red-600" />
-                  )}
-                  <span className={cn(
-                    "text-lg font-bold",
-                    data.upsidePercent >= 0 ? "text-green-600" : "text-red-600"
-                  )}>
-                    {formatPercent(Math.abs(data.upsidePercent))}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Valuation Methods Summary */}
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <h4 className="text-sm font-medium text-gray-700">Valuation Methods</h4>
-            <Dialog open={showDetails} onOpenChange={setShowDetails}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  <Info className="h-4 w-4 mr-1" />
-                  Details
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Intrinsic Value Calculation Details</DialogTitle>
-                  <DialogDescription>
-                    Multiple valuation methods are used to estimate the fair value of the stock.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 mt-4">
-                  {data.methods.map((method, index) => (
-                    <Card key={index}>
-                      <CardHeader>
-                        <div className="flex justify-between items-center">
-                          <CardTitle className="text-base">{method.name}</CardTitle>
-                          <div className="flex items-center gap-2">
-                            {method.value && (
-                              <span className="font-semibold">
-                                {formatCurrency(method.value, currency)}
-                              </span>
-                            )}
-                            <Badge className={getConfidenceColor(method.confidence)}>
-                              {method.confidence}
-                            </Badge>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          <div>
-                            <p className="text-sm text-gray-600 mb-1">Formula:</p>
-                            <code className="text-xs bg-gray-100 p-2 rounded block">
-                              {method.formula}
-                            </code>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600 mb-1">Inputs:</p>
-                            <div className="grid grid-cols-2 gap-2 text-sm">
-                              {Object.entries(method.inputs).map(([key, value]) => (
-                                <div key={key} className="flex justify-between">
-                                  <span className="text-gray-600">{key}:</span>
-                                  <span className="font-medium">
-                                    {value !== null ? 
-                                      (typeof value === 'number' ? 
-                                        (key.includes('Rate') || key.includes('Ratio') || key.includes('PE') || key.includes('PEG') ? 
-                                          (value * (key.includes('Rate') ? 100 : 1)).toFixed(2) + (key.includes('Rate') ? '%' : '') : 
-                                          formatCurrency(value, currency)) : 
-                                        value) : 
-                                      '—'}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </DialogContent>
-            </Dialog>
+            <div className="mt-0.5 text-[12px] text-mut">Weighted estimate</div>
           </div>
-
-          {/* Method Summary */}
-          <div className="space-y-2">
-            {data.methods.slice(0, 3).map((method, index) => (
-              <div key={index} className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">{method.name}</span>
-                <div className="flex items-center gap-2">
-                  {method.confidence === 'high' && <CheckCircle className="h-3 w-3 text-green-500" />}
-                  {method.confidence === 'medium' && <AlertCircle className="h-3 w-3 text-yellow-500" />}
-                  {method.confidence === 'low' && <XCircle className="h-3 w-3 text-red-500" />}
-                  <span className={method.value ? "font-medium" : "text-gray-400"}>
-                    {method.value ? formatCurrency(method.value, currency) : "N/A"}
-                  </span>
-                </div>
-              </div>
-            ))}
+          <div className="border-l border-line2 pl-5">
+            <div className="text-[10.5px] uppercase tracking-[0.12em] text-up">Bull</div>
+            <div className="mt-1.5 font-serif text-[26px] text-mut">—</div>
+            <div className="mt-0.5 text-[12px] text-mut">Single-point estimate</div>
           </div>
         </div>
 
-        {/* Refresh Button */}
-        <div className="flex justify-between items-center pt-2 border-t">
-          <p className="text-xs text-gray-500">
-            Last updated: {new Date(data.lastUpdated).toLocaleString()}
-          </p>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={fetchIntrinsicValue}
-            disabled={loading}
-          >
-            <RefreshCw className={cn("h-4 w-4 mr-1", loading && "animate-spin")} />
-            Refresh
-          </Button>
+        <div className="mt-6 border-t border-line2 pt-5">
+          <div className="mb-3 text-[10.5px] uppercase tracking-[0.14em] text-mut">Model assumptions</div>
+          <AssumptionRow
+            label="Revenue growth"
+            value={typeof revenueGrowth === "number" ? `${(revenueGrowth * 100).toFixed(1)}%` : null}
+          />
+          <AssumptionRow
+            label="Discount rate (WACC)"
+            value={typeof discountRate === "number" ? `${(discountRate * 100).toFixed(1)}%` : null}
+          />
+          <AssumptionRow label="FCF margin" value={null} />
+          <AssumptionRow label="Terminal growth" value={null} />
         </div>
-      </CardContent>
-    </Card>
+      </HeadlineScoreCard>
+    </div>
+  );
+}
+
+function AssumptionRow({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div className="flex items-center justify-between border-b border-line2 py-2.5 text-[13.5px] last:border-b-0">
+      <span className="text-sub">{label}</span>
+      <span className="font-medium text-foreground">{value ?? "—"}</span>
+    </div>
   );
 }

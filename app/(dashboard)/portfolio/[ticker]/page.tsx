@@ -3,24 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge"; 
-import { 
-  ArrowLeft, 
-  Edit, 
-  Trash2, 
-  Plus,
-  TrendingUp,
-  TrendingDown,
-  Activity,
-  DollarSign,
-  Calendar,
-  Loader2,
-  RefreshCw,
-  Wallet
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Overview } from "@/components/overview";
 import { TransactionHistory } from "@/components/transaction-history";
@@ -36,7 +19,17 @@ import { ComponentErrorBoundary } from "@/components/error-boundary";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
 
+const tabs = [
+  { value: "overview", label: "Overview" },
+  { value: "technical", label: "Technical" },
+  { value: "fundamental", label: "Fundamental" },
+  { value: "analyst", label: "Analysts" },
+  { value: "intrinsic", label: "Intrinsic value" },
+  { value: "transactions", label: "Transactions" },
+  { value: "news", label: "News & sentiment" },
+] as const;
 
+type TabValue = (typeof tabs)[number]["value"];
 
 export default function PositionDetailPage() {
   const params = useParams();
@@ -46,7 +39,8 @@ export default function PositionDetailPage() {
   const [isRefreshingNews, setIsRefreshingNews] = useState(false);
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
   const [isBuyMoreModalOpen, setIsBuyMoreModalOpen] = useState(false);
-  
+  const [activeTab, setActiveTab] = useState<TabValue>("overview");
+
   // Fix hydration by waiting for mount
   useEffect(() => {
     setMounted(true);
@@ -136,22 +130,22 @@ export default function PositionDetailPage() {
 
   if (positionLoading || quoteLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      <div className="flex min-h-[400px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-mut" />
       </div>
     );
   }
 
   if (!position) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-2xl font-semibold text-gray-900">Position not found</h2>
-        <p className="mt-2 text-gray-600">The position you're looking for doesn't exist.</p>
-        <Link href="/dashboard">
-          <Button className="mt-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
-          </Button>
+      <div className="py-12 text-center">
+        <h2 className="font-serif text-2xl font-medium">Position not found</h2>
+        <p className="mt-2 text-mut">The position you&apos;re looking for doesn&apos;t exist.</p>
+        <Link
+          href="/dashboard"
+          className="mt-4 inline-flex h-10 items-center rounded-full bg-btnbg px-5 text-[13px] font-medium text-btnfg"
+        >
+          ← Back to dashboard
         </Link>
       </div>
     );
@@ -176,271 +170,196 @@ export default function PositionDetailPage() {
   const dayChangePercent = quote?.changePercent ? quote.changePercent * 100 : 0;
   const totalPL = unrealizedPL + (position.realizedPL || 0);
   
+  const hasRealizedPL = position.realizedPL !== undefined && position.realizedPL !== 0;
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="space-y-4">
-        {/* Back button */}
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Back to Dashboard
-        </Link>
-        
-        {/* Title and actions */}
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-2xl font-bold">{position.ticker}</h1>
-            <p className="text-gray-600">{position.name}</p>
-            {position.quantity === 0 && (
-              <Badge variant="secondary" className="mt-2">Position Closed</Badge>
-            )}
+    <div>
+      {/* Header — Research-detail company header pattern (DESIGN.md "Position
+          detail" / plan Task 7): serif 52px company name over a
+          TICKER · EXCHANGE-style kicker, pill action buttons. */}
+      <Link href="/dashboard" className="text-[10.5px] uppercase tracking-[0.12em] text-mut">
+        ← Back to dashboard
+      </Link>
+
+      <div className="my-[18px] mb-8 flex items-end justify-between">
+        <div>
+          <h1 className="font-serif text-[52px] font-medium leading-[1.05]">{position.name}</h1>
+          <div className="mt-2 text-[10.5px] uppercase tracking-[0.14em] text-mut">
+            {position.ticker}
+            {position.quantity === 0 && " · Position closed"}
           </div>
-          <div className="flex space-x-2">
-            {position.quantity > 0 && (
-              <>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setIsBuyMoreModalOpen(true)}
-                  className="text-green-600 hover:text-green-700 border-green-200 hover:border-green-300"
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Buy More
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setIsSellModalOpen(true)}
-                  className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
-                >
-                  <Wallet className="h-4 w-4 mr-1" />
-                  Sell
-                </Button>
-              </>
-            )}
-            <Button variant="outline" size="sm" disabled>
-              <Edit className="h-4 w-4 mr-1" />
-              Edit
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleDelete}
-              disabled={deleteMutation.isPending}
-            >
-              <Trash2 className="h-4 w-4 mr-1" />
-              Delete
-            </Button>
+        </div>
+        <div className="flex gap-3">
+          {position.quantity > 0 && (
+            <>
+              <button
+                type="button"
+                onClick={() => setIsBuyMoreModalOpen(true)}
+                className="flex h-[38px] items-center rounded-full border border-line px-5 text-[13px] font-medium text-foreground"
+              >
+                Buy more
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSellModalOpen(true)}
+                className="flex h-[38px] items-center rounded-full border border-line px-5 text-[13px] font-medium text-foreground"
+              >
+                Sell
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleteMutation.isPending}
+            className="flex h-[38px] items-center rounded-full bg-btnbg px-5 text-[13px] font-medium text-btnfg disabled:opacity-60"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+
+      {/* Quote card — Research-detail 4-col ruled quote grid pattern, extended
+          to 5 columns for this page's own metrics (DESIGN.md "Position
+          detail"): kicker / serif value / detail line per cell, --line2
+          internal verticals, signed figures via --up/--dn aliases. */}
+      <div
+        className={cn(
+          "mb-5 grid rounded-lg border border-border bg-card",
+          hasRealizedPL ? "grid-cols-5" : "grid-cols-4"
+        )}
+      >
+        <div className="border-r border-line2 px-7 py-[22px]">
+          <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Market value</div>
+          <div className="mt-1.5 font-serif text-[28px]">{formatCurrency(marketValue, baseCurrency)}</div>
+          <div className="mt-0.5 text-[12.5px] text-mut">
+            {formatNumber(position.quantity)} shares @ {formatCurrency(currentPrice, baseCurrency)}
+          </div>
+        </div>
+        <div className="border-r border-line2 px-7 py-[22px]">
+          <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Unrealized P/L</div>
+          <div className={cn("mt-1.5 font-serif text-[28px]", unrealizedPL >= 0 ? "text-up" : "text-dn")}>
+            {unrealizedPL >= 0 && "+"}
+            {formatCurrency(unrealizedPL, baseCurrency)}
+          </div>
+          <div className={cn("mt-0.5 text-[12.5px]", unrealizedPLPercent >= 0 ? "text-up" : "text-dn")}>
+            {formatPercent(unrealizedPLPercent)}
+          </div>
+        </div>
+        {hasRealizedPL && (
+          <div className="border-r border-line2 px-7 py-[22px]">
+            <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Realized P/L</div>
+            <div className={cn("mt-1.5 font-serif text-[28px]", position.realizedPL >= 0 ? "text-up" : "text-dn")}>
+              {position.realizedPL >= 0 && "+"}
+              {formatCurrency(position.realizedPL, baseCurrency)}
+            </div>
+            <div className="mt-0.5 text-[12.5px] text-mut">From previous sales</div>
+          </div>
+        )}
+        <div className="border-r border-line2 px-7 py-[22px]">
+          <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Today&apos;s change</div>
+          <div className={cn("mt-1.5 font-serif text-[28px]", dayChange >= 0 ? "text-up" : "text-dn")}>
+            {dayChange >= 0 && "+"}
+            {formatCurrency(dayChange, baseCurrency)}
+          </div>
+          <div className={cn("mt-0.5 text-[12.5px]", dayChangePercent >= 0 ? "text-up" : "text-dn")}>
+            {formatPercent(dayChangePercent)}
+          </div>
+        </div>
+        <div className="px-7 py-[22px]">
+          <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Avg cost</div>
+          <div className="mt-1.5 font-serif text-[28px]">{formatCurrency(position.avgCostBasis, baseCurrency)}</div>
+          <div className="mt-0.5 text-[12.5px] text-mut">
+            First buy: {new Date(position.firstBuyDate || position.createdAt).toLocaleDateString()}
           </div>
         </div>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Market Value</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(marketValue, baseCurrency)}</div>
-            <p className="text-xs text-muted-foreground">
-              {formatNumber(position.quantity)} shares @ {formatCurrency(currentPrice, baseCurrency)}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Unrealized P/L</CardTitle>
-            {unrealizedPL >= 0 ? (
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            ) : (
-              <TrendingDown className="h-4 w-4 text-red-600" />
+      {/* Tab bar — Research-detail Segmented tabs pattern (DESIGN.md "Position
+          detail" / "Segmented tabs"). Tab bodies keep rendering the existing
+          shared Meridian tab components unchanged below. */}
+      <div className="mb-5 flex gap-8 border-b border-border">
+        {tabs.map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => setActiveTab(tab.value)}
+            className={cn(
+              "cursor-pointer pb-3 text-[11px] uppercase tracking-[0.14em]",
+              activeTab === tab.value
+                ? "border-b-2 border-foreground font-semibold text-foreground"
+                : "text-mut"
             )}
-          </CardHeader>
-          <CardContent>
-            <div className={cn(
-              "text-2xl font-bold",
-              unrealizedPL >= 0 ? "text-green-600" : "text-red-600"
-            )}>
-              {unrealizedPL >= 0 && "+"}{formatCurrency(unrealizedPL, baseCurrency)}
-            </div>
-            <p className={cn(
-              "text-xs",
-              unrealizedPLPercent >= 0 ? "text-green-600" : "text-red-600"
-            )}>
-              {formatPercent(unrealizedPLPercent)}
-            </p>
-          </CardContent>
-        </Card>
-
-        {position.realizedPL !== undefined && position.realizedPL !== 0 && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Realized P/L</CardTitle>
-              {position.realizedPL >= 0 ? (
-                <TrendingUp className="h-4 w-4 text-green-600" />
-              ) : (
-                <TrendingDown className="h-4 w-4 text-red-600" />
-              )}
-            </CardHeader>
-            <CardContent>
-              <div className={cn(
-                "text-2xl font-bold",
-                position.realizedPL >= 0 ? "text-green-600" : "text-red-600"
-              )}>
-                {position.realizedPL >= 0 && "+"}{formatCurrency(position.realizedPL, baseCurrency)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                From previous sales
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Change</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={cn(
-              "text-2xl font-bold",
-              dayChange >= 0 ? "text-green-600" : "text-red-600"
-            )}>
-              {dayChange >= 0 && "+"}{formatCurrency(dayChange, baseCurrency)}
-            </div>
-            <p className={cn(
-              "text-xs",
-              dayChangePercent >= 0 ? "text-green-600" : "text-red-600"
-            )}>
-              {formatPercent(dayChangePercent)}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Cost</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(position.avgCostBasis, baseCurrency)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              First buy: {new Date(position.firstBuyDate || position.createdAt).toLocaleDateString()}
-            </p>
-          </CardContent>
-        </Card>
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* Tabs for different views */}
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="technical">Technical Analysis</TabsTrigger>
-          <TabsTrigger value="fundamental">Fundamental Analysis</TabsTrigger>
-          <TabsTrigger value="analyst">Analyst Ratings</TabsTrigger>
-          <TabsTrigger value="intrinsic">Intrinsic Value</TabsTrigger>
-          <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="news">News & Sentiment</TabsTrigger>
-        </TabsList>
+      {activeTab === "overview" && (
+        <ComponentErrorBoundary name="Overview">
+          <Overview symbol={position.ticker} name={position.name} currentPrice={currentPrice} currency={baseCurrency} />
+        </ComponentErrorBoundary>
+      )}
 
-        <TabsContent value="overview" className="space-y-4">
-          <ComponentErrorBoundary name="Overview">
-            <Overview
-              symbol={position.ticker}
-              name={position.name}
-              currentPrice={currentPrice}
-            />
-          </ComponentErrorBoundary>
-        </TabsContent>
+      {activeTab === "technical" && (
+        <ComponentErrorBoundary name="Technical Analysis">
+          <TechnicalAnalysis symbol={position.ticker} currency={baseCurrency} />
+        </ComponentErrorBoundary>
+      )}
 
-        <TabsContent value="technical" className="space-y-4">
-          <ComponentErrorBoundary name="Technical Analysis">
-            <TechnicalAnalysis symbol={position.ticker} />
-          </ComponentErrorBoundary>
-        </TabsContent>
+      {activeTab === "fundamental" && (
+        <ComponentErrorBoundary name="Fundamental Analysis">
+          <FundamentalAnalysis symbol={position.ticker} currency={baseCurrency} />
+        </ComponentErrorBoundary>
+      )}
 
-        <TabsContent value="fundamental" className="space-y-4">
-          <ComponentErrorBoundary name="Fundamental Analysis">
-            <FundamentalAnalysis symbol={position.ticker} />
-          </ComponentErrorBoundary>
-        </TabsContent>
+      {activeTab === "analyst" && (
+        <ComponentErrorBoundary name="Analyst Ratings">
+          <AnalystRatings symbol={position.ticker} currentPrice={currentPrice} currency={baseCurrency} />
+        </ComponentErrorBoundary>
+      )}
 
-        <TabsContent value="analyst" className="space-y-4">
-          <ComponentErrorBoundary name="Analyst Ratings">
-            <AnalystRatings
-              symbol={position.ticker}
-              currentPrice={currentPrice}
-            />
-          </ComponentErrorBoundary>
-        </TabsContent>
+      {activeTab === "intrinsic" && (
+        <ComponentErrorBoundary name="Intrinsic Value">
+          <IntrinsicValue symbol={position.ticker} currentPrice={currentPrice} currency={baseCurrency} />
+        </ComponentErrorBoundary>
+      )}
 
-        <TabsContent value="intrinsic" className="space-y-4">
-          <ComponentErrorBoundary name="Intrinsic Value">
-            <IntrinsicValue
-              symbol={position.ticker}
-              currentPrice={currentPrice}
-            />
-          </ComponentErrorBoundary>
-        </TabsContent>
+      {activeTab === "transactions" && (
+        <ComponentErrorBoundary name="Transaction History">
+          <TransactionHistory positionId={position.id} baseCurrency={baseCurrency} />
+        </ComponentErrorBoundary>
+      )}
 
-        <TabsContent value="transactions" className="space-y-4">
-          <ComponentErrorBoundary name="Transaction History">
-            <TransactionHistory positionId={position.id} baseCurrency={baseCurrency} />
-          </ComponentErrorBoundary>
-        </TabsContent>
-
-        <TabsContent value="news" className="space-y-6">
-          <ComponentErrorBoundary name="News & Sentiment">
-            {/* Sentiment Score Overview */}
+      {activeTab === "news" && (
+        <ComponentErrorBoundary name="News & Sentiment">
+          <div className="space-y-5">
             {newsArticles && newsArticles.length > 0 && (
-              <SentimentScore
-                articles={newsArticles}
-                symbol={position.ticker}
-              />
+              <SentimentScore articles={newsArticles} symbol={position.ticker} />
             )}
 
-            {/* News Feed with refresh button */}
-            <div className="space-y-4">
-              {/* Add a refresh button for news */}
-              <div className="flex justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRefreshNews}
-                  disabled={isRefreshingNews || newsLoading}
-                >
-                  <RefreshCw className={cn(
-                    "h-4 w-4 mr-2",
-                    isRefreshingNews && "animate-spin"
-                  )} />
-                  Refresh News
-                </Button>
-              </div>
-
-              {/* News Feed Component */}
-              {newsLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-                </div>
-              ) : (
-                <NewsFeed
-                  symbol={position.ticker}
-                  companyName={position.name}
-                  articles={newsArticles}
-                />
-              )}
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleRefreshNews}
+                disabled={isRefreshingNews || newsLoading}
+                className="flex h-8 items-center rounded-full border border-line px-[18px] text-[13px] font-medium text-foreground disabled:opacity-60"
+              >
+                {isRefreshingNews ? "Refreshing…" : "Refresh news"}
+              </button>
             </div>
-          </ComponentErrorBoundary>
-        </TabsContent>
-      </Tabs>
+
+            {newsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-mut" />
+              </div>
+            ) : (
+              <NewsFeed symbol={position.ticker} companyName={position.name} articles={newsArticles} />
+            )}
+          </div>
+        </ComponentErrorBoundary>
+      )}
 
       {/* Modals */}
       {position && position.quantity > 0 && (

@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Search, Loader2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
 import { formatCurrency, formatPercent } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
 import debounce from "lodash.debounce";
@@ -77,31 +75,31 @@ export function StockSearch({ onSelect }: StockSearchProps) {
   return (
     <div className="relative">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <Input
+        <Search className="pointer-events-none absolute left-7 top-1/2 h-4 w-4 -translate-y-1/2 text-mut" />
+        <input
           type="text"
-          placeholder="Search by symbol or name..."
+          placeholder="Search by ticker or company name…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => query && setIsOpen(true)}
-          className="pl-10"
+          className="w-full rounded-[28px] border border-border bg-card px-7 py-4 pl-12 text-center font-serif text-xl text-foreground outline-none placeholder:text-mut"
         />
         {isLoading && (
-          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+          <Loader2 className="absolute right-7 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-mut" />
         )}
       </div>
 
       {isOpen && (query || results.length > 0) && (
-        <Card className="absolute z-50 mt-2 w-full max-h-[300px] overflow-y-auto">
+        <div className="absolute z-50 mt-2 max-h-[300px] w-full overflow-y-auto rounded-lg border border-border bg-card text-left">
           {error ? (
-            <div className="p-4 text-sm text-red-600">{error}</div>
+            <div className="p-4 text-sm text-dn">{error}</div>
           ) : isLoading && results.length === 0 ? (
-            <div className="p-4 text-sm text-gray-500 flex items-center">
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Searching stocks...
+            <div className="flex items-center p-4 text-sm text-mut">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Searching stocks…
             </div>
           ) : results.length === 0 ? (
-            <div className="p-4 text-sm text-gray-500">
+            <div className="p-4 text-sm text-mut">
               {query ? "No stocks found" : "Start typing to search"}
             </div>
           ) : (
@@ -111,18 +109,16 @@ export function StockSearch({ onSelect }: StockSearchProps) {
                   key={stock.symbol}
                   onClick={() => handleSelect(stock)}
                   className={cn(
-                    "w-full px-4 py-2 text-left hover:bg-gray-50 flex justify-between items-center",
-                    index !== results.length - 1 && "border-b"
+                    "flex w-full items-center justify-between px-4 py-2 text-left hover:bg-fill",
+                    index !== results.length - 1 && "border-b border-line2"
                   )}
                 >
                   <div>
                     <div className="font-medium">{stock.symbol}</div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-sub">
                       {stock.name}
                       {stock.exchange && (
-                        <span className="ml-2 text-xs text-gray-500">
-                          {stock.exchange}
-                        </span>
+                        <span className="ml-2 text-xs text-mut">{stock.exchange}</span>
                       )}
                     </div>
                   </div>
@@ -131,22 +127,19 @@ export function StockSearch({ onSelect }: StockSearchProps) {
                       {stock.price > 0 ? formatCurrency(stock.price, stock.currency) : "Loading..."}
                     </div>
                     {stock.price > 0 && (
-                      <div className={cn(
-                        "text-sm",
-                        stock.change >= 0 ? "text-green-600" : "text-red-600"
-                      )}>
+                      <div className={cn("text-sm", stock.change >= 0 ? "text-up" : "text-dn")}>
                         {formatPercent(stock.changePercent)}
                       </div>
                     )}
                   </div>
                 </button>
               ))}
-              <div className="px-4 py-2 text-xs text-gray-500 border-t">
+              <div className="border-t border-line2 px-4 py-2 text-xs text-mut">
                 Data provided by Yahoo Finance
               </div>
             </div>
           )}
-        </Card>
+        </div>
       )}
     </div>
   );

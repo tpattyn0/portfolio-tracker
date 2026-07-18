@@ -8,3 +8,6 @@
 | 2026-07-17-full-audit.md | 2026-07-17 | IMPLEMENTED — 2026-07-17 (AUD-01..10 fixed via PR #12) |
 | 2026-07-17-full-audit-fixes.md | 2026-07-17 | IMPLEMENTED — 2026-07-17 (AUD-FIX-01..04 fixed and re-verified in v2) |
 | 2026-07-17-full-audit-fixes-v2.md | 2026-07-17 | IMPLEMENTED — 2026-07-17 (REV2-01 fixed inline; REV2-02 no-action-needed) |
+| 2026-07-17-meridian-design-overhaul.md | 2026-07-17 | IMPLEMENTED |
+| 2026-07-18-meridian-research-detail.md | 2026-07-18 | IMPLEMENTED — 2026-07-18 (iter 1: 3 SUGGESTIONs + 1 QUESTION resolved in `1c524c0a`; iter 2: 0 findings) |
+| 2026-07-18-meridian-dashboard-detail-fixes.md | 2026-07-18 | IMPLEMENTED — 2026-07-18 (0 BLOCKERs/ISSUEs/QUESTIONs; MDF-S1 logged as TD-33) |

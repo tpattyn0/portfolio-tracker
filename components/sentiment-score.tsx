@@ -103,17 +103,17 @@ export function SentimentScore({ articles, symbol }: SentimentScoreProps) {
   }, [articles]);
   
   const getScoreColor = (score: number) => {
-    if (score > 0.3) return 'text-green-600';
-    if (score > 0.1) return 'text-green-500';
-    if (score < -0.3) return 'text-red-600';
-    if (score < -0.1) return 'text-red-500';
-    return 'text-gray-600';
+    if (score > 0.3) return 'text-up';
+    if (score > 0.1) return 'text-up';
+    if (score < -0.3) return 'text-dn';
+    if (score < -0.1) return 'text-dn';
+    return 'text-sub';
   };
   
   const getScoreIcon = (score: number) => {
-    if (score > 0.1) return <TrendingUp className="h-5 w-5 text-green-500" />;
-    if (score < -0.1) return <TrendingDown className="h-5 w-5 text-red-500" />;
-    return <Activity className="h-5 w-5 text-gray-500" />;
+    if (score > 0.1) return <TrendingUp className="h-5 w-5 text-up" />;
+    if (score < -0.1) return <TrendingDown className="h-5 w-5 text-dn" />;
+    return <Activity className="h-5 w-5 text-mut" />;
   };
   
   return (
@@ -141,7 +141,7 @@ export function SentimentScore({ articles, symbol }: SentimentScoreProps) {
             )}>
               {sentimentData.displayScore}
             </span>
-            <span className="text-sm text-gray-500">/100</span>
+            <span className="text-sm text-mut">/100</span>
           </div>
           <p className={cn(
             "text-lg font-medium",
@@ -150,7 +150,7 @@ export function SentimentScore({ articles, symbol }: SentimentScoreProps) {
             {sentimentData.label}
           </p>
           {sentimentData.confidence > 0 && (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-mut">
               {Math.round(sentimentData.confidence * 100)}% confidence
             </p>
           )}
@@ -158,7 +158,7 @@ export function SentimentScore({ articles, symbol }: SentimentScoreProps) {
         
         {/* Sentiment Distribution */}
         <div className="space-y-2">
-          <div className="flex justify-between text-sm text-gray-600">
+          <div className="flex justify-between text-sm text-sub">
             <span>Sentiment Distribution</span>
             <span>{sentimentData.analyzed}/{sentimentData.total} analyzed</span>
           </div>
@@ -166,42 +166,42 @@ export function SentimentScore({ articles, symbol }: SentimentScoreProps) {
           <div className="flex gap-2">
             <div className="flex-1">
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-green-600">Positive</span>
-                <span className="text-green-600">{sentimentData.positive}</span>
+                <span className="text-up">Positive</span>
+                <span className="text-up">{sentimentData.positive}</span>
               </div>
               <Progress 
                 value={(sentimentData.positive / Math.max(sentimentData.analyzed, 1)) * 100} 
-                className="h-2 bg-green-100"
+                className="h-2 bg-fill"
               />
             </div>
             
             <div className="flex-1">
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-gray-600">Neutral</span>
-                <span className="text-gray-600">{sentimentData.neutral}</span>
+                <span className="text-sub">Neutral</span>
+                <span className="text-sub">{sentimentData.neutral}</span>
               </div>
               <Progress 
                 value={(sentimentData.neutral / Math.max(sentimentData.analyzed, 1)) * 100} 
-                className="h-2 bg-gray-100"
+                className="h-2 bg-fill"
               />
             </div>
             
             <div className="flex-1">
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-red-600">Negative</span>
-                <span className="text-red-600">{sentimentData.negative}</span>
+                <span className="text-dn">Negative</span>
+                <span className="text-dn">{sentimentData.negative}</span>
               </div>
               <Progress 
                 value={(sentimentData.negative / Math.max(sentimentData.analyzed, 1)) * 100} 
-                className="h-2 bg-red-100"
+                className="h-2 bg-fill"
               />
             </div>
           </div>
         </div>
         
         {/* Interpretation */}
-        <div className="p-3 bg-gray-50 rounded-lg">
-          <p className="text-sm text-gray-700">
+        <div className="p-3 bg-fill rounded-lg">
+          <p className="text-sm text-sub">
             {sentimentData.score > 0.3 
               ? `Strong positive sentiment for ${symbol}. News coverage is predominantly optimistic.`
               : sentimentData.score > 0.1
