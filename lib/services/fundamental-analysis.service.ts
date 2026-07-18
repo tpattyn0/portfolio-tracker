@@ -1,4 +1,4 @@
-import yahooFinance from '@/lib/yahoo-finance';
+import { safeQuoteSummary } from '@/lib/yahoo-finance';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 
@@ -87,7 +87,7 @@ export class FundamentalAnalysisService {
 
 
       // Fetch fresh data from Yahoo Finance
-      const quoteSummary = await yahooFinance.quoteSummary(symbol, {
+      const quoteSummary = await safeQuoteSummary(symbol, {
         modules: [
           'price',
           'summaryDetail',
@@ -101,6 +101,13 @@ export class FundamentalAnalysisService {
         ]
       });
 
+      // The minimum needed for any valuation metric is the `price` or
+      // `summaryDetail` module. If neither is present (e.g. Yahoo schema
+      // drift coerced everything away), do not persist/cache an all-null
+      // row scored as a misleading neutral 5 — fail loud instead.
+      if (!quoteSummary || (!quoteSummary.price && !quoteSummary.summaryDetail)) {
+        throw new Error(`No usable fundamentals data available for ${symbol}`);
+      }
 
       // Extract metrics and analyst ratings
       const metrics = this.extractMetrics(quoteSummary);

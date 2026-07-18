@@ -133,7 +133,7 @@ convention (no logger abstraction exists).
 
 ## Tasks
 
-1. [ ] Add `safeQuoteSummary(symbol, queryOptions)` to `lib/yahoo-finance.ts`: call
+1. [x] Add `safeQuoteSummary(symbol, queryOptions)` to `lib/yahoo-finance.ts`: call
    `yahooFinance.quoteSummary(symbol, queryOptions)` inside try/catch; on
    `error instanceof Error && error.name === "FailedYahooValidationError"` with a
    non-null `.result`, `console.warn` a one-line drift message including the symbol,
@@ -144,7 +144,7 @@ convention (no logger abstraction exists).
    name-matched validation error, re-throws when `.result` is nullish, and re-throws
    a non-validation error; `npm run verify` typechecks the new export.
 
-2. [ ] Route `fundamental-analysis.service.ts:90` through `safeQuoteSummary`; add the
+2. [x] Route `fundamental-analysis.service.ts:90` through `safeQuoteSummary`; add the
    "no `price` and no `summaryDetail` module" guard that throws before
    `extractMetrics`/`saveToDatabase` so an all-null row is never persisted or cached.
    — Acceptance: unit test feeds a mocked validation error whose `error.result` has a
@@ -152,21 +152,21 @@ convention (no logger abstraction exists).
    (not a throw); a second test with an empty `error.result` asserts it throws and
    `saveToDatabase` is not called.
 
-3. [ ] Route `market-data.service.ts:52` through `safeQuoteSummary`; confirm the
+3. [x] Route `market-data.service.ts:52` through `safeQuoteSummary`; confirm the
    existing `if (!quote || !quote.price) throw` guard still fires against the
    wrapper's return.
    — Acceptance: unit test with a mocked validation error carrying a valid `price`
    module asserts `getQuote` returns a well-formed `MarketQuote`; a test with a
    `price`-less result asserts it throws `No price data available`.
 
-4. [ ] Route `analyst-ratings.service.ts:50` through `safeQuoteSummary`; do **not**
+4. [x] Route `analyst-ratings.service.ts:50` through `safeQuoteSummary`; do **not**
    add a hard module guard here (missing `recommendationTrend` = no coverage =
    existing neutral path). Rely on the wrapper's null-`result` re-throw only.
    — Acceptance: unit test with a mocked validation error whose `error.result` has no
    `recommendationTrend` asserts `fetchAnalystRatings` returns `totalAnalysts: 0` and
    a neutral score (not a throw).
 
-5. [ ] Add tests. Mock `@/lib/yahoo-finance` (per the existing `vi.mock` pattern in
+5. [x] Add tests. Mock `@/lib/yahoo-finance` (per the existing `vi.mock` pattern in
    `news.service.test.ts`) and `@/lib/prisma`. Construct a fake error object with
    `name: "FailedYahooValidationError"`, a `result`, and an `errors` array to
    exercise the wrapper and each service without hitting live Yahoo. Cover: wrapper
@@ -174,7 +174,7 @@ convention (no logger abstraction exists).
    guard paths.
    — Acceptance: `npm run verify` — all new tests pass under `vitest run`.
 
-6. [ ] Add an ADR to `DECISIONS.md` (draft in this plan's "Proposed DECISIONS.md
+6. [x] Add an ADR to `DECISIONS.md` (draft in this plan's "Proposed DECISIONS.md
    entry") and an AGENT.md fragile-surface entry documenting: the wrapper is the
    single sanctioned `quoteSummary` entry point; detection is by `error.name` not
    `instanceof` (and why deep-importing the error class is forbidden); the warn-log

@@ -1,4 +1,4 @@
-import yahooFinance from '@/lib/yahoo-finance';
+import yahooFinance, { safeQuoteSummary } from '@/lib/yahoo-finance';
 import { addDays, subDays, startOfDay } from 'date-fns';
 
 interface MarketQuote {
@@ -49,7 +49,7 @@ export class MarketDataService {
     if (cached) return cached;
 
     try {
-      const quote = await yahooFinance.quoteSummary(symbol, {
+      const quote = await safeQuoteSummary(symbol, {
         modules: ['price', 'summaryDetail']
       });
 

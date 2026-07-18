@@ -35,7 +35,7 @@
 | `lib/auth.ts` | NextAuth config — credentials provider, JWT callbacks |
 | `lib/utils/auth.ts` | Shared route-handler auth helpers (`getAuthenticatedUser`, `getAuthenticatedUserWithPortfolio`) |
 | `lib/prisma.ts` | Prisma client singleton (cached on `globalThis` outside production) |
-| `lib/yahoo-finance.ts` | Shared `yahoo-finance2` client instance |
+| `lib/yahoo-finance.ts` | Shared `yahoo-finance2` client instance; also exports `safeQuoteSummary`, the single sanctioned `quoteSummary` chokepoint that tolerates Yahoo schema-validation drift (ADR-15) |
 | `lib/middleware/rate-limit.ts` | Per-IP, per-scope in-memory rate limiter (`checkRateLimit`) |
 | `lib/services/technical-analysis.service.ts` | Core calc: technical indicators → signal/score (largest service, 732 lines) |
 | `lib/services/fundamental-analysis.service.ts` | Core calc: fundamentals extraction + scoring (638 lines) |
