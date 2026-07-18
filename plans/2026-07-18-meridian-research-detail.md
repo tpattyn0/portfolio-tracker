@@ -172,7 +172,7 @@ on active) — keep it, just add the Transactions entry and reorder. Tab state s
 Ordered so shared primitives land before the tabs that consume them. Each task keeps
 `npm run verify` green (the AGENT.md `## Verify` block) and is independently checkable.
 
-1. [ ] **Shared band/tick pure helpers + tests** — add `lib/utils/score-band.ts` exporting
+1. [x] **Shared band/tick pure helpers + tests** — add `lib/utils/score-band.ts` exporting
    `scoreBandClass(score: number|null): string` (≥7 `text-up`, 4–7 `text-amber`, <4
    `text-dn`, null `text-mut`), `gradingDotClass(status: "strong"|"inline"|"weak"): string`,
    and a `metricGrade(value, {goodThreshold, badThreshold, inverse})` that reproduces the
@@ -182,13 +182,13 @@ Ordered so shared primitives land before the tabs that consume them. Each task k
    (`vitest`), following the `chart-path.test.ts` pattern (known input, degenerate: equal
    min/max, null/NaN). — Acceptance: `npm run verify` passes; new test files execute and
    cover the band boundaries (6.9→amber, 7.0→up, 3.9→dn) and a flat-series tick case.
-2. [ ] **Shared presentational components** — create `components/research/`:
+2. [x] **Shared presentational components** — create `components/research/`:
    `headline-score-card.tsx` (`HeadlineScoreCard`), `score-figure.tsx`
    (`ScoreFigure` + `VerdictStamp`), `subscore-band.tsx` (`SubscoreBand`),
    `graded-metric-row.tsx` (`GradedMetricRow`). All consume Task 1 helpers and DESIGN.md
    tokens only (no hardcoded hex). — Acceptance: components typecheck and render in isolation
    (import into a scratch route or Storybook-free smoke render); `npm run verify` passes.
-3. [ ] **`DetailPriceChart` component (ADR-11)** — create
+3. [x] **`DetailPriceChart` component (ADR-11)** — create
    `components/research/detail-price-chart.tsx` reusing `buildPath`/`buildAreaPath`
    (unchanged) with props `{ symbol, period, referenceLines? }`, y-axis labels via
    `niceYTicks`, hover crosshair + marker + date/price tooltip (container-ref pixel math,
@@ -196,7 +196,7 @@ Ordered so shared primitives land before the tabs that consume them. Each task k
    chart data via React Query like `PriceChart`. — Acceptance: renders a line + area + 3
    gridlines + 3–4 y labels for a real symbol; hovering shows a tooltip with date + price and
    a crosshair; `npm run verify` passes. (Interaction verified in Task 11's Playwright pass.)
-4. [ ] **Refactor Overview onto shared components** — rewrite `components/overview.tsx` to
+4. [x] **Refactor Overview onto shared components** — rewrite `components/overview.tsx` to
    consume `HeadlineScoreCard` + `ScoreFigure` + `VerdictStamp` + `SubscoreBand`, and swap
    its chart from `PriceChart` to `DetailPriceChart period="1Y"`. Extract its
    `upsideToScore`/`sentimentToScore` derivations into `lib/utils/research-scores.ts` (pure,
