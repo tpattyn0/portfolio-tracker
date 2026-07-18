@@ -148,25 +148,22 @@ Work in order. `[ ] todo · [~] in progress · [x] done · [!] blocked`.
    identical to before for a fixed fixture (no math change). `npm run verify` green.
 
 6. [x] **Add the two missing DB indexes on the closed-positions hot path.** Migration
-   created only — `20260718152229_add_transaction_position_executedat_index` — NOT
-   applied to the shared dev/prod DB (`prisma migrate status` confirms it is pending).
-   Owner sign-off required before running `prisma migrate deploy`. Only the composite
-   `[positionId, executedAt]` index was added; a query-plan check for `@@index([type])`
-   was not performed (no isolated DB to run `EXPLAIN` against safely) — logged as a
-   follow-up if the owner wants it investigated.
+   `20260718152229_add_transaction_position_executedat_index` created, then **applied**
+   to the shared dev/prod DB via `prisma migrate deploy` on 2026-07-18 with owner
+   sign-off (PAR-Q1, `reviews/2026-07-18-performance-audit-remediation.md`); `prisma
+   migrate status` confirms "Database schema is up to date!" with no pending
+   migrations. Only the composite `[positionId, executedAt]` index was added; a
+   query-plan check for `@@index([type])` was not performed (no isolated DB to run
+   `EXPLAIN` against safely) — logged as a follow-up if the owner wants it investigated.
    `app/api/portfolio/closed-positions/route.ts:50-70` queries `Position` filtered by
    `portfolioId` + `transactions.some(type: SELL)` and loads all `transactions`
    ordered by `executedAt`. `Transaction` has `@@index([executedAt])` and
-   `@@index([portfolioId])` but no composite `@@index([positionId, executedAt])`,
-   which is the access pattern for the per-position FIFO replay (ADR-5 notes cost
-   grows with history). Add `@@index([positionId, executedAt])` to `Transaction` in
-   `prisma/schema.prisma:86-88`, and `@@index([type])` if query plans show a benefit.
-   Generate the migration but DO NOT apply it to the shared dev/prod DB without owner
-   sign-off (ADR-6 / TD-02 — one shared database, no isolated dev DB). See ## Open
-   decisions.
-   — Acceptance: `prisma migrate diff` / generated migration adds the composite index;
-   schema still validates (`prisma validate`). Migration is *created, not applied*
-   pending owner sign-off. `npm run verify` green.
+   `@@index([portfolioId])`; it now also has the composite
+   `@@index([positionId, executedAt])`, the access pattern for the per-position FIFO
+   replay (ADR-5 notes cost grows with history). See `DECISIONS.md` ADR-14.
+   — Acceptance: migration adds the composite index; schema still validates (`prisma
+   validate`). Migration is applied — `prisma migrate status` confirms no pending
+   migrations. `npm run verify` green.
 
 7. [x] **Add streaming loading boundaries to the remaining pages.**
    Only `app/(dashboard)/dashboard/loading.tsx` exists; the research, research-detail,
@@ -234,7 +231,7 @@ Beyond it:
   background refetch (Task 1); one 1Y chart request across Overview+Technical (Task 2);
   no per-position history call on dashboard load (Task 4); reduced initial JS on the
   research route (Task 9).
-- **Do not apply the Task 6 migration** to the shared DB without owner sign-off.
+- **Task 6 migration applied 2026-07-18** to the shared DB via `prisma migrate deploy`, with owner sign-off (PAR-Q1). See `DECISIONS.md` ADR-14.
 
 ## Assumptions
 
@@ -253,8 +250,7 @@ Beyond it:
 
 ## Open decisions
 
-- **Task 6 migration application.** The composite index is safe to *create*, but
-  applying any migration touches the shared dev/prod database (ADR-6 / TD-02 — no
-  isolated dev DB). The owner must sign off on applying it, or defer application until
-  a staging DB exists. The Coding agent should create the migration and stop short of
-  applying it.
+- **Task 6 migration application — resolved.** The owner signed off on 2026-07-18
+  (PAR-Q1) and the migration was applied to the shared dev/prod database via
+  `prisma migrate deploy`; `prisma migrate status` confirms no pending migrations.
+  See `DECISIONS.md` ADR-14.
