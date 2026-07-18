@@ -141,7 +141,7 @@ reload, warm React Query cache — instead of a cold full-page load.
    reload (Network tab shows no top-level document request; the research-detail
    skeleton flashes).
 
-4. [!] Behavioural verification (Playwright): from a warm session on `/dashboard`,
+4. [~] Behavioural verification (Playwright) — deferred to owner manual acceptance (review NAV-Q1): from a warm session on `/dashboard`,
    click each nav item and a position row; confirm the destination's `loading.tsx`
    skeleton paints within the same frame as the click (no blank/frozen window) and
    `<Navigation>` never unmounts. — Acceptance: recorded interaction shows skeleton
