@@ -56,7 +56,13 @@ export default function DashboardPage() {
   }, [currencyData]);
 
   if (isLoading) {
-    return <DashboardSkeleton />;
+    // The route-level app/(dashboard)/dashboard/loading.tsx Suspense
+    // boundary already covers this exact window (first render triggers
+    // this query's first fetch), so this branch is effectively
+    // unreachable in normal navigation — kept as a defensive fallback
+    // rather than removed outright, since a client-side re-mount without
+    // a full navigation (e.g. React key change) would still hit it.
+    return null;
   }
 
   const positions: Position[] = portfolio?.positions ?? [];
@@ -230,32 +236,6 @@ export default function DashboardPage() {
           <PortfolioInsights />
         </ComponentErrorBoundary>
       )}
-    </div>
-  );
-}
-
-function DashboardSkeleton() {
-  return (
-    <div className="animate-pulse space-y-6">
-      <div className="grid grid-cols-[1fr_auto] items-end gap-12 pb-9">
-        <div>
-          <div className="h-3 w-32 rounded bg-fill" />
-          <div className="mt-3 h-12 w-64 rounded bg-fill" />
-          <div className="mt-4 h-4 w-80 rounded bg-fill" />
-        </div>
-        <div className="h-10 w-40 rounded-full bg-fill" />
-      </div>
-      <div className="grid grid-cols-3 gap-8 border-y border-border py-5">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="space-y-2">
-            <div className="h-3 w-24 rounded bg-fill" />
-            <div className="h-7 w-32 rounded bg-fill" />
-            <div className="h-3 w-28 rounded bg-fill" />
-          </div>
-        ))}
-      </div>
-      <div className="h-[300px] w-full rounded-lg border border-border bg-fill" />
-      <div className="h-64 w-full rounded-lg border border-border bg-fill" />
     </div>
   );
 }

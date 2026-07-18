@@ -27,13 +27,23 @@ export async function GET(
 
     const prices = historicalForAnalysis.map(d => d.value);
     const volumes = historicalForAnalysis.map(d => d.volume);
-    const indicators = technicalAnalysisService.calculateIndicators(prices, volumes);
+    const indicators = technicalAnalysisService.getCachedIndicators(symbol, prices, volumes);
 
-    return NextResponse.json({
-      chart: chartData,
-      indicators,
-      period
-    });
+    return NextResponse.json(
+      {
+        chart: chartData,
+        indicators,
+        period
+      },
+      {
+        headers: {
+          // Matches the underlying market-data.service history cache TTL
+          // (60s) and the indicator cache TTL — a refetch within that
+          // window is cheap for both client and server (plan Task 3).
+          "Cache-Control": "private, max-age=60",
+        },
+      }
+    );
   } catch (error) {
     console.error("Chart fetch error:", error);
     return NextResponse.json(

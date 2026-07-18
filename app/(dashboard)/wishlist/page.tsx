@@ -17,7 +17,10 @@ export default function WishlistPage() {
   });
 
   if (isLoading) {
-    return <WishlistSkeleton />;
+    // app/(dashboard)/wishlist/loading.tsx's route-level Suspense boundary
+    // already covers this exact initial-fetch window — see the equivalent
+    // note in dashboard/page.tsx.
+    return null;
   }
 
   const hasItems = wishlistItems && wishlistItems.length > 0;
@@ -119,30 +122,6 @@ export default function WishlistPage() {
           />
         </div>
       )}
-    </div>
-  );
-}
-
-function WishlistSkeleton() {
-  return (
-    <div className="animate-pulse space-y-6">
-      <div className="grid grid-cols-[1fr_auto] items-end gap-12 pb-10">
-        <div>
-          <div className="h-3 w-56 rounded bg-fill" />
-          <div className="mt-3 h-12 w-64 rounded bg-fill" />
-        </div>
-        <div className="h-10 w-40 rounded-full bg-fill" />
-      </div>
-      <div className="grid grid-cols-3 gap-8 border-y border-border py-5">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="space-y-2">
-            <div className="h-3 w-24 rounded bg-fill" />
-            <div className="h-7 w-16 rounded bg-fill" />
-            <div className="h-3 w-32 rounded bg-fill" />
-          </div>
-        ))}
-      </div>
-      <div className="h-96 w-full rounded-lg border border-border bg-fill" />
     </div>
   );
 }

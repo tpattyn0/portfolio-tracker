@@ -85,6 +85,43 @@ interface PriceData {
 }
 
 export class TechnicalAnalysisService {
+  // Keyed in-process cache (ADR-4 pattern: independent hand-rolled Map, no
+  // shared infra) so repeated requests for the same symbol within the TTL
+  // don't re-run the full SMA/EMA/RSI/MACD/… recompute over 205+ points
+  // (plan Task 3). Keyed by symbol + a cheap fingerprint of the input
+  // series (length + last close) so a genuinely different dataset for the
+  // same symbol (different period/lookback) is never served stale.
+  private indicatorsCache = new Map<string, { data: TechnicalIndicators; timestamp: number }>();
+  private readonly INDICATORS_CACHE_TTL = 60_000; // matches market-data.service's history cache TTL
+
+  /**
+   * Cached wrapper around calculateIndicators — same output, memoized per
+   * symbol for INDICATORS_CACHE_TTL ms. Callers that don't have a stable
+   * symbol to key on (or want the guaranteed-fresh computation) should call
+   * calculateIndicators directly; this never changes what is computed, only
+   * how often (plan Task 3 — no scoring-math change).
+   */
+  getCachedIndicators(
+    symbol: string,
+    prices: number[] | PriceData[],
+    volumes?: number[]
+  ): TechnicalIndicators {
+    const closePrices = Array.isArray(prices) && typeof prices[0] === 'object'
+      ? (prices as PriceData[]).map(p => p.close)
+      : (prices as number[]);
+    const fingerprint = `${closePrices.length}:${closePrices[closePrices.length - 1]}`;
+    const cacheKey = `${symbol}:${fingerprint}`;
+
+    const cached = this.indicatorsCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.INDICATORS_CACHE_TTL) {
+      return cached.data;
+    }
+
+    const data = this.calculateIndicators(prices, volumes);
+    this.indicatorsCache.set(cacheKey, { data, timestamp: Date.now() });
+    return data;
+  }
+
   calculateIndicators(
     prices: number[] | PriceData[],
     volumes?: number[]

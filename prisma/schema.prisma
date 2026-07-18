@@ -86,6 +86,7 @@ model Transaction {
   @@index([portfolioId])
   @@index([ticker])
   @@index([executedAt])
+  @@index([positionId, executedAt])
 }
 
 model Wishlist {

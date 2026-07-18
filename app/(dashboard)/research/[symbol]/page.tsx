@@ -3,19 +3,45 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Loader2, Plus, Star } from "lucide-react";
-import { TechnicalAnalysis } from "@/components/technical-analysis";
-import { FundamentalAnalysis } from "@/components/fundamental-analysis";
-import { IntrinsicValue } from "@/components/intrinsic-value";
 import { Overview } from "@/components/overview";
-import { AnalystRatings } from "@/components/analyst-ratings";
-import { NewsFeed } from "@/components/news-feed";
-import { TransactionsTab } from "@/components/research/transactions-tab";
 import { AddToWishlistModal } from "@/components/add-to-wishlist-modal";
 import { ComponentErrorBoundary } from "@/components/error-boundary";
 import { formatCurrency, formatPercent, formatCompactCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
+
+// Only the Overview tab (the default active tab, plan Task 9) is a static
+// import — the other six tabs are not needed until a user clicks them, so
+// their JS is deferred out of the initial route bundle via next/dynamic.
+// No SSR needed: all tabs are already client-only ("use client" page) and
+// gated behind activeTab state, so there is no first-paint content to lose
+// by disabling server rendering for them.
+const TechnicalAnalysis = dynamic(
+  () => import("@/components/technical-analysis").then((m) => m.TechnicalAnalysis),
+  { ssr: false }
+);
+const FundamentalAnalysis = dynamic(
+  () => import("@/components/fundamental-analysis").then((m) => m.FundamentalAnalysis),
+  { ssr: false }
+);
+const AnalystRatings = dynamic(
+  () => import("@/components/analyst-ratings").then((m) => m.AnalystRatings),
+  { ssr: false }
+);
+const IntrinsicValue = dynamic(
+  () => import("@/components/intrinsic-value").then((m) => m.IntrinsicValue),
+  { ssr: false }
+);
+const TransactionsTab = dynamic(
+  () => import("@/components/research/transactions-tab").then((m) => m.TransactionsTab),
+  { ssr: false }
+);
+const NewsFeed = dynamic(
+  () => import("@/components/news-feed").then((m) => m.NewsFeed),
+  { ssr: false }
+);
 
 const tabs = [
   { value: "overview", label: "Overview" },
@@ -70,6 +96,7 @@ export default function ResearchStockPage() {
       return res.json();
     },
     enabled: !!symbol,
+    staleTime: 5 * 60 * 1000,
   });
   const overviewContext: "portfolio" | "wishlist" = positionQ.data ? "portfolio" : "wishlist";
 
