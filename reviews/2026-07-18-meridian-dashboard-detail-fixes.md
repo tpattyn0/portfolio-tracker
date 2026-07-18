@@ -1,7 +1,7 @@
 # Review: Meridian dashboard + detail-page fixes
 
 Date: 2026-07-18
-Status:
+Status: IMPLEMENTED — 2026-07-18
 
 ## Summary
 
