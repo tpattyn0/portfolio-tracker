@@ -264,7 +264,7 @@ Ordered so shared primitives land before the tabs that consume them. Each task k
     Add `ComponentErrorBoundary` around the tab content region (AGENT.md notes the research
     detail page currently has none). — Acceptance: all 7 tabs switch client-side and render the
     correct component; `npm run verify` passes; Playwright pass (see Verification) drives all 7.
-12. [ ] **Docs + tech-debt + future-ideas** — update `DESIGN.md` (new named tokens/patterns
+12. [x] **Docs + tech-debt + future-ideas** — update `DESIGN.md` (new named tokens/patterns
     from Task 2/3 — grading dot, headline score card, detail chart hover/y-axis; see DESIGN.md
     additions below), add `ARCHITECTURE.md` note that the detail charts now use the custom SVG
     (`DetailPriceChart`) and `price-chart.tsx` is retired, append ADR-11 to `DECISIONS.md`, log

@@ -132,7 +132,7 @@ export function AnalystRatings({ symbol, currentPrice, initialData, currency }: 
             </div>
             {priceDifference && (
               <div className={cn("mt-0.5 text-[12.5px]", priceDifference.value >= 0 ? "text-up" : "text-dn")}>
-                {priceDifference.formatted} upside
+                {priceDifference.formatted} {priceDifference.value >= 0 ? "upside" : "downside"}
               </div>
             )}
           </div>
