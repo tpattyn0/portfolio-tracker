@@ -5,9 +5,12 @@ masthead, serif figures, ruled stat bands, flat/no-shadow surfaces, a near-monoc
 warm palette with three chromatic accents reserved for gain/loss/mid-score meaning.
 
 Source: `design_handoff_meridian/` (gitignored reference bundle — high-fidelity; colors,
-typography, spacing, and interactions below are final). Governing plan:
+typography, spacing, and interactions below are final). Governing plans:
 `plans/2026-07-17-meridian-design-overhaul.md` (ADR-8 token reconciliation, ADR-9
-Watchlist naming, ADR-10 custom SVG chart — see `DECISIONS.md`).
+Watchlist naming, ADR-10 custom SVG chart) and
+`plans/2026-07-18-meridian-research-detail.md` (ADR-11 extends the custom SVG chart
+to the research-detail tabs, retires Recharts there, and adds the 7-tab structure) —
+see `DECISIONS.md`.
 
 This is a re-skin. No data model, scoring logic, or UX flow changes — see `## UX flows`.
 
@@ -244,6 +247,134 @@ Two sizes: 19px/500 inline in the Watchlist table Score column; 84px/500 (line-h
 1) as the research-detail composite headline, with a smaller `/10` suffix at 30px
 `--mut`. Sub-dimension scores in the 5-col breakdown grid use 28px, same band coloring.
 
+### Grading dot
+A `●` glyph, `margin-left:8px`, set inline immediately after a metric's value —
+never on its own line. Colored by the metric's grade against the same band logic as
+Score figure, applied to a per-metric status rather than a 0–10 number:
+- **Strong** → `--up`
+- **In line** → `--amber`
+- **Weak** → `--dn`
+- **Unavailable** (metric not computable) → `--mut`
+
+Used on every metric row inside the Fundamental tab's sub-views (Score-breakdown
+grid, and the six pill sub-nav sections' `GradedMetricRow`s). Always paired with a
+legend row where it first appears on a screen, sans 10.5px uppercase `--mut` label,
+12.5px `--sub` body, exact wording: **"● Strong vs peers · ● In line · ● Weak vs
+peers"** (three `<span>`s, `gap:24px`, each a colored `●` followed by its label).
+Grading today is threshold-based (see `metricGrade()` in `lib/utils/score-band.ts`
+per the governing plan), not a literal peer comparison — the legend wording is kept
+as-is per the plan's Assumptions; do not silently reword it without a Designer note.
+
+### Headline score card
+The single editorial headline pattern reused, unchanged in structure, across
+Overview, Technical, Fundamental, Analysts, Intrinsic value, and News & sentiment —
+**one component, not six**. Card chrome: `--card` background, 1px `--line` border,
+radius 8px, `border-top: 3px double var(--ink)`, padding `24px 28px 28px`.
+
+Header row inside the card (`padding-bottom:16px`, `1px --line2` bottom border):
+left = section kicker (11px/600, uppercase, 0.14em, `--ink`); right = a muted meta
+kicker (10.5px uppercase, 0.1em, `--mut`) — e.g. "Meridian rating · updated daily",
+"Daily bars · updated at close", "Trailing twelve months · FY ends Sep", "34
+analysts · last 90 days", "Discounted cash flow · 10-year model", "1,240 articles
+analysed · last 30 days".
+
+Body: `grid-template-columns: 280px 1fr`, `gap:56px`, `padding-top:28px`.
+- **Left column** — always in this order:
+  1. `ScoreFigure` at 84px with the `/10` suffix at 30px `--mut`, banded per Score
+     figure's thresholds.
+  2. Either a rotated `VerdictStamp` (Overview, Analysts — anywhere the design shows
+     a "Buy"-style call) **or** a verdict kicker line (10.5px uppercase, 0.12em,
+     `--mut` by default or the band color + weight 600 when the kicker itself carries
+     the verdict, e.g. "Positive momentum" in `--up`, `margin-top:20px`) — never both.
+  3. An optional italic serif summary paragraph, 14.5px/1.55, color `--mut`,
+     `margin:10px 0 0` (Technical, Fundamental, Intrinsic, News use this; Overview and
+     Analysts instead show a plain kicker line under the stamp, e.g. "Momentum +
+     quality", "Street consensus").
+  4. Intrinsic value's left column additionally inserts a fair-value figure (34px
+     serif, `margin-top:4px`) and a colored "Trading X% above/below fair value" line
+     (13px/500) between steps 2 and 3 — a documented variant, not a new component.
+- **Right column** — a flexible `children` slot: the 5-dimension `SubscoreBand`
+  (Overview), the `DetailPriceChart` (Technical), the Fundamental 5-col
+  `SubscoreBand`, the Analysts ratings-distribution rows + 3-col price-target band,
+  the Intrinsic 3-col scenario band + Model-assumptions rows, or the News 3-col tone
+  band. Each slot's internals are documented in their own tab entry under
+  `## UX flows → Research detail`; the card itself never changes shape to fit them.
+
+### Subscore band
+N-column ruled band of `ScoreFigure`s at 28px (not 84px), banded per the same
+thresholds, `1px --line2` vertical rules between columns (first column no left
+padding, last column no right padding — same flush-edge rule as the dashboard/
+watchlist Ruled stat band). Kicker label per column: 10.5px uppercase `--mut`,
+`margin-top:6px` above the figure. Used at:
+- **5-col** — Overview's Technical/Fundamental/Analysts/Intrinsic/Sentiment
+  dimension grid, and Fundamental's Valuation/Profitability/Growth/Health/Dividend
+  headline band. Both live inside a Headline score card's right-hand slot.
+This is the same component as the Ruled stat band's card-wrapped variant, sized down
+(28px vs 26px value, `ScoreFigure` band coloring instead of `--up`/`--dn` signed
+coloring) — treat as a sibling pattern, not a fork: both are "N equal columns,
+`--line2` verticals, kicker-over-value-over-detail cells."
+
+### Detail price chart (`DetailPriceChart`)
+The research-detail Overview/Technical chart — same drawing primitives as the
+Dashboard SVG performance chart (`buildPath`/`buildAreaPath`, ink line, `--ink`
+0.05 area fill, `--line` baseline) but a **distinct component**: no range-morph
+animation, and it adds hover/y-axis behavior the hero chart intentionally does not
+have (see the hero chart's own entry below).
+
+- **ViewBox** — `0 0 1300 190` on Overview (1-year, no range tabs, static); `0 0
+  1000 190` on Technical (6-month). Both `preserveAspectRatio="none"`, `height:190px`
+  container (Overview) / `170px` (Technical per the handoff's outer wrapper), 3
+  hairline `--line2` gridlines at fixed y-fractions (y=47/94/141 of 190), ink line
+  1.5px stroke, `--ink` 0.05 fill-opacity area (no stroke), `--line` baseline rule.
+- **Y-axis price labels** — a few (3–4) `--mut` value labels, sans, positioned as
+  HTML text absolutely against the chart container at the gridline y-fractions (not
+  inside the SVG, which would distort under `preserveAspectRatio="none"`), formatted
+  with `formatCurrency`. Minimal — this is a "few labels," not a dense axis.
+- **Hover crosshair + tooltip** — on `mousemove` over the plotted area: an `--ink`
+  marker dot on the line at the nearest data point, a thin vertical `--line`
+  crosshair through it, and a small card-style tooltip (`--card` background, 1px
+  `--line` border, same radius/shadow-free treatment as any Card) showing the point's
+  date and `formatCurrency(price)`. All three hide on `mouseleave`.
+- **Reference lines + legend (Technical only)** — optional `--mut`
+  `stroke-dasharray="6 5"` horizontal lines at given values (support/resistance),
+  1px stroke width, plus a legend row beneath the chart: sans 10.5px uppercase
+  `--mut`, `justify-content:space-between`, e.g. "Resistance $216.80 ┄ · Support
+  $208.20 ┄ · Jan – Jul 2026". Omit both the lines and the legend entirely when no
+  reference values are available — never fabricate a level.
+- **Date-axis caption row** (Overview) — below the chart, `justify-content:
+  space-between`, sans 10.5px uppercase 0.08em `--mut`, evenly spaced date labels
+  (e.g. "Jul 2025 · Oct 2025 · Jan 2026 · Apr 2026 · Jul 2026").
+
+Distinct from `portfolio-chart.tsx` (dashboard hero): the hero has the range-morph
+tab row and 220-tall viewBox but no hover marker/crosshair/tooltip and no y-axis
+labels — do not merge the two components or backport one's exclusive behavior into
+the other without a Designer decision (adding hover/y-axis to the hero is logged in
+`future_ideas.md`, out of scope here).
+
+### Editorial coverage list
+Hairline-divided list for News & sentiment's "Latest coverage": each row
+`justify-content:space-between`, `align-items:baseline`, `gap:32px`, `padding:18px
+0`, `1px --line2` bottom border (omit on the last row), `cursor:pointer`, row hover
+per the standard rule (`background: color-mix(in srgb, var(--fill) 45%,
+transparent)`, no border/inset change). Row content:
+- **Left** — serif headline, Newsreader 17px/500, line-height 1.35, over a kicker
+  line `{source} · {date}` (10.5px uppercase, 0.12em, `--mut`, `margin-top:6px`).
+- **Right** — a single uppercase tag, sans 10.5px/600, 0.14em letter-spacing,
+  `white-space:nowrap`, colored `--up` (POSITIVE) / `--mut` (NEUTRAL) / `--dn`
+  (NEGATIVE). No pill/border chrome — text color only, unlike the outlined badges
+  elsewhere in the system.
+
+### Outlined type badge (transactions)
+Inline pill, sans 10px/600 uppercase, 0.14em letter-spacing, `border-radius:10px`,
+`padding:2px 10px`. Two variants by transaction type:
+- **BUY** — `1px --up` border, `--up` text.
+- **Other** (SELL, or any type outside the schema's BUY/SELL — see
+  `TECH_DEBT.md TD-DTL-TXTYPE`) — `1px --line` border, `--mut` text.
+Used in the Transactions tab's table Type column only; do not reuse for the
+Analysts "Recent revisions" RAISED/HELD/LOWERED tags, which are unbordered colored
+text (`--up`/`--mut`/`--dn`, 10.5px/600, 0.14em) matching the Editorial coverage
+list's tag treatment, not this badge.
+
 ### TARGET REACHED badge
 Outlined pill, no fill: 1px `--up` border, `--up` text, radius 10px, padding `2px 8px`,
 sans 10px/600, uppercase, 0.12em letter-spacing, inline next to the security name
@@ -304,23 +435,49 @@ border, radius 8px, padding 24–28px (32px for forms). Optional variants:
 ### Segmented tabs (range / section tabs)
 Flex row, `18–32px` gap. Inactive: 10.5–11px, `--mut`, transparent 1–2px bottom border
 (space reserved). Active: weight 600, `--ink` text, 1–2px `--ink` bottom border. Used
-for chart range tabs (1D…Max), research-detail section tabs (Overview/Technical/…),
-Add-position's Price-per-share/Total-amount pair (2px underline variant), and
-Closed-positions' All/Winning/Losing filter.
+for chart range tabs (1D…Max), Add-position's Price-per-share/Total-amount pair (2px
+underline variant), and Closed-positions' All/Winning/Losing filter.
+
+Research-detail's own tab bar is the same pattern at its exact handoff values: flex
+row `gap:32px`, `padding:4px 4px 0`, `1px --line` bottom border under the whole row.
+Each tab: sans 11px/uppercase/0.14em, `padding-bottom:12px`, `cursor:pointer`,
+`white-space:nowrap`. Inactive: `--mut`, no border. Active: weight 600, `--ink` text,
+`2px solid --ink` bottom border. Client-side tab state, 7 tabs: Overview · Technical
+· Fundamental · Analysts · Intrinsic value · Transactions · News & sentiment.
+
+### Pill sub-nav (Fundamental tab)
+A second-level nav, distinct from Segmented tabs — filled/outlined pills, not
+underlines, because it sits one level below the section tab bar and must not be
+mistaken for it. Flex row, `gap:10px`, `flex-wrap:wrap`, `margin-bottom:20px`. Each
+pill: sans 10.5px uppercase 0.12em, `padding:8px 18px`, `border-radius:16px`,
+`cursor:pointer`, `white-space:nowrap`. Inactive: `--mut` text, `1px --line` border,
+transparent fill. Active: `--btnbg` fill, `--btnfg` text, weight 600, no border. Six
+pills, client-side state: Overview · Valuation · Profitability · Growth · Health ·
+Dividend — switches which single card renders below (Overview = 2-col
+score-breakdown grid + Revenue-by-segment card; the other five = one grouped-metrics
+card each, per `## UX flows → Research detail`).
 
 ### Dashboard SVG performance chart
 Per ADR-10: a purpose-built inline SVG (not Recharts) on the dashboard hero only —
 `lib/utils/chart-path.ts` exports the pure `buildPath()` Catmull-Rom→cubic-bezier
 function ported from the prototype's `buildPath(vals, w, h)`. Rendering spec: viewBox
-`0 0 1300 220` (190 on research-detail's retained-Recharts chart — not this component),
-3 hairline `--line2` gridlines at fixed y-positions, ink line at 1.5px stroke width, no
-fill on the line, a separate fill-only area path (`chartLine + 'L{w},{h}L0,{h}Z'`) at
-`fill:var(--ink)` `fill-opacity:0.05` and `stroke:none`, and a `--line` (not `--line2`)
+`0 0 1300 220`, 3 hairline `--line2` gridlines at fixed y-positions, ink line at
+1.5px stroke width, no fill on the line, a separate fill-only area path
+(`chartLine + 'L{w},{h}L0,{h}Z'`) at `fill:var(--ink)` `fill-opacity:0.05` and
+`stroke:none`, and a `--line` (not `--line2`)
 baseline rule at the bottom. Range-change morph: 500ms, ease-in-out
 (`k<0.5 ? 2k² : 1-(-2k+2)²/2`), driven by `requestAnimationFrame`, interpolating every
 point in the 20-point series from its previous value to its new value — not a snap
-re-render. `price-chart.tsx` (research detail) keeps Recharts and is retokenized only
-(ink line, `--line2` gridlines, no range tabs) — do not port the custom chart there.
+re-render.
+
+**Superseded note (ADR-11):** the prior sentence here said research detail's chart
+(`price-chart.tsx`) keeps Recharts, retokenized only. Per
+`plans/2026-07-18-meridian-research-detail.md` and ADR-11, that is no longer current
+— the research-detail Overview and Technical charts now use `DetailPriceChart` (see
+Components → "Detail price chart"), which shares this component's `buildPath`/
+`buildAreaPath` primitives but is a separate component (no range-morph; adds hover/
+y-axis/reference-line behavior this hero chart does not have). `price-chart.tsx`
+(Recharts) is retired once no importer remains — do not build new screens against it.
 
 ---
 
@@ -381,9 +538,10 @@ unchanged. The 7 screens covered (per the plan) and their navigation:
    discipline cards (Technical/Fundamental/Intrinsic) linking into the existing
    research flow (no new routes). Reached via nav "Research".
 5. **Research detail** (`/research/[symbol]`) — company header, 4-col stat card,
-   section tabs (Overview/Technical/Fundamental/Analysts/Intrinsic/News), retained
-   Recharts price chart, composite score breakdown. Reached from any table row or the
-   research index.
+   a 7-tab bar (Overview/Technical/Fundamental/Analysts/Intrinsic value/Transactions/
+   News & sentiment), a custom-SVG `DetailPriceChart` (ADR-11, supersedes the earlier
+   retained-Recharts plan), and a headline score card per tab. Reached from any table
+   row or the research index. Full tab-by-tab spec: see "Research detail" below.
 6. **Add position** (`/portfolio/add`) — narrow form, stock search, shares/date,
    price-per-share ↔ total-amount tab pair, order summary, Cancel/Add pills. Reached
    from the dashboard's "+ Add position" and research detail's "+ Add to portfolio".
@@ -392,6 +550,79 @@ unchanged. The 7 screens covered (per the plan) and their navigation:
    bundle; it inherits the Login screen's treatment by direct extrapolation (same
    420px column, masthead block, card, field/label/button patterns) — see the plan's
    `## Assumptions`. No new tokens or patterns are needed for it.
+
+### Research detail — tab-by-tab
+
+Governing plan: `plans/2026-07-18-meridian-research-detail.md` (ADR-11). Company
+header: name (Newsreader 52px) over a `TICKER · EXCHANGE` kicker (sector clause
+appended only when the quote payload has it — a data gap when absent, see the
+plan's data-gap map); right-aligned "☆ Watchlist" secondary pill + "+ Add to
+portfolio" primary pill. Below: the 4-col quote stat card (Current price / Day
+range / 52-week range / Market cap), then the Segmented tabs research-detail tab
+bar (7 tabs, client-side state — see Components → "Segmented tabs").
+
+Score band thresholds used throughout every tab (presentational only — recolors an
+already-computed number, never changes scoring math): **≥ 7 → `--up`, 4–7 →
+`--amber`, < 4 → `--dn`, null/unavailable → `--mut`** (same thresholds as Score
+figure).
+
+1. **Overview** — `DetailPriceChart period="1Y"` card (no range tabs, static),
+   then the Headline score card: 84px composite score + rotated `VerdictStamp` +
+   verdict kicker on the left, 5-col `SubscoreBand` (Technical/Fundamental/
+   Analysts/Intrinsic/Sentiment) + №-numbered key-insights list on the right.
+2. **Technical** — Headline score card: 84px score + verdict kicker + italic
+   summary on the left, `DetailPriceChart period="6M"` (+ dashed support/
+   resistance reference lines and legend when available — data gap otherwise, see
+   Components → "Detail price chart") on the right. Below: an "Indicators" card,
+   4-col ruled table (Indicator / Reading / Interpretation / Signal), Signal cell
+   uppercase 10.5px/600 colored BUY `--up` / NEUTRAL `--amber` / SELL `--dn`.
+3. **Fundamental** — Headline score card: 84px score + italic summary on the left,
+   5-col `SubscoreBand` (Valuation/Profitability/Growth/Health/Dividend) on the
+   right. Below: the Pill sub-nav (Overview/Valuation/Profitability/Growth/Health/
+   Dividend). *Overview* sub-view = a "Score breakdown" card, 2-col grid of the
+   five sections (each: serif name + subscore under a `3px double var(--ink)` rule,
+   then 4 `GradedMetricRow`s), plus the Grading dot legend, plus a "Revenue by
+   segment" card (thin `--ink`-on-`--fill` bar per segment + % + colored YoY delta —
+   full data gap today, render the empty state). Each of the other five sub-views =
+   one card: serif title + subscore under the same double rule, then grouped metric
+   sections (uppercase kicker group heading over a `1px --line` rule, 2-col
+   `GradedMetricRow` grid), occasionally closed with an italic serif footnote
+   (13.5px, `--mut`) — e.g. the Profitability ROE-buyback caveat, the Dividend
+   payout caveat.
+4. **Analysts** — Headline score card: 84px score + rotated `VerdictStamp` +
+   "Street consensus" kicker on the left; on the right, a 5-row ratings-distribution
+   list (label 10.5px uppercase `--mut` / thin colored bar on a `--fill` track,
+   `height:6px radius:3px`, width = count⁄total, colored `--up`/`--amber`/`--dn` by
+   rating tier / right-aligned count), then a `1px --line`-topped 3-col price-target
+   band (Low `--dn` / Median unstyled + upside `--up` line / High `--up`; Low/High
+   render as em-dash placeholders when the API only returns a mean target — data
+   gap). Below: a "Recent revisions" card, table of firm (serif) / action text
+   (`--sub`) / RAISED `--up` · HELD `--mut` · LOWERED `--dn` tag (10.5px/600,
+   0.14em, unbordered text — same tag treatment as the Editorial coverage list, not
+   the Outlined type badge) / date (`--mut`); empty state when revisions are absent
+   (current API gap).
+5. **Intrinsic value** — Headline score card: 84px amber-band score, "Fair value
+   estimate" kicker + 34px serif fair-value figure + a colored "Trading X%
+   above/below fair value" line (13px/500, banded), then an italic summary — all on
+   the left. Right: a 3-col scenario band (Bear `--dn` kicker / Base `--mut` kicker
+   / Bull `--up` kicker, each a 26px serif value + a 12px `--mut` caption; Bear/Bull
+   render em-dash when only a single-point estimate exists — data gap, Base always
+   populated), then "Model assumptions" label/value rows (Revenue growth + Discount
+   rate available from the DCF Lite method; FCF margin + terminal growth em-dash —
+   data gap).
+6. **Transactions** *(new tab)* — a bare (no card) 4-col ruled stat band (`1px
+   --line` top+bottom, `--line2` verticals) — Shares held / Average cost / Market
+   value / Unrealised P/L (banded `--up`/`--dn` when signed) — shown only when the
+   symbol is held; unowned symbols render a quiet empty state ("You do not hold
+   {symbol}." + the "+ Add to portfolio" pill) with no stat band. Below: a "Your
+   transactions" card with a "+ Add transaction" outlined pill (height 32px, per
+   Spacing/shape's secondary-button pattern) and the standard table shell (Date /
+   Type / Shares / Price / Fees / Total), Type cell using the Outlined type badge.
+7. **News & sentiment** — Headline score card: 84px sentiment score + trend kicker
+   (banded, e.g. "Warming" in `--up`) + italic summary on the left; 3-col tone band
+   on the right (Positive/Neutral/Negative %, each with a colored MoM-delta caption
+   line — omitted when history is too thin to compute, data gap). Below: the
+   Editorial coverage list ("Latest coverage").
 
 **Explicitly out of scope for this pass** (unchanged, stock-shadcn look retained):
 `app/page.tsx` (marketing landing page, not behind auth) and
@@ -402,3 +633,11 @@ dashboard but not one of the 7 designed screens; logged as tech debt).
 chart, sorting on every Watchlist column, add/remove mutations, CSV export, currency
 reconversion, form validation errors on Add position and Login. None of these behaviors
 change — only their visual presentation does.
+
+**Research-detail-specific edge cases (new with the 7-tab structure):** the
+Transactions tab's owned-vs-not-owned empty state (see item 6 above); every data
+gap in the plan's data-gap map renders a quiet editorial placeholder (em-dash cell
+or a muted italic caption) rather than fabricated numbers or a broken layout — never
+hide the surrounding card/row, only the missing value. Placeholder wording is a
+Coding-agent detail within the tone-of-voice rules above, not a fixed string this
+file mandates.
