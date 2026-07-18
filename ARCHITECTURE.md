@@ -2,7 +2,7 @@
 
 ## Stack
 
-- **Framework**: Next.js 15 (App Router), React 18.
+- **Framework**: Next.js 15 (App Router), React 18. Local dev (`npm run dev`) runs on Turbopack (`next dev --turbopack`, ADR-17) to shrink dev-only on-demand route-compile latency; `build`/`start` are unchanged and still use Next's default production bundler.
 - **Auth**: NextAuth v4, credentials provider (email/password, bcrypt), JWT session strategy (see `DECISIONS.md` ADR-1).
 - **Database**: PostgreSQL (Supabase-hosted), accessed via Prisma.
 - **Market data**: Yahoo Finance (`yahoo-finance2`), NewsAPI.

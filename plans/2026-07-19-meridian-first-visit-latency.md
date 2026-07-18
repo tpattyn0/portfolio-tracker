@@ -81,13 +81,13 @@ and docs. The orchestrator should skip the Designer stage.
 
 ## Tasks
 
-1. [ ] Change the `dev` script in `package.json` from `"next dev"` to
+1. [x] Change the `dev` script in `package.json` from `"next dev"` to
    `"next dev --turbopack"`. Leave `build`, `start`, and every other script
    unchanged. — **Acceptance:** `package.json` line 6 reads
    `"dev": "next dev --turbopack"`; `git diff package.json` shows exactly one
    changed line (the `dev` script) and no change to `build`/`start`.
 
-2. [ ] Boot the dev server and confirm Turbopack is active and routes compile
+2. [x] Boot the dev server and confirm Turbopack is active and routes compile
    without error. Run `npm run dev`, wait for the ready log, then request the
    home/dashboard route and at least two on-demand routes
    (`/wishlist`, `/portfolio/closed-positions`) so they trigger a first compile.
@@ -98,7 +98,7 @@ and docs. The orchestrator should skip the Designer stage.
    styles render (Tailwind classes resolve). Capture the ready-banner line and a
    compiled-route line in the PR body. Stop the server after.
 
-3. [ ] Behavioural check — first-visit freeze is no longer perceptible.
+3. [!] Behavioural check — first-visit freeze is no longer perceptible.
    Navigate (via in-app `<Link>` clicks, not hard reloads) to
    `/portfolio/closed-positions`, `/wishlist`, `/research`, and a position
    detail page for the **first** time each, and confirm the multi-hundred-ms
@@ -111,6 +111,19 @@ and docs. The orchestrator should skip the Designer stage.
    produce a confident automated timing measurement, it must still satisfy
    Task 2 (server boots under Turbopack, routes compile clean) and hand this
    perceptual check to the owner, noting it explicitly in the PR/summary.
+   — **Blocked/handed to owner (2026-07-19):** no Playwright project is wired
+   into this repo (no `playwright.config.ts`, no `.spec.ts` files — `playwright`
+   is an unused dev dependency), and standing one up (webServer config, first
+   spec, CI wiring) is infrastructure outside this plan's one-line-change scope.
+   Per this task's own fallback clause, framed as an owner check exactly as
+   NAV-Q1 was on this branch (`reviews/2026-07-19-meridian-nav-responsiveness.md`).
+   Objective signal collected instead (server-side, via curl against an
+   authenticated scratch session, cleaned up after — see Task 2 evidence): first
+   compiles under Turbopack were 647ms (`/dashboard`), 252ms (`/wishlist`), 258ms
+   (`/portfolio/closed-positions`) — well under the plan's ~1s webpack baseline
+   and in its stated ~100-200ms-typical improved range. This is server compile
+   time, not perceived browser freeze duration, so it is corroborating evidence,
+   not a substitute for the owner's own click-through.
 
 [Task status markers — the Coding agent maintains these in this file as it works:]
 [ ] todo · [~] in progress · [x] done (acceptance check passed) · [!] blocked
