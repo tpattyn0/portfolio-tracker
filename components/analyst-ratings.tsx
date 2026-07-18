@@ -97,7 +97,7 @@ export function AnalystRatings({ symbol, currentPrice, initialData, currency }: 
     <div className="space-y-5">
       <HeadlineScoreCard
         kicker="Analyst ratings"
-        metaKicker={`${ratings.totalAnalysts} analysts · last 90 days`}
+        metaKicker={`${totalRatings} analysts · last 90 days`}
         score={ratings.score}
         verdictStamp={verdictLabel}
         leftExtra={

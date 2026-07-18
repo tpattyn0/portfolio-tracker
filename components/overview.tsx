@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { DetailPriceChart } from "@/components/research/detail-price-chart";
 import { HeadlineScoreCard } from "@/components/research/headline-score-card";
 import { SubscoreBand } from "@/components/research/subscore-band";
-import { round1, sentimentToScore, upsideToScore } from "@/lib/utils/research-scores";
+import { round1, sentimentToScore, upsideToScore, verdictLabel } from "@/lib/utils/research-scores";
 import { AlertCircle } from "lucide-react";
 
 interface OverviewProps {
@@ -134,18 +134,7 @@ export function Overview({ symbol, name, currentPrice, context = "portfolio", cu
       sentimentScore * weights.sentiment +
       analystScore * weights.analyst;
     const rounded = round1(sum);
-    let action = "HOLD" as string;
-    if (context === "portfolio") {
-      if (rounded >= 8.5) action = "BUY MORE";
-      else if (rounded >= 7.0) action = "HOLD";
-      else if (rounded >= 5.0) action = "REDUCE";
-      else action = "SELL";
-    } else {
-      if (rounded >= 8.5) action = "STRONG BUY";
-      else if (rounded >= 7.0) action = "BUY";
-      else if (rounded >= 5.0) action = "WATCH";
-      else action = "AVOID";
-    }
+    const action = verdictLabel(rounded, context);
     return { score: rounded, action };
   }, [intrinsicScore, fundamentalScore, technicalScore, sentimentScore, analystScore, context]);
 
@@ -171,7 +160,7 @@ export function Overview({ symbol, name, currentPrice, context = "portfolio", cu
     insights.push(`News & sentiment score: ${sentimentScore.toFixed(1)}/10`);
   }
 
-  const verdictLabel = context === "portfolio" ? composite.action : composite.action.replace(/_/g, " ");
+  const verdictStamp = composite.action;
 
   const dimensionItems = [
     { label: "Technical", score: technicalScore },
@@ -201,7 +190,7 @@ export function Overview({ symbol, name, currentPrice, context = "portfolio", cu
           kicker="Overview & composite score"
           metaKicker="Meridian rating · updated daily"
           score={composite.score}
-          verdictStamp={verdictLabel}
+          verdictStamp={verdictStamp}
           leftExtra={
             <div className="mt-4 text-[10.5px] uppercase tracking-[0.12em] text-mut">
               Momentum + quality

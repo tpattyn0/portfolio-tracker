@@ -49,7 +49,7 @@
 | `components/research/*` | Shared Meridian research-detail primitives (ADR-11): `headline-score-card.tsx`, `score-figure.tsx` (`ScoreFigure`/`VerdictStamp`), `subscore-band.tsx`, `graded-metric-row.tsx`, `detail-price-chart.tsx`, `transactions-tab.tsx`. Consumed by `overview.tsx`, `technical-analysis.tsx`, `fundamental-analysis.tsx`, `analyst-ratings.tsx`, `intrinsic-value.tsx`, `news-feed.tsx`. |
 | `lib/utils/score-band.ts` | Pure score/metric-grade banding helpers (`scoreBandClass`, `gradingDotClass`, `metricGrade`) shared across the research-detail tabs — presentational only, never changes scoring math |
 | `lib/utils/chart-ticks.ts` | Pure `niceYTicks()` helper for `DetailPriceChart`'s minimal y-axis labels |
-| `lib/utils/research-scores.ts` | Pure `upsideToScore`/`sentimentToScore`/`round1` derivations shared by Overview, Intrinsic value, and News & sentiment tabs |
+| `lib/utils/research-scores.ts` | Pure `upsideToScore`/`sentimentToScore`/`round1` derivations shared by Overview, Intrinsic value, and News & sentiment tabs; `verdictLabel(score, context)` selects the composite-verdict label set (portfolio vs wishlist wording) — used by `overview.tsx`, whose own `context` prop is now driven by an ownership lookup in `research/[symbol]/page.tsx` rather than hardcoded (MRD-Q1) |
 
 ## API surface
 

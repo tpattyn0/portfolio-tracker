@@ -29,3 +29,23 @@ export function upsideToScore(upsidePercent: number | null | undefined): number 
 export function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
+
+/**
+ * Composite-score verdict label, context-aware (MRD-Q1): "portfolio" context
+ * (the symbol is held) uses position-management wording; "wishlist" context
+ * (not held) uses buy-oriented wording. Presentational only — the same
+ * boundaries (8.5 / 7.0 / 5.0) `overview.tsx`'s composite score has always
+ * used; this only extracts the label choice into a pure, testable function.
+ */
+export function verdictLabel(score: number, context: "portfolio" | "wishlist"): string {
+  if (context === "portfolio") {
+    if (score >= 8.5) return "BUY MORE";
+    if (score >= 7.0) return "HOLD";
+    if (score >= 5.0) return "REDUCE";
+    return "SELL";
+  }
+  if (score >= 8.5) return "STRONG BUY";
+  if (score >= 7.0) return "BUY";
+  if (score >= 5.0) return "WATCH";
+  return "AVOID";
+}

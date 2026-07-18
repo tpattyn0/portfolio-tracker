@@ -61,7 +61,8 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
   const indicators = data.indicators;
   const signal: string = indicators.signal;
   const signalScore = typeof indicators.score === "number" ? indicators.score : 5;
-  const currentPrice = data.chart[data.chart.length - 1]?.value;
+  const currentPriceRaw = data.chart[data.chart.length - 1]?.value;
+  const currentPrice: number | null = typeof currentPriceRaw === "number" ? currentPriceRaw : null;
   const breakdown = indicators.breakdown || {};
 
   const summary =
@@ -81,7 +82,12 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
     rows.push({
       label: "SMA (20)",
       reading: formatCurrency(indicators.sma20, currency),
-      interpretation: currentPrice > indicators.sma20 ? "Price above short-term average" : "Price below short-term average",
+      interpretation:
+        currentPrice == null
+          ? "Price unavailable"
+          : currentPrice > indicators.sma20
+          ? "Price above short-term average"
+          : "Price below short-term average",
       signal: breakdown.trend?.sma20?.signal,
     });
   }
@@ -89,7 +95,12 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
     rows.push({
       label: "SMA (50)",
       reading: formatCurrency(indicators.sma50, currency),
-      interpretation: currentPrice > indicators.sma50 ? "Above medium-term trend" : "Below medium-term trend",
+      interpretation:
+        currentPrice == null
+          ? "Price unavailable"
+          : currentPrice > indicators.sma50
+          ? "Above medium-term trend"
+          : "Below medium-term trend",
       signal: breakdown.trend?.sma50?.signal,
     });
   }
@@ -97,7 +108,12 @@ export function TechnicalAnalysis({ symbol, currency }: TechnicalAnalysisProps) 
     rows.push({
       label: "SMA (200)",
       reading: formatCurrency(indicators.sma200, currency),
-      interpretation: currentPrice > indicators.sma200 ? "In long-term uptrend" : "In long-term downtrend",
+      interpretation:
+        currentPrice == null
+          ? "Price unavailable"
+          : currentPrice > indicators.sma200
+          ? "In long-term uptrend"
+          : "In long-term downtrend",
       signal: breakdown.trend?.sma200?.signal,
     });
   }

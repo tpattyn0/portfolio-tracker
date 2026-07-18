@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { round1, sentimentToScore, upsideToScore } from "./research-scores";
+import { round1, sentimentToScore, upsideToScore, verdictLabel } from "./research-scores";
 
 describe("sentimentToScore", () => {
   it("maps -1..1 sentiment onto 0..10", () => {
@@ -44,5 +44,34 @@ describe("round1", () => {
     expect(round1(7.849)).toBe(7.8);
     expect(round1(7.85)).toBe(7.9);
     expect(round1(3)).toBe(3);
+  });
+});
+
+describe("verdictLabel", () => {
+  it("uses buy-oriented wording for wishlist context (not owned)", () => {
+    expect(verdictLabel(9, "wishlist")).toBe("STRONG BUY");
+    expect(verdictLabel(8.5, "wishlist")).toBe("STRONG BUY");
+    expect(verdictLabel(7.5, "wishlist")).toBe("BUY");
+    expect(verdictLabel(7.0, "wishlist")).toBe("BUY");
+    expect(verdictLabel(6, "wishlist")).toBe("WATCH");
+    expect(verdictLabel(5.0, "wishlist")).toBe("WATCH");
+    expect(verdictLabel(4.9, "wishlist")).toBe("AVOID");
+    expect(verdictLabel(0, "wishlist")).toBe("AVOID");
+  });
+
+  it("uses hold/position-management wording for portfolio context (owned)", () => {
+    expect(verdictLabel(9, "portfolio")).toBe("BUY MORE");
+    expect(verdictLabel(8.5, "portfolio")).toBe("BUY MORE");
+    expect(verdictLabel(7.5, "portfolio")).toBe("HOLD");
+    expect(verdictLabel(7.0, "portfolio")).toBe("HOLD");
+    expect(verdictLabel(6, "portfolio")).toBe("REDUCE");
+    expect(verdictLabel(5.0, "portfolio")).toBe("REDUCE");
+    expect(verdictLabel(4.9, "portfolio")).toBe("SELL");
+    expect(verdictLabel(0, "portfolio")).toBe("SELL");
+  });
+
+  it("the same score resolves to a different label depending on ownership context", () => {
+    expect(verdictLabel(6, "wishlist")).toBe("WATCH");
+    expect(verdictLabel(6, "portfolio")).toBe("REDUCE");
   });
 });

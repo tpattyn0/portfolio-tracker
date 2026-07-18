@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { Loader2, Plus, Star } from "lucide-react";
 import { TechnicalAnalysis } from "@/components/technical-analysis";
@@ -56,6 +57,21 @@ export default function ResearchStockPage() {
       setLoading(false);
     }
   };
+
+  // Ownership signal for the Overview tab's context-aware verdict labels
+  // (MRD-Q1): reuses the same positions lookup the Transactions tab already
+  // makes — 404 means not held — rather than adding a new data path.
+  const positionQ = useQuery({
+    queryKey: ["position", symbol],
+    queryFn: async () => {
+      const res = await fetch(`/api/portfolio/positions/${symbol}`);
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error("Failed to fetch position");
+      return res.json();
+    },
+    enabled: !!symbol,
+  });
+  const overviewContext: "portfolio" | "wishlist" = positionQ.data ? "portfolio" : "wishlist";
 
   if (loading) {
     return (
@@ -163,7 +179,7 @@ export default function ResearchStockPage() {
               symbol={symbol}
               name={quote.name}
               currentPrice={quote.price}
-              context="wishlist"
+              context={overviewContext}
               currency={quote.currency}
             />
           )}

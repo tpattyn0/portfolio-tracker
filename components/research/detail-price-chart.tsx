@@ -103,9 +103,12 @@ export function DetailPriceChart({ symbol, period, currency, referenceLines, cla
   }
 
   const hoverPoint = hoverIndex !== null ? points[hoverIndex] : null;
-  const hoverValueRange = max - min || 1;
+  // Shared y-domain denominator for both the hover marker and reference lines
+  // (MRD-S2) — named for what it represents (the plotted value range), not
+  // which feature reads it first.
+  const valueRange = max - min || 1;
   const hoverXFrac = hoverIndex !== null && points.length > 1 ? hoverIndex / (points.length - 1) : 0;
-  const hoverYFrac = hoverPoint ? 1 - (hoverPoint.value - min) / hoverValueRange : 0;
+  const hoverYFrac = hoverPoint ? 1 - (hoverPoint.value - min) / valueRange : 0;
 
   return (
     <div className={className}>
@@ -135,7 +138,12 @@ export function DetailPriceChart({ symbol, period, currency, referenceLines, cla
               <line key={y} x1="0" y1={y} x2={width} y2={y} className="stroke-line2" />
             ))}
             {referenceLines?.map((ref) => {
-              const yFrac = 1 - (ref.value - min) / hoverValueRange;
+              // Clamp to [min, max] so a level outside the plotted range
+              // (e.g. a support/resistance level from a wider lookback than
+              // the visible series) still renders at the plot's edge instead
+              // of being clipped off the visible SVG area (MRD-S2).
+              const clampedValue = Math.max(min, Math.min(max, ref.value));
+              const yFrac = 1 - (clampedValue - min) / valueRange;
               const y = yFrac * CHART_HEIGHT;
               return (
                 <line
