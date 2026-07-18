@@ -60,7 +60,7 @@ export function PositionsTable({ positions, baseCurrency = "EUR" }: PositionsTab
             key={position.id}
             onClick={() => router.push(`/portfolio/${position.ticker}`)}
             className={cn(
-              "cursor-pointer hover:bg-fill/45",
+              "cursor-pointer hover:bg-fill",
               idx !== positions.length - 1 && "border-b border-line2"
             )}
           >

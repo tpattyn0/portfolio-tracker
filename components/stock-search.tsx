@@ -109,7 +109,7 @@ export function StockSearch({ onSelect }: StockSearchProps) {
                   key={stock.symbol}
                   onClick={() => handleSelect(stock)}
                   className={cn(
-                    "flex w-full items-center justify-between px-4 py-2 text-left hover:bg-fill/45",
+                    "flex w-full items-center justify-between px-4 py-2 text-left hover:bg-fill",
                     index !== results.length - 1 && "border-b border-line2"
                   )}
                 >

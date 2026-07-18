@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { AlertCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { HeadlineScoreCard } from "@/components/research/headline-score-card";
 import { formatCurrency } from "@/lib/utils/format";
 import { upsideToScore } from "@/lib/utils/research-scores";
@@ -32,36 +32,21 @@ interface IntrinsicValueProps {
 }
 
 export function IntrinsicValue({ symbol, currentPrice, currency }: IntrinsicValueProps) {
-  const [data, setData] = useState<IntrinsicValueData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchIntrinsicValue = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const res = await fetch(`/api/research/${symbol}/intrinsic-value?price=${currentPrice}`);
-
-        if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.error || "Failed to fetch intrinsic value");
-        }
-
-        const json = await res.json();
-        setData(json);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
-        setLoading(false);
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["intrinsic-value", symbol, currentPrice],
+    queryFn: async (): Promise<IntrinsicValueData> => {
+      const res = await fetch(`/api/research/${symbol}/intrinsic-value?price=${currentPrice}`);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to fetch intrinsic value");
       }
-    };
+      return res.json();
+    },
+    enabled: currentPrice > 0,
+    staleTime: 60 * 60 * 1000,
+  });
 
-    fetchIntrinsicValue();
-  }, [symbol, currentPrice]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex h-32 items-center justify-center rounded-lg border border-border bg-card text-mut">
         Loading intrinsic value…
@@ -69,11 +54,16 @@ export function IntrinsicValue({ symbol, currentPrice, currency }: IntrinsicValu
     );
   }
 
+  // A genuine network/parse error (the route itself 500s, or is unreachable)
+  // still shows the full-card failure — distinct from the "no fundamental
+  // data" data-absence case, which the route now returns as a 200 with
+  // intrinsicValue:null/methods:[] so it falls through to the shell below
+  // with scoped em-dash placeholders (plan Task 5).
   if (error || !data) {
     return (
       <div className="flex h-32 items-center justify-center rounded-lg border border-border bg-card text-mut">
         <AlertCircle className="mr-2 h-4 w-4" />
-        {error || "Unable to calculate intrinsic value"}
+        {error instanceof Error ? error.message : "Unable to calculate intrinsic value"}
       </div>
     );
   }
@@ -104,7 +94,11 @@ export function IntrinsicValue({ symbol, currentPrice, currency }: IntrinsicValu
             <div className={cn("mt-1 text-[13px] font-medium", upsideColor)}>{upsideLine}</div>
           </>
         }
-        summary={`Confidence-weighted across ${data.methods.length} valuation methods.`}
+        summary={
+          data.methods.length > 0
+            ? `Confidence-weighted across ${data.methods.length} valuation methods.`
+            : "No fundamental data available for this symbol."
+        }
       >
         <div className="grid grid-cols-3 border-t border-line pt-5">
           <div>

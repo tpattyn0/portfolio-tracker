@@ -240,7 +240,7 @@ class-(b) bug found during the Playwright pass as a new task or a TECH_DEBT entr
 Ordered so the clear-cut, independently-verifiable fixes and the diagnosed runtime
 fixes come first; the position-detail reskin (larger, presentational) comes after.
 
-1. [ ] **Unify table row hover to a visible fill.** Replace `hover:bg-fill/45` and the
+1. [x] **Unify table row hover to a visible fill.** Replace `hover:bg-fill/45` and the
    longhand `color-mix` variant with `hover:bg-fill` at all six call sites
    (`positions-table.tsx:63`, `wishlist-table.tsx:211`,
    `closed-positions/page.tsx:281`, `research/page.tsx:63`, `stock-search.tsx:112`,
@@ -250,7 +250,7 @@ fixes come first; the position-detail reskin (larger, presentational) comes afte
    clearly visible warm band; the same value appears on watchlist, closed-positions,
    research-index, and news-coverage rows.
 
-2. [ ] **Add y-axis price labels to the dashboard hero chart.** In
+2. [x] **Add y-axis price labels to the dashboard hero chart.** In
    `portfolio-chart.tsx`, wrap the SVG in a `relative pl-14` container and render 3
    `--mut` `formatCurrency` labels via `niceYTicks(min,max,3)` at the hero's gridline
    y-fractions (55/110/165 of 220), positioned as HTML text against the container
@@ -258,7 +258,7 @@ fixes come first; the position-detail reskin (larger, presentational) comes afte
    `/dashboard`, sees 3 y-axis value labels aligned to the gridlines; labels update
    after a range-tab change; `npm run verify` green.
 
-3. [ ] **Add hover crosshair + tooltip to the dashboard hero chart.** Add
+3. [x] **Add hover crosshair + tooltip to the dashboard hero chart.** Add
    `containerRef` + `hoverIndex` + mousemove/mouseleave to `portfolio-chart.tsx`,
    reusing `DetailPriceChart`'s pixel-mapping. Render the `--line` crosshair,
    `--foreground` marker dot, and `--card`/`border-border` shadow-free tooltip showing
@@ -268,7 +268,7 @@ fixes come first; the position-detail reskin (larger, presentational) comes afte
    again mid/after morph, confirms morph still animates and tooltip still tracks;
    `npm run verify` green (path-chart tests unchanged and passing).
 
-4. [ ] **Fix Overview all-or-nothing error gate.** Remove `hasError` (overview.tsx:142)
+4. [x] **Fix Overview all-or-nothing error gate.** Remove `hasError` (overview.tsx:142)
    and the "Some data failed to load" branch; render the composite card whenever the
    chart query has resolved; pass `null` (→ `--mut` unavailable band) for any
    dimension whose query errored instead of a fabricated `5`. — Acceptance: Playwright
@@ -276,7 +276,7 @@ fixes come first; the position-detail reskin (larger, presentational) comes afte
    renders (no full-card "failed to load"), with any uncovered dimension shown as a
    `--mut` placeholder; `/research/AAPL` Overview shows five real subscores.
 
-5. [ ] **Fix Intrinsic value full-card fail on cold/absent fundamentals.** Make the
+5. [x] **Fix Intrinsic value full-card fail on cold/absent fundamentals.** Make the
    component render its shell with scoped em-dash placeholders when the service reports
    "no fundamental data" (distinguish data-absence from a true error; if needed, have
    the intrinsic route return 200-with-`intrinsicValue:null` for the
@@ -287,7 +287,7 @@ fixes come first; the position-detail reskin (larger, presentational) comes afte
    `/research/AAPL` Intrinsic value shows a real fair-value figure even when opened as
    the first tab (cold cache); `npm run verify` green.
 
-6. [ ] **Confirm/repair Fundamental tab degradation.** Verify AAPL renders all metric
+6. [x] **Confirm/repair Fundamental tab degradation.** (Audit only — `fundamental-analysis.tsx`'s `error || !data` already renders a scoped, styled empty state, not a crash, and doesn't block other tabs; `calculateFundamentalScore` always returns numeric breakdown values so the component's `data.score.breakdown.*` accesses are safe. No unguarded throwing access found; no code change made. Confirmed further via the Task 8 Playwright pass.) Verify AAPL renders all metric
    rows with real values, and a thin-coverage symbol renders em-dash placeholders (not
    a crash); ensure a genuine 500 shows a scoped, styled "unavailable" empty state that
    does not block other tabs. Fix any unguarded throwing access found. — Acceptance:
@@ -296,7 +296,7 @@ fixes come first; the position-detail reskin (larger, presentational) comes afte
    styled empty state (never an unstyled crash), and switching to other tabs still
    works.
 
-7. [ ] **Reskin the position-detail header + quote card + tab bar to Meridian
+7. [x] **Reskin the position-detail header + quote card + tab bar to Meridian
    (TD-32).** In `app/(dashboard)/portfolio/[ticker]/page.tsx`: replace the shadcn
    header (back link, bold ticker H1, `Button` actions) with the research-detail serif
    header + `TICKER · EXCHANGE` kicker + pill actions; replace the 5 shadcn `Card`
@@ -309,7 +309,7 @@ fixes come first; the position-detail reskin (larger, presentational) comes afte
    `text-green-600`/`red-600`) + Meridian tab bar; all tabs still render; delete/buy/
    sell modals still open; `npm run verify` green.
 
-8. [ ] **Playwright end-to-end verification pass + doc updates.** Drive dashboard
+8. [~] **Playwright end-to-end verification pass + doc updates.** Drive dashboard
    (chart hover, chart y-axis, table-row hovers) and both detail routes for AAPL
    (well-covered) and ENGI.PA (thin coverage) across all 7 tabs, confirming no
    full-card "failed to load" blanking and correct Meridian styling. Update

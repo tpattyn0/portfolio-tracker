@@ -208,7 +208,7 @@ export function WishlistTable({ items }: WishlistTableProps) {
                   key={item.id}
                   onClick={() => router.push(`/research/${item.ticker}`)}
                   className={cn(
-                    "cursor-pointer hover:bg-fill/45",
+                    "cursor-pointer hover:bg-fill",
                     idx !== sortedItems.length - 1 && "border-b border-line2"
                   )}
                 >

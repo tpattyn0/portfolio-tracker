@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { buildAreaPath, buildPath } from "@/lib/utils/chart-path";
+import { niceYTicks } from "@/lib/utils/chart-ticks";
+import { formatCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
 
 type Range = "1D" | "1W" | "1M" | "3M" | "6M" | "YTD" | "1Y" | "5Y" | "10Y" | "FROM_START";
@@ -32,6 +34,9 @@ const ranges: { label: string; value: Range }[] = [
 const CHART_WIDTH = 1300;
 const CHART_HEIGHT = 220;
 const MORPH_DURATION_MS = 500;
+// Hero's existing gridlines (y-fractions of 220) — distinct from DetailPriceChart's
+// 47/94/141-of-190 (different viewBox), per DESIGN.md "Dashboard SVG performance chart".
+const GRIDLINE_Y = [55, 110, 165];
 
 // Ease-in-out, matching the prototype's morph curve exactly.
 function easeInOut(k: number): number {
@@ -42,8 +47,11 @@ export function PortfolioChart({ positions, baseCurrency = "EUR", exchangeRatesU
   const [range, setRange] = useState<Range>("1M");
   const [animatedValues, setAnimatedValues] = useState<number[]>([]);
   const [labels, setLabels] = useState<string[]>([]);
+  const [series, setSeries] = useState<Array<{ date: string; value: number }>>([]);
   const rafRef = useRef<number>();
   const prevValuesRef = useRef<number[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["portfolio-performance", range, baseCurrency],
@@ -62,6 +70,7 @@ export function PortfolioChart({ positions, baseCurrency = "EUR", exchangeRatesU
     const nextLabels = pickLabels(raw.map((p) => p.date), range);
 
     setLabels(nextLabels);
+    setSeries(raw);
 
     const from = prevValuesRef.current.length === nextValues.length
       ? prevValuesRef.current
@@ -91,6 +100,24 @@ export function PortfolioChart({ positions, baseCurrency = "EUR", exchangeRatesU
     return () => cancelAnimationFrame(rafRef.current!);
   }, []);
 
+  // Hover crosshair pixel-mapping — mirrors DetailPriceChart's container-ref
+  // approach exactly (mousemove -> nearest index by fractional x position).
+  // Deliberately independent of the RAF morph effect above: it only reads
+  // `animatedValues`/`series` state, never touches `rafRef` or cancels/
+  // restarts the morph.
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    const el = containerRef.current;
+    if (!el || animatedValues.length === 0) return;
+    const rect = el.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const idx = animatedValues.length > 1 ? Math.round(frac * (animatedValues.length - 1)) : 0;
+    setHoverIndex(idx);
+  }
+
+  function handleMouseLeave() {
+    setHoverIndex(null);
+  }
+
   if (!positions || positions.length === 0) {
     return (
       <div className="flex h-[220px] items-center justify-center text-mut">
@@ -116,6 +143,20 @@ export function PortfolioChart({ positions, baseCurrency = "EUR", exchangeRatesU
 
   const linePath = buildPath(animatedValues, CHART_WIDTH, CHART_HEIGHT);
   const areaPath = buildAreaPath(linePath, CHART_WIDTH, CHART_HEIGHT);
+
+  // Y-axis ticks computed from the currently *displayed* (animating) series —
+  // labels update live as the morph runs, matching how the value figure
+  // animates elsewhere (DESIGN.md).
+  const finiteAnimated = animatedValues.filter((v) => Number.isFinite(v));
+  const yMin = finiteAnimated.length ? Math.min(...finiteAnimated) : 0;
+  const yMax = finiteAnimated.length ? Math.max(...finiteAnimated) : 0;
+  const yTicks = niceYTicks(yMin, yMax, 3);
+  const valueRange = yMax - yMin || 1;
+
+  const hoverValue = hoverIndex !== null ? animatedValues[hoverIndex] : undefined;
+  const hoverDate = hoverIndex !== null ? series[hoverIndex]?.date : undefined;
+  const hoverXFrac = hoverIndex !== null && animatedValues.length > 1 ? hoverIndex / (animatedValues.length - 1) : 0;
+  const hoverYFrac = hoverValue !== undefined ? 1 - (hoverValue - yMin) / valueRange : 0;
 
   return (
     <div>
@@ -151,23 +192,72 @@ export function PortfolioChart({ positions, baseCurrency = "EUR", exchangeRatesU
         ))}
       </div>
 
-      <svg
-        viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-        preserveAspectRatio="none"
-        className="block h-[220px] w-full"
-      >
-        <line x1="0" y1="55" x2={CHART_WIDTH} y2="55" className="stroke-line2" />
-        <line x1="0" y1="110" x2={CHART_WIDTH} y2="110" className="stroke-line2" />
-        <line x1="0" y1="165" x2={CHART_WIDTH} y2="165" className="stroke-line2" />
-        <path d={areaPath} className="fill-foreground" fillOpacity={0.05} stroke="none" />
-        <path d={linePath} fill="none" className="stroke-foreground" strokeWidth={1.5} />
-        <line x1="0" y1={CHART_HEIGHT - 1} x2={CHART_WIDTH} y2={CHART_HEIGHT - 1} className="stroke-border" />
-      </svg>
+      <div className="relative pl-14">
+        {/* Y-axis price labels — rendered as HTML text against the container, not
+            inside the preserveAspectRatio="none" SVG, which would distort them. */}
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-12">
+          {yTicks.map((tick, i) => (
+            <div
+              key={tick}
+              className="absolute right-0 -translate-y-1/2 text-[10.5px] text-mut"
+              style={{ top: `${(GRIDLINE_Y[i] ?? GRIDLINE_Y[GRIDLINE_Y.length - 1]) / CHART_HEIGHT * 100}%` }}
+            >
+              {formatCurrency(tick, baseCurrency)}
+            </div>
+          ))}
+        </div>
 
-      <div className="mt-2.5 flex justify-between text-[10.5px] uppercase tracking-[0.08em] text-mut">
-        {labels.map((label, i) => (
-          <span key={`${label}-${i}`}>{label}</span>
-        ))}
+        <div
+          ref={containerRef}
+          className="relative h-[220px] w-full cursor-crosshair"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+        >
+          <svg
+            viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+            preserveAspectRatio="none"
+            className="block h-full w-full"
+          >
+            <line x1="0" y1="55" x2={CHART_WIDTH} y2="55" className="stroke-line2" />
+            <line x1="0" y1="110" x2={CHART_WIDTH} y2="110" className="stroke-line2" />
+            <line x1="0" y1="165" x2={CHART_WIDTH} y2="165" className="stroke-line2" />
+            <path d={areaPath} className="fill-foreground" fillOpacity={0.05} stroke="none" />
+            <path d={linePath} fill="none" className="stroke-foreground" strokeWidth={1.5} />
+            <line x1="0" y1={CHART_HEIGHT - 1} x2={CHART_WIDTH} y2={CHART_HEIGHT - 1} className="stroke-border" />
+          </svg>
+
+          {/* Hover crosshair + marker — pixel position computed from the container's
+              measured width, not viewBox units, since the SVG is preserveAspectRatio="none". */}
+          {hoverValue !== undefined && (
+            <>
+              <div
+                className="pointer-events-none absolute inset-y-0 w-px bg-line"
+                style={{ left: `${hoverXFrac * 100}%` }}
+              />
+              <div
+                className="pointer-events-none absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground"
+                style={{ left: `${hoverXFrac * 100}%`, top: `${hoverYFrac * 100}%` }}
+              />
+              <div
+                className="pointer-events-none absolute z-10 -translate-y-full rounded-md border border-border bg-card px-3 py-2 text-[12px] shadow-none"
+                style={{
+                  left: `${hoverXFrac * 100}%`,
+                  top: `${Math.max(0, hoverYFrac * 100 - 4)}%`,
+                  transform: `translate(${hoverXFrac > 0.85 ? "-100%" : hoverXFrac < 0.15 ? "0%" : "-50%"}, -100%)`,
+                }}
+              >
+                {hoverDate && <div className="text-mut">{format(new Date(hoverDate), "MMM d, yyyy")}</div>}
+                <div className="font-medium text-foreground">{formatCurrency(hoverValue, baseCurrency)}</div>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="mt-2.5 flex justify-between text-[10.5px] uppercase tracking-[0.08em] text-mut">
+          {labels.map((label, i) => (
+            <span key={`${label}-${i}`}>{label}</span>
+          ))}
+        </div>
       </div>
     </div>
   );

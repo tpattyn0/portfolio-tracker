@@ -141,7 +141,7 @@ export function NewsFeed({ symbol, companyName, articles: propArticles }: NewsFe
                   target="_blank"
                   rel="noopener noreferrer"
                   className={cn(
-                    "flex cursor-pointer items-baseline justify-between gap-8 py-[18px] hover:bg-[color:color-mix(in_srgb,var(--fill)_45%,transparent)]",
+                    "flex cursor-pointer items-baseline justify-between gap-8 py-[18px] hover:bg-fill",
                     i < news.length - 1 && "border-b border-line2"
                   )}
                 >

@@ -6,7 +6,6 @@ import { DetailPriceChart } from "@/components/research/detail-price-chart";
 import { HeadlineScoreCard } from "@/components/research/headline-score-card";
 import { SubscoreBand } from "@/components/research/subscore-band";
 import { round1, sentimentToScore, upsideToScore, verdictLabel } from "@/lib/utils/research-scores";
-import { AlertCircle } from "lucide-react";
 
 interface OverviewProps {
   symbol: string;
@@ -75,31 +74,43 @@ export function Overview({ symbol, name, currentPrice, context = "portfolio", cu
     staleTime: 5 * 60 * 1000,
   });
 
-  // Derive subscores
+  // Derive subscores. Each dimension defaults to a neutral `5` when its query
+  // has *resolved with no usable data* (the pre-existing behavior), but
+  // reports `null` when its query *errored* — the composite math substitutes
+  // a neutral value for a missing input either way (unchanged scoring
+  // behavior), but the SubscoreBand/ScoreFigure render an honest `--mut`
+  // placeholder for `null` instead of a fabricated `5` (DESIGN.md "Score
+  // figure" null/unavailable band). This is presentational-only: no scoring
+  // math changes, only what gets displayed for an errored dimension.
   const technicalScore = useMemo(() => {
+    if (chartQ.isError) return null;
     const indicators = chartQ.data?.indicators;
     if (!indicators) return 5;
     // Use the actual calculated score from technical analysis instead of mapping signal
     return typeof indicators.score === 'number' ? indicators.score : 5;
-  }, [chartQ.data]);
+  }, [chartQ.data, chartQ.isError]);
 
   const fundamentalScore = useMemo(() => {
+    if (fundamentalsQ.isError) return null;
     const s = fundamentalsQ.data?.score?.total;
     return typeof s === "number" ? s : 5;
-  }, [fundamentalsQ.data]);
+  }, [fundamentalsQ.data, fundamentalsQ.isError]);
 
   const analystScore = useMemo(() => {
+    if (analystQ.isError) return null;
     const s = analystQ.data?.score;
     if (typeof s !== "number") return 5;
     return Math.max(0, Math.min(10, s));
-  }, [analystQ.data]);
+  }, [analystQ.data, analystQ.isError]);
 
   const intrinsicScore = useMemo(() => {
+    if (intrinsicQ.isError) return null;
     const up = intrinsicQ.data?.upsidePercent as number | null | undefined;
     return upsideToScore(up);
-  }, [intrinsicQ.data]);
+  }, [intrinsicQ.data, intrinsicQ.isError]);
 
   const sentimentScore = useMemo(() => {
+    if (newsQ.isError) return null;
     const articles = (newsQ.data || []) as Array<{ sentiment: number | null; impact?: string | null; relevanceScore?: number | null }>;
     if (!Array.isArray(articles) || articles.length === 0) return 5;
     // Weighted average like SentimentScore component
@@ -116,9 +127,11 @@ export function Overview({ symbol, name, currentPrice, context = "portfolio", cu
     }
     const avg = totalW > 0 ? weighted / totalW : 0;
     return round1(sentimentToScore(avg));
-  }, [newsQ.data]);
+  }, [newsQ.data, newsQ.isError]);
 
-  // Composite score per user story
+  // Composite score per user story — a `null` (errored) dimension substitutes
+  // a neutral 5 in the weighted sum, same as the pre-existing "no data"
+  // fallback; the composite math itself is unchanged.
   const composite = useMemo(() => {
     const weights = {
       intrinsicValue: 0.25,
@@ -128,18 +141,20 @@ export function Overview({ symbol, name, currentPrice, context = "portfolio", cu
       analyst: 0.15,
     };
     const sum =
-      intrinsicScore * weights.intrinsicValue +
-      fundamentalScore * weights.fundamental +
-      technicalScore * weights.technical +
-      sentimentScore * weights.sentiment +
-      analystScore * weights.analyst;
+      (intrinsicScore ?? 5) * weights.intrinsicValue +
+      (fundamentalScore ?? 5) * weights.fundamental +
+      (technicalScore ?? 5) * weights.technical +
+      (sentimentScore ?? 5) * weights.sentiment +
+      (analystScore ?? 5) * weights.analyst;
     const rounded = round1(sum);
     const action = verdictLabel(rounded, context);
     return { score: rounded, action };
   }, [intrinsicScore, fundamentalScore, technicalScore, sentimentScore, analystScore, context]);
 
-  const isLoading = chartQ.isLoading || fundamentalsQ.isLoading || analystQ.isLoading || intrinsicQ.isLoading || newsQ.isLoading;
-  const hasError = chartQ.isError || fundamentalsQ.isError || analystQ.isError || intrinsicQ.isError || newsQ.isError;
+  // Only the chart query (which also drives the price chart) gates the
+  // initial full-tab loading state — do not gate the whole card on the
+  // slowest of five independent queries (plan Task 4).
+  const isLoading = chartQ.isLoading;
 
   const insights: string[] = [];
   if (chartQ.data?.indicators?.signal) {
@@ -179,11 +194,6 @@ export function Overview({ symbol, name, currentPrice, context = "portfolio", cu
       {isLoading ? (
         <div className="flex h-32 items-center justify-center rounded-lg border border-border bg-card text-mut">
           Loading overview…
-        </div>
-      ) : hasError ? (
-        <div className="flex h-32 items-center justify-center rounded-lg border border-border bg-card text-mut">
-          <AlertCircle className="mr-2 h-4 w-4" />
-          Some data failed to load
         </div>
       ) : (
         <HeadlineScoreCard

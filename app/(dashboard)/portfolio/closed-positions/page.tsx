@@ -278,7 +278,7 @@ export default function ClosedPositionsPage() {
                 <tr
                   key={position.id}
                   className={cn(
-                    "cursor-pointer hover:bg-fill/45",
+                    "cursor-pointer hover:bg-fill",
                     idx !== displayPositions.length - 1 && "border-b border-line2"
                   )}
                   onClick={() => window.location.assign(`/research/${position.ticker}`)}

@@ -60,7 +60,7 @@ export default function ResearchPage() {
               key={stock.symbol}
               type="button"
               onClick={() => router.push(`/research/${stock.symbol}`)}
-              className="flex items-center justify-between border-b border-line2 px-3 py-4 text-left hover:bg-fill/45"
+              className="flex items-center justify-between border-b border-line2 px-3 py-4 text-left hover:bg-fill"
             >
               <span>
                 <span className="block font-serif text-base font-medium">{stock.name}</span>
