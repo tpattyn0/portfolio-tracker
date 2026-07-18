@@ -9,3 +9,4 @@
 | 2026-07-17-full-audit-fixes.md | 2026-07-17 | IMPLEMENTED — 2026-07-17 (AUD-FIX-01..04 fixed and re-verified in v2) |
 | 2026-07-17-full-audit-fixes-v2.md | 2026-07-17 | IMPLEMENTED — 2026-07-17 (REV2-01 fixed inline; REV2-02 no-action-needed) |
 | 2026-07-17-meridian-design-overhaul.md | 2026-07-17 | IMPLEMENTED |
+| 2026-07-18-meridian-research-detail.md | 2026-07-18 | (0 BLOCKERs, 0 ISSUEs, 3 SUGGESTIONs, 1 QUESTION) |
