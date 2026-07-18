@@ -1,12 +1,8 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
-import { DollarSign, Users, BarChart4, Calendar, AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AlertCircle } from "lucide-react";
+import { HeadlineScoreCard } from "@/components/research/headline-score-card";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/format";
 
@@ -31,6 +27,14 @@ interface AnalystRatingsProps {
   currency?: string;
 }
 
+const DISTRIBUTION_ROWS = [
+  { key: "strongBuy", label: "Strong buy", color: "bg-up" },
+  { key: "buy", label: "Buy", color: "bg-up/70" },
+  { key: "hold", label: "Hold", color: "bg-amber" },
+  { key: "sell", label: "Sell", color: "bg-dn/70" },
+  { key: "strongSell", label: "Strong sell", color: "bg-dn" },
+] as const;
+
 export function AnalystRatings({ symbol, currentPrice, initialData, currency }: AnalystRatingsProps) {
   const [ratings, setRatings] = useState<AnalystRatingsData | null>(initialData || null);
   const [isLoading, setIsLoading] = useState(!initialData);
@@ -38,11 +42,11 @@ export function AnalystRatings({ symbol, currentPrice, initialData, currency }: 
 
   useEffect(() => {
     const fetchRatings = async () => {
-      if (initialData) return; // Use initialData if provided
-      
+      if (initialData) return;
+
       setIsLoading(true);
       setError(null);
-      
+
       try {
         const response = await fetch(`/api/market/analyst-ratings/${encodeURIComponent(symbol)}`);
         if (!response.ok) {
@@ -51,8 +55,8 @@ export function AnalystRatings({ symbol, currentPrice, initialData, currency }: 
         const data = await response.json();
         setRatings(data);
       } catch (err) {
-        console.error('Error fetching analyst ratings:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load analyst ratings');
+        console.error("Error fetching analyst ratings:", err);
+        setError(err instanceof Error ? err.message : "Failed to load analyst ratings");
       } finally {
         setIsLoading(false);
       }
@@ -63,250 +67,89 @@ export function AnalystRatings({ symbol, currentPrice, initialData, currency }: 
 
   if (isLoading) {
     return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <BarChart4 className="mr-2 h-5 w-5" />
-            Analyst Ratings
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="space-y-2">
-              <Skeleton className="h-4 w-1/2" />
-              <Skeleton className="h-2 w-full" />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <div className="flex h-32 items-center justify-center rounded-lg border border-border bg-card text-mut">
+        Loading analyst ratings…
+      </div>
     );
   }
 
   if (error || !ratings) {
     return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <BarChart4 className="mr-2 h-5 w-5" />
-            Analyst Ratings
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              {error || 'Failed to load analyst ratings'}
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
+      <div className="flex h-32 items-center justify-center rounded-lg border border-border bg-card text-mut">
+        <AlertCircle className="mr-2 h-4 w-4" />
+        {error || "Failed to load analyst ratings"}
+      </div>
     );
   }
-  const ratingToPercent = (count: number) => {
-    if (ratings?.totalAnalysts === 0) return 0;
-    return ((count || 0) / (ratings?.totalAnalysts || 1)) * 100;
-  };
 
-  const getRatingColor = (rating: number) => {
-    if (rating >= 7) return "bg-up";
-    if (rating >= 5) return "bg-amber";
-    return "bg-dn";
-  };
-
-  const getRatingLabel = (rating: number) => {
-    if (rating >= 4.5) return "Strong Sell";
-    if (rating >= 3.5) return "Sell";
-    if (rating >= 2.5) return "Hold";
-    if (rating >= 1.5) return "Buy";
-    return "Strong Buy";
-  };
-
-
-  // Calculate recommendation percentages
   const totalRatings = ratings.strongBuy + ratings.buy + ratings.hold + ratings.sell + ratings.strongSell;
-  const getPercentage = (count: number) => totalRatings > 0 ? Math.round((count / totalRatings) * 100) : 0;
 
-  // Calculate price difference if current price is available
-  let priceDifference = null;
+  let priceDifference: { value: number; formatted: string } | null = null;
   if (currentPrice && ratings.targetPrice) {
     const diff = ((ratings.targetPrice - currentPrice) / currentPrice) * 100;
-    priceDifference = {
-      value: diff,
-      isPositive: diff >= 0,
-      formatted: `${diff >= 0 ? '+' : ''}${diff.toFixed(1)}%`,
-      absolute: Math.abs(diff).toFixed(1) + '%'
-    };
+    priceDifference = { value: diff, formatted: `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}%` };
   }
-  
-  const averageRating = ratings?.averageRating || 3; // Default to Hold if no rating
-  const consensusRating = getRatingLabel(averageRating);
-  const scorePercentage = (ratings.score / 10) * 100; // Convert 0-10 score to percentage
+
+  const verdictLabel =
+    ratings.score >= 7 ? "STRONG BUY" : ratings.score >= 5.5 ? "BUY" : ratings.score >= 4.5 ? "HOLD" : ratings.score >= 3 ? "SELL" : "STRONG SELL";
 
   return (
-    <div className="space-y-6">
-      {/* Top Row - Three Equal Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Analyst Coverage Card */}
-        <Card className="flex flex-col h-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Analysts Coverage
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex-grow flex items-end">
-            <div className="w-full">
-              <div className="flex items-baseline">
-                <span className="text-3xl font-bold">{ratings.totalAnalysts}</span>
-                <span className="ml-2 text-sm text-muted-foreground">analysts</span>
+    <div className="space-y-5">
+      <HeadlineScoreCard
+        kicker="Analyst ratings"
+        metaKicker={`${ratings.totalAnalysts} analysts · last 90 days`}
+        score={ratings.score}
+        verdictStamp={verdictLabel}
+        leftExtra={
+          <div className="mt-4 text-[10.5px] uppercase tracking-[0.12em] text-mut">Street consensus</div>
+        }
+      >
+        <div className="space-y-3">
+          {DISTRIBUTION_ROWS.map((row) => {
+            const count = ratings[row.key];
+            const pct = totalRatings > 0 ? (count / totalRatings) * 100 : 0;
+            return (
+              <div key={row.key} className="flex items-center gap-4">
+                <div className="w-24 shrink-0 text-[10.5px] uppercase tracking-[0.1em] text-mut">{row.label}</div>
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-fill">
+                  <div className={cn("h-full rounded-full", row.color)} style={{ width: `${pct}%` }} />
+                </div>
+                <div className="w-6 shrink-0 text-right text-[12.5px] text-sub">{count}</div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            );
+          })}
+        </div>
 
-        {/* Consensus Rating Card */}
-        <Card className="flex flex-col h-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Consensus</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-grow flex flex-col justify-between">
-            <div className="text-3xl font-bold mb-2">{consensusRating}</div>
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Analyst Score</span>
-                <span>{ratings.score.toFixed(1)}/10</span>
-              </div>
-              <div className="relative h-2 w-full bg-fill rounded-full overflow-hidden">
-                <div 
-                  className={cn(
-                    'h-full rounded-full transition-all duration-1000',
-                    scorePercentage > 70 ? 'bg-up' :
-                    scorePercentage > 30 ? 'bg-amber' : 'bg-dn'
-                  )}
-                  style={{ width: `${scorePercentage}%` }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Updated {new Date(ratings.lastUpdated).toLocaleDateString()}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Target Price Card */}
-        <Card className="flex flex-col h-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Target Price
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex-grow flex flex-col justify-between">
-            <div className="text-3xl font-bold">
-              {ratings.targetPrice ? formatCurrency(ratings.targetPrice, currency) : 'N/A'}
-            </div>
-            {currentPrice && priceDifference && (
-              <p className={cn(
-                'text-sm mt-2',
-                priceDifference.isPositive ? 'text-up' : 'text-dn'
-              )}>
-                {priceDifference.formatted} {priceDifference.isPositive ? '▲' : '▼'}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Analyst Ratings Table */}
-      <Card className="mt-2">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center">
-              <BarChart4 className="mr-2 h-5 w-5" />
-              Analyst Ratings
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {/* Consolidated Rating Bar */}
-            <div className="space-y-3">
-              <div className="h-8 w-full bg-fill rounded-full overflow-hidden flex">
-                {ratings.strongBuy > 0 && (
-                  <div
-                    className="h-full bg-up relative group flex items-center justify-center"
-                    style={{ width: `${ratingToPercent(ratings.strongBuy)}%` }}
-                  >
-                    <span className="text-xs font-medium text-background px-1 truncate">
-                      {ratings.strongBuy}
-                    </span>
-                  </div>
-                )}
-                {ratings.buy > 0 && (
-                  <div
-                    className="h-full bg-up/70 relative group flex items-center justify-center"
-                    style={{ width: `${ratingToPercent(ratings.buy)}%` }}
-                  >
-                    <span className="text-xs font-medium text-background px-1 truncate">
-                      {ratings.buy}
-                    </span>
-                  </div>
-                )}
-                {ratings.hold > 0 && (
-                  <div
-                    className="h-full bg-amber relative group flex items-center justify-center"
-                    style={{ width: `${ratingToPercent(ratings.hold)}%` }}
-                  >
-                    <span className="text-xs font-medium text-foreground px-1 truncate">
-                      {ratings.hold}
-                    </span>
-                  </div>
-                )}
-                {ratings.sell > 0 && (
-                  <div
-                    className="h-full bg-dn/70 relative group flex items-center justify-center"
-                    style={{ width: `${ratingToPercent(ratings.sell)}%` }}
-                  >
-                    <span className="text-xs font-medium text-background px-1 truncate">
-                      {ratings.sell}
-                    </span>
-                  </div>
-                )}
-                {ratings.strongSell > 0 && (
-                  <div
-                    className="h-full bg-dn relative group flex items-center justify-center"
-                    style={{ width: `${ratingToPercent(ratings.strongSell)}%` }}
-                  >
-                    <span className="text-xs font-medium text-background px-1 truncate">
-                      {ratings.strongSell}
-                    </span>
-                  </div>
-                )}
-              </div>
-<div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-up mr-1.5"></div>
-                  <span>Strong Buy</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-up/70 mr-1.5"></div>
-                  <span>Buy</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-amber mr-1.5"></div>
-                  <span>Hold</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-dn/70 mr-1.5"></div>
-                  <span>Sell</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-dn mr-1.5"></div>
-                  <span>Strong Sell</span>
-                </div>
-              </div>
-            </div>
+        <div className="mt-6 grid grid-cols-3 border-t border-line pt-5">
+          <div>
+            <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Low</div>
+            <div className="mt-1.5 font-serif text-[26px] text-dn">—</div>
           </div>
-        </CardContent>
-      </Card>
+          <div className="border-l border-line2 pl-5">
+            <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Median</div>
+            <div className="mt-1.5 font-serif text-[26px]">
+              {ratings.targetPrice ? formatCurrency(ratings.targetPrice, currency) : "—"}
+            </div>
+            {priceDifference && (
+              <div className={cn("mt-0.5 text-[12.5px]", priceDifference.value >= 0 ? "text-up" : "text-dn")}>
+                {priceDifference.formatted} upside
+              </div>
+            )}
+          </div>
+          <div className="border-l border-line2 pl-5">
+            <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">High</div>
+            <div className="mt-1.5 font-serif text-[26px] text-up">—</div>
+          </div>
+        </div>
+      </HeadlineScoreCard>
+
+      <div className="rounded-lg border border-border bg-card px-7 pb-7 pt-6">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.14em]">Recent revisions</div>
+        <p className="mt-5 font-serif text-[14.5px] italic text-mut">
+          No recent revisions on file. {/* TD-DTL-REV — upgradeDowngradeHistory is fetched by the
+          service but not returned in the analyst-ratings API response. */}
+        </p>
+      </div>
     </div>
   );
 }

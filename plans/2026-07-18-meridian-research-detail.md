@@ -204,14 +204,14 @@ Ordered so shared primitives land before the tabs that consume them. Each task k
    insights) unchanged. — Acceptance: Overview renders visually identical to before but via
    shared components; composite score + verdict + dimensions match prior output for a known
    symbol; `npm run verify` passes.
-5. [ ] **Technical tab reskin** — rewrite `components/technical-analysis.tsx`: `HeadlineScoreCard`
+5. [x] **Technical tab reskin** — rewrite `components/technical-analysis.tsx`: `HeadlineScoreCard`
    (84px score, verdict kicker, italic summary) with `DetailPriceChart period="6M"` in the
    right column (reference lines omitted — data gap), then an "Indicators" card with the
    4-col ruled table (Indicator / Reading / Interpretation / Signal), Signal cell colored
    BUY/NEUTRAL/SELL from `breakdown` signals. Drop all `Card`/`Badge`/`Progress`/`Star`
    shadcn chrome. — Acceptance: tab matches prototype lines 531–603 structure; indicators
    with null readings are omitted; `npm run verify` passes.
-6. [ ] **Fundamental tab reskin + pill sub-nav** — rewrite `components/fundamental-analysis.tsx`:
+6. [x] **Fundamental tab reskin + pill sub-nav** — rewrite `components/fundamental-analysis.tsx`:
    `HeadlineScoreCard` + 5-col `SubscoreBand` (Valuation/Profitability/Growth/Health/Dividend),
    then a client-side **pill sub-nav** (Overview / Valuation / Profitability / Growth / Health /
    Dividend; active = filled ink pill, inactive = outlined `1px --line`). Build all six
@@ -223,13 +223,13 @@ Ordered so shared primitives land before the tabs that consume them. Each task k
    metrics render em-dash rows. Grading dots use `metricGrade()` (threshold-based). — Acceptance:
    all six sub-views switch client-side and render; grading dots appear with correct band
    colors on available metrics; `npm run verify` passes.
-7. [ ] **Analysts tab reskin** — rewrite `components/analyst-ratings.tsx`: `HeadlineScoreCard`
+7. [x] **Analysts tab reskin** — rewrite `components/analyst-ratings.tsx`: `HeadlineScoreCard`
    (84px + `VerdictStamp`) with, in the right column, the 5-row ratings distribution (label /
    `--fill`-track colored bar / count) over the 3-col price-target band (Low/Median/High +
    upside; Low & High em-dash placeholders — data gap), then a "Recent revisions" card with an
    empty state (data gap). — Acceptance: distribution bars scale to counts; median target +
    upside show for a symbol with coverage; `npm run verify` passes.
-8. [ ] **Intrinsic tab reskin** — rewrite `components/intrinsic-value.tsx`: `HeadlineScoreCard`
+8. [x] **Intrinsic tab reskin** — rewrite `components/intrinsic-value.tsx`: `HeadlineScoreCard`
    (84px amber-band score via `upsideToScore`, fair-value estimate figure, "Trading X%
    above/below fair value" line, italic note) with, in the right column, the 3-col scenario
    band (Base = point estimate; Bear/Bull em-dash placeholders — data gap) over "Model

@@ -1,48 +1,58 @@
 "use client";
 
-import React from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { AlertCircle } from "lucide-react";
 import { FundamentalMetricsResponse } from "@/lib/types/market";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  BarChart3,
-  Activity,
-  Heart,
-  AlertCircle,
-  Info,
-  Wallet,
-  ArrowUpRight,
-  ArrowDownRight,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatCurrency, formatNumber } from "@/lib/utils/format";
+import { formatCurrency } from "@/lib/utils/format";
+import { metricGrade, type MetricGrade } from "@/lib/utils/score-band";
+import { HeadlineScoreCard } from "@/components/research/headline-score-card";
+import { SubscoreBand } from "@/components/research/subscore-band";
+import { GradedMetricRow } from "@/components/research/graded-metric-row";
+import { ScoreFigure } from "@/components/research/score-figure";
 
 interface FundamentalAnalysisProps {
   symbol: string;
   currency?: string;
 }
 
-// Helper function to format percentages
-const formatPercentLocal = (value: number | null): string => {
-  if (value === null || value === undefined) return "N/A";
-  return `${(value * 100).toFixed(2)}%`;
-};
+const SUB_NAV = [
+  { value: "overview", label: "Overview" },
+  { value: "valuation", label: "Valuation" },
+  { value: "profitability", label: "Profitability" },
+  { value: "growth", label: "Growth" },
+  { value: "health", label: "Health" },
+  { value: "dividend", label: "Dividend" },
+] as const;
+
+type SubNavValue = (typeof SUB_NAV)[number]["value"];
+
+function fmtNumber(value: number | null): string | null {
+  return value === null || value === undefined ? null : value.toFixed(2);
+}
+
+function fmtPercent(value: number | null): string | null {
+  if (value === null || value === undefined) return null;
+  return `${value >= 0 ? "+" : ""}${(value * 100).toFixed(2)}%`;
+}
+
+function fmtCurrencyOrNull(value: number | null, currency?: string): string | null {
+  return value === null || value === undefined ? null : formatCurrency(value, currency);
+}
+
+function fmtLargeNumber(value: number | null, currency?: string): string | null {
+  if (value === null || value === undefined) return null;
+  const symbol = currency === "USD" ? "$" : currency === "EUR" ? "€" : currency || "$";
+  if (value >= 1e9) return `${symbol}${(value / 1e9).toFixed(2)}B`;
+  if (value >= 1e6) return `${symbol}${(value / 1e6).toFixed(2)}M`;
+  return formatCurrency(value, currency);
+}
 
 export function FundamentalAnalysis({ symbol, currency }: FundamentalAnalysisProps) {
-  const { data, isLoading, error } = useQuery({
+  const [subNav, setSubNav] = useState<SubNavValue>("overview");
+
+  const { data, isLoading, error } = useQuery<FundamentalMetricsResponse>({
     queryKey: ["fundamentals", symbol],
     queryFn: async () => {
       const res = await fetch(`/api/market/fundamentals/${symbol}`);
@@ -53,685 +63,306 @@ export function FundamentalAnalysis({ symbol, currency }: FundamentalAnalysisPro
   });
 
   if (isLoading) {
-    return <FundamentalAnalysisSkeleton />;
+    return (
+      <div className="flex h-32 items-center justify-center rounded-lg border border-border bg-card text-mut">
+        Loading fundamental analysis…
+      </div>
+    );
   }
 
   if (error || !data) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center h-64 text-mut">
-          <AlertCircle className="mr-2 h-5 w-5" />
-          Unable to load fundamental analysis
-        </CardContent>
-      </Card>
+      <div className="flex h-32 items-center justify-center rounded-lg border border-border bg-card text-mut">
+        <AlertCircle className="mr-2 h-4 w-4" />
+        Unable to load fundamental analysis
+      </div>
     );
   }
 
-  const getScoreColor = (score: number) => {
-    if (score >= 7) return "text-up";
-    if (score >= 5) return "text-amber";
-    return "text-dn";
-  };
-
-  const getScoreBadge = (score: number) => {
-    if (score >= 7) return { label: "Strong", variant: "default" as const };
-    if (score >= 5) return { label: "Moderate", variant: "secondary" as const };
-    return { label: "Weak", variant: "destructive" as const };
-  };
+  const subscoreItems = [
+    { label: "Valuation", score: data.score.breakdown.valuation },
+    { label: "Profitability", score: data.score.breakdown.profitability },
+    { label: "Growth", score: data.score.breakdown.growth },
+    { label: "Health", score: data.score.breakdown.financial },
+    { label: "Dividend", score: data.score.breakdown.dividend },
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* Overall Score Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center">
-              <BarChart3 className="mr-2 h-5 w-5" />
-              Fundamental Score
-            </span>
-            <Badge variant={getScoreBadge(data.score.total).variant} className="text-lg px-3 py-1">
-              {data.score.total}/10
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <Progress value={data.score.total * 10} className="h-3" />
+    <div className="space-y-5">
+      <HeadlineScoreCard
+        kicker="Fundamental analysis"
+        metaKicker="Trailing twelve months · FY ends"
+        score={data.score.total}
+        summary={data.score.interpretation}
+      >
+        <SubscoreBand items={subscoreItems} />
+      </HeadlineScoreCard>
 
-            <p className="text-sm text-sub">
-              {data.score.interpretation}
-            </p>
-
-            {/* Score Breakdown Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4">
-              <ScoreCard
-                title="Valuation"
-                score={data.score.breakdown.valuation}
-                icon={DollarSign}
-              />
-              <ScoreCard
-                title="Profitability"
-                score={data.score.breakdown.profitability}
-                icon={TrendingUp}
-              />
-              <ScoreCard
-                title="Growth"
-                score={data.score.breakdown.growth}
-                icon={Activity}
-              />
-              <ScoreCard
-                title="Health"
-                score={data.score.breakdown.financial}
-                icon={Heart}
-              />
-              <ScoreCard
-                title="Dividend"
-                score={data.score.breakdown.dividend}
-                icon={Wallet}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Detailed Metrics Tabs */}
-      <Tabs defaultValue="valuation" className="space-y-4">
-        <TabsList className="grid grid-cols-5 w-full">
-          <TabsTrigger value="valuation">Valuation</TabsTrigger>
-          <TabsTrigger value="profitability">Profitability</TabsTrigger>
-          <TabsTrigger value="growth">Growth</TabsTrigger>
-          <TabsTrigger value="financial">Health</TabsTrigger>
-          <TabsTrigger value="dividend">Dividend</TabsTrigger>
-        </TabsList>
-
-        {/* Valuation Tab */}
-        <TabsContent value="valuation">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <DollarSign className="mr-2 h-5 w-5" />
-                Valuation Metrics
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {/* Valuation Ratios Section */}
-                <div>
-                  <h3 className="text-sm font-semibold text-sub mb-3 pb-2 border-b">
-                    Valuation Ratios
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
-                    <MetricRow
-                      label="P/E Ratio"
-                      value={data.valuation.peRatio}
-                      format="number"
-                      tooltip="Price to Earnings (Trailing) - < 20 is good, > 30 is high"
-                      goodThreshold={20}
-                      badThreshold={30}
-                      inverse
-                    />
-                    <MetricRow
-                      label="Forward P/E"
-                      value={data.valuation.forwardPE}
-                      format="number"
-                      tooltip="Forward P/E - < 15 is attractive, > 25 is premium"
-                      goodThreshold={15}
-                      badThreshold={25}
-                      inverse
-                    />
-                    <MetricRow
-                      label="PEG Ratio"
-                      value={data.valuation.pegRatio}
-                      format="number"
-                      tooltip="PEG Ratio - < 1 is undervalued, > 2 is overvalued"
-                      goodThreshold={1}
-                      badThreshold={2}
-                      inverse
-                    />
-                    <MetricRow
-                      label="P/S Ratio"
-                      value={data.valuation.psRatio}
-                      format="number"
-                      tooltip="Price to Sales - < 1.5 is good value, > 5 is high"
-                      goodThreshold={1.5}
-                      badThreshold={5}
-                      inverse
-                    />
-                    <MetricRow
-                      label="P/B Ratio"
-                      value={data.valuation.pbRatio}
-                      format="number"
-                      tooltip="Price to Book - < 1.5 is value, > 3 is premium"
-                      goodThreshold={1.5}
-                      badThreshold={3}
-                      inverse
-                    />
-                    <MetricRow
-                      label="P/FCF Ratio"
-                      value={data.valuation.pfcfRatio}
-                      format="number"
-                      tooltip="Price to Free Cash Flow - < 15 is attractive"
-                      goodThreshold={15}
-                      badThreshold={30}
-                      inverse
-                    />
-                    <MetricRow
-                      label="FCF Yield"
-                      value={data.valuation.pfcfRatio ? 1 / data.valuation.pfcfRatio : null}
-                      format="percentDecimal"
-                      tooltip="Free Cash Flow Yield - > 5% is attractive"
-                      goodThreshold={0.05}
-                      badThreshold={0.02}
-                    />
-                    <MetricRow
-                      label="EV/EBITDA"
-                      value={data.valuation.evToEbitda}
-                      format="number"
-                      tooltip="Enterprise Value to EBITDA - < 10 is value"
-                      goodThreshold={10}
-                      badThreshold={20}
-                      inverse
-                    />
-                  </div>
-                </div>
-
-                {/* Per-Share Metrics Section */}
-                <div>
-                  <h3 className="text-sm font-semibold text-sub mb-3 pb-2 border-b">
-                    Per-Share Metrics
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
-                    <MetricRow
-                      label="EPS"
-                      value={data.valuation.eps}
-                      format="currency"
-                      tooltip="Earnings Per Share - Profit per outstanding share"
-                      currency={currency}
-                    />
-                    <MetricRow
-                      label="Forward EPS"
-                      value={data.valuation.forwardEps}
-                      format="currency"
-                      tooltip="Forward Earnings Per Share - Expected future earnings per share"
-                      currency={currency}
-                    />
-                    <MetricRow
-                      label="Book Value"
-                      value={data.valuation.bookValue}
-                      format="currency"
-                      currency={currency}
-                      tooltip="Book Value Per Share - Net asset value per share"
-                    />
-                  </div>
-                </div>
-
-                {/* Company Size Section */}
-                <div>
-                  <h3 className="text-sm font-semibold text-sub mb-3 pb-2 border-b">
-                    Company Size
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
-                    <MetricRow
-                      label="Market Cap"
-                      value={data.valuation.marketCap}
-                      format="largeNumber"
-                      currency={currency}
-                      tooltip="Total market value of the company"
-                    />
-                    <MetricRow
-                      label="Enterprise Value"
-                      value={data.valuation.enterpriseValue}
-                      format="largeNumber"
-                      currency={currency}
-                      tooltip="Market Cap + Debt - Cash. The theoretical takeover price."
-                    />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Profitability Tab */}
-        <TabsContent value="profitability">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <TrendingUp className="mr-2 h-5 w-5" />
-                Profitability Metrics
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <MetricRow
-                  label="Profit Margin"
-                  value={data.profitability.profitMargin}
-                  format="percentDecimal"
-                  tooltip="Net profit as % of revenue - Higher is better"
-                  benchmark={0.1}
-                />
-                <MetricRow
-                  label="Operating Margin"
-                  value={data.profitability.operatingMargin}
-                  format="percentDecimal"
-                  tooltip="Operating profit as % of revenue"
-                  benchmark={0.15}
-                />
-                <MetricRow
-                  label="Return on Equity (ROE)"
-                  value={data.profitability.roe}
-                  format="percentDecimal"
-                  tooltip="Profit generated per euro of equity"
-                  benchmark={0.15}
-                />
-                <MetricRow
-                  label="Return on Assets (ROA)"
-                  value={data.profitability.roa}
-                  format="percentDecimal"
-                  tooltip="Profit generated per euro of assets"
-                  benchmark={0.05}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Growth Tab */}
-        <TabsContent value="growth">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Activity className="mr-2 h-5 w-5" />
-                Growth Metrics
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <MetricRow
-                  label="Revenue Growth"
-                  value={data.growth.revenueGrowth}
-                  format="percentDecimal"
-                  tooltip="Year-over-year revenue growth rate"
-                  benchmark={0.1}
-                  showTrend
-                />
-                <MetricRow
-                  label="Earnings Growth"
-                  value={data.growth.earningsGrowth}
-                  format="percentDecimal"
-                  tooltip="Year-over-year earnings growth rate"
-                  benchmark={0.1}
-                  showTrend
-                />
-                {data.growth.fcfGrowth !== null && (
-                  <MetricRow
-                    label="Free Cash Flow Growth"
-                    value={data.growth.fcfGrowth}
-                    format="percentDecimal"
-                    tooltip="Year-over-year FCF growth rate"
-                    benchmark={0.1}
-                    showTrend
-                  />
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Financial Health Tab */}
-        <TabsContent value="financial">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Heart className="mr-2 h-5 w-5" />
-                Financial Health
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <MetricRow
-                  label="Current Ratio"
-                  value={data.financial.currentRatio}
-                  format="number"
-                  tooltip="Current assets / Current liabilities - Above 1 is healthy"
-                  benchmark={1.5}
-                />
-                <MetricRow
-                  label="Quick Ratio"
-                  value={data.financial.quickRatio}
-                  format="number"
-                  tooltip="Liquid assets / Current liabilities - Above 1 is good"
-                  benchmark={1}
-                />
-                <MetricRow
-                  label="Debt to Equity"
-                  value={data.financial.debtToEquity}
-                  format="number"
-                  tooltip="Total debt / Total equity - Lower is safer"
-                  benchmark={1}
-                  inverse
-                />
-                {data.financial.interestCoverage !== null && (
-                  <MetricRow
-                    label="Interest Coverage"
-                    value={data.financial.interestCoverage}
-                    format="number"
-                    tooltip="EBIT / Interest expense - Higher is better"
-                    benchmark={3}
-                  />
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Dividend Tab */}
-        <TabsContent value="dividend">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Wallet className="mr-2 h-5 w-5" />
-                Dividend Metrics
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {data.dividend.yield || data.dividend.payoutRatio ? (
-                <div className="space-y-4">
-                  <MetricRow
-                    label="Dividend Yield"
-                    value={data.dividend.yield}
-                    format="percentDecimal"
-                    tooltip="Annual dividend / Share price"
-                    benchmark={0.02}
-                  />
-                  <MetricRow
-                    label="Payout Ratio"
-                    value={data.dividend.payoutRatio}
-                    format="percentDecimal"
-                    tooltip="Dividends / Earnings - Below 60% is sustainable"
-                    benchmark={0.6}
-                    inverse
-                  />
-                  {data.dividend.growthRate !== null && (
-                    <MetricRow
-                      label="5-Year Dividend Growth"
-                      value={data.dividend.growthRate}
-                      format="percentDecimal"
-                      tooltip="Average annual dividend growth rate"
-                      benchmark={0.05}
-                    />
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-mut">
-                  <Wallet className="mx-auto h-12 w-12 mb-2 opacity-30" />
-                  <p>No dividend data available</p>
-                  <p className="text-sm mt-1">This company may not pay dividends</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Key Insights */}
-      <Card className="bg-fill border-border">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Info className="mr-2 h-5 w-5 text-foreground" />
-            Key Insights
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2 text-sm">
-            {generateInsights(data).map((insight, index) => (
-              <li key={index} className="flex items-start">
-                <span className="text-foreground mr-2">•</span>
-                <span>{insight}</span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// Score Card Component
-interface ScoreCardProps {
-  title: string;
-  score: number;
-  icon: React.ComponentType<{ className?: string }>;
-}
-
-function ScoreCard({ title, score, icon: Icon }: ScoreCardProps) {
-  const getColor = (score: number) => {
-    if (score >= 7) return "text-up bg-fill";
-    if (score >= 5) return "text-amber bg-fill";
-    return "text-dn bg-fill";
-  };
-
-  return (
-    <div className={cn("p-3 rounded-lg text-center", getColor(score).split(" ")[1])}>
-      <Icon className={cn("h-5 w-5 mx-auto mb-1", getColor(score).split(" ")[0])} />
-      <p className="text-xs text-sub">{title}</p>
-      <p className={cn("text-lg font-bold", getColor(score).split(" ")[0])}>
-        {score.toFixed(1)}
-      </p>
-    </div>
-  );
-}
-
-// Metric Row Component
-interface MetricRowProps {
-  label: string;
-  value: number | null;
-  format: "number" | "percentDecimal" | "currency" | "largeNumber";
-  tooltip?: string;
-  // New benchmark system:
-  // goodThreshold: value better than this is GOOD (Green)
-  // badThreshold: value worse than this is BAD (Red)
-  // In between is NEUTRAL (Yellow)
-  goodThreshold?: number;
-  badThreshold?: number;
-  inverse?: boolean; // if true, lower is better. default false (higher is better)
-
-  // Legacy support (optional, converts to binary good/bad if used alone)
-  benchmark?: number;
-
-  showTrend?: boolean;
-  currency?: string;
-}
-
-function MetricRow({
-  label,
-  value,
-  format,
-  tooltip,
-  goodThreshold,
-  badThreshold,
-  benchmark,
-  inverse = false,
-  showTrend = false,
-  currency
-}: MetricRowProps) {
-  if (value === null || value === undefined) {
-    return (
-      <div className="flex justify-between items-center py-1">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="text-sm text-sub cursor-help flex items-center">
-                {label}
-                {tooltip && <Info className="ml-1 h-3 w-3 opacity-50" />}
-              </span>
-            </TooltipTrigger>
-            {tooltip && (
-              <TooltipContent>
-                <p className="max-w-xs">{tooltip}</p>
-              </TooltipContent>
+      <div className="flex flex-wrap gap-2.5">
+        {SUB_NAV.map((item) => (
+          <button
+            key={item.value}
+            type="button"
+            onClick={() => setSubNav(item.value)}
+            className={cn(
+              "cursor-pointer whitespace-nowrap rounded-2xl px-[18px] py-2 text-[10.5px] uppercase tracking-[0.12em]",
+              subNav === item.value
+                ? "bg-btnbg font-semibold text-btnfg"
+                : "border border-line text-mut"
             )}
-          </Tooltip>
-        </TooltipProvider>
-        <span className="text-sm text-mut">N/A</span>
+          >
+            {item.label}
+          </button>
+        ))}
       </div>
-    );
-  }
 
-  let formattedValue = "";
-
-  // Color Logic
-  let colorClass = "text-foreground"; // default
-
-  if (goodThreshold !== undefined && badThreshold !== undefined) {
-    // 3-tier logic
-    if (inverse) {
-      if (value <= goodThreshold) colorClass = "text-up";
-      else if (value >= badThreshold) colorClass = "text-dn";
-      else colorClass = "text-amber";
-    } else {
-      if (value >= goodThreshold) colorClass = "text-up";
-      else if (value <= badThreshold) colorClass = "text-dn";
-      else colorClass = "text-amber";
-    }
-  } else if (benchmark !== undefined) {
-    // Legacy binary logic
-    const isGood = inverse ? value < benchmark : value > benchmark;
-    colorClass = isGood ? "text-up" : "text-dn";
-  }
-
-  switch (format) {
-    case "percentDecimal":
-      formattedValue = value >= 0 ? `+${(value * 100).toFixed(2)}%` : `${(value * 100).toFixed(2)}%`;
-      break;
-    case "currency":
-      formattedValue = formatCurrency(value, currency);
-      break;
-    case "largeNumber":
-      const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency || '$';
-      formattedValue = value >= 1e9
-        ? `${currencySymbol}${(value / 1e9).toFixed(2)}B`
-        : value >= 1e6
-          ? `${currencySymbol}${(value / 1e6).toFixed(2)}M`
-          : formatCurrency(value, currency);
-      break;
-    default:
-      formattedValue = value.toFixed(2);
-  }
-
-  return (
-    <div className="flex justify-between items-center py-1">
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="text-sm text-sub cursor-help flex items-center">
-              {label}
-              {tooltip && <Info className="ml-1 h-3 w-3 opacity-50" />}
-            </span>
-          </TooltipTrigger>
-          {tooltip && (
-            <TooltipContent>
-              <p className="max-w-xs">{tooltip}</p>
-            </TooltipContent>
-          )}
-        </Tooltip>
-      </TooltipProvider>
-
-      <div className="flex items-center space-x-2">
-        {showTrend && value !== 0 && (
-          value > 0
-            ? <ArrowUpRight className="h-4 w-4 text-up" />
-            : <ArrowDownRight className="h-4 w-4 text-dn" />
-        )}
-        <span className={cn("text-sm font-medium", colorClass)}>
-          {formattedValue}
-        </span>
-      </div>
+      {subNav === "overview" && <FundamentalOverviewSubView data={data} />}
+      {subNav === "valuation" && <ValuationSubView data={data} currency={currency} />}
+      {subNav === "profitability" && <ProfitabilitySubView data={data} />}
+      {subNav === "growth" && <GrowthSubView data={data} />}
+      {subNav === "health" && <HealthSubView data={data} />}
+      {subNav === "dividend" && <DividendSubView data={data} />}
     </div>
   );
 }
 
-// Generate insights based on data
-function generateInsights(data: FundamentalMetricsResponse): string[] {
-  const insights: string[] = [];
-
-  // Valuation insight - prioritize forward-looking metrics
-  if (data.valuation.pfcfRatio && data.valuation.pfcfRatio < 15) {
-    insights.push("Excellent value based on P/FCF ratio - the stock trades at an attractive price relative to free cash flow.");
-  } else if (data.valuation.forwardPE && data.valuation.forwardPE < 12) {
-    insights.push("Attractive forward P/E ratio suggests good value based on future earnings expectations.");
-  } else if (data.valuation.peRatio && data.valuation.peRatio < 15) {
-    insights.push("The stock appears undervalued based on P/E ratio compared to market average.");
-  } else if (data.valuation.pfcfRatio && data.valuation.pfcfRatio > 40) {
-    insights.push("High P/FCF ratio indicates expensive valuation - ensure strong growth prospects justify the premium.");
-  } else if (data.valuation.forwardPE && data.valuation.forwardPE > 35) {
-    insights.push("High forward P/E ratio suggests premium valuation - strong growth expectations are priced in.");
-  } else if (data.valuation.peRatio && data.valuation.peRatio > 30) {
-    insights.push("High P/E ratio suggests premium valuation - ensure growth justifies the price.");
-  }
-
-  // Profitability insight
-  if (data.profitability.roe && data.profitability.roe > 0.2) {
-    insights.push("Excellent return on equity indicates efficient use of shareholder capital.");
-  }
-
-  // Growth insight
-  if (data.growth.revenueGrowth && data.growth.revenueGrowth > 0.15) {
-    insights.push("Strong revenue growth shows expanding business operations.");
-  }
-
-  // Financial health insight
-  if (data.financial.debtToEquity && data.financial.debtToEquity < 0.5) {
-    insights.push("Conservative debt levels provide financial stability and flexibility.");
-  } else if (data.financial.debtToEquity && data.financial.debtToEquity > 2) {
-    insights.push("High debt levels may pose risk during economic downturns.");
-  }
-
-  // Dividend insight
-  if (data.dividend.yield && data.dividend.yield > 0.03) {
-    insights.push(`Attractive dividend yield of ${formatPercentLocal(data.dividend.yield)} provides income.`);
-  }
-
-  if (insights.length === 0) {
-    insights.push("Mixed fundamental signals - consider additional research before investing.");
-  }
-
-  return insights;
+function SectionCard({ title, children, footnote }: { title?: string; children: React.ReactNode; footnote?: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-card px-7 pb-7 pt-6">
+      {title && <div className="mb-5 text-[11px] font-semibold uppercase tracking-[0.14em]">{title}</div>}
+      {children}
+      {footnote && <p className="mt-5 font-serif text-[13.5px] italic text-mut">{footnote}</p>}
+    </div>
+  );
 }
 
-// Loading skeleton
-function FundamentalAnalysisSkeleton() {
+function GroupHeading({ children }: { children: React.ReactNode }) {
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-40" />
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <Skeleton className="h-3 w-full" />
-            <Skeleton className="h-20 w-full" />
-            <div className="grid grid-cols-5 gap-3">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="pt-6">
-          <div className="space-y-3">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex justify-between">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-4 w-20" />
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+    <div className="mb-3 border-b border-line pb-2 text-[10.5px] uppercase tracking-[0.14em] text-mut">
+      {children}
     </div>
+  );
+}
+
+function GradingDotLegend() {
+  return (
+    <div className="mt-6 flex flex-wrap gap-6 text-[12.5px] text-sub">
+      <span>
+        <span className="text-up">●</span> Strong vs peers
+      </span>
+      <span>
+        <span className="text-amber">●</span> In line
+      </span>
+      <span>
+        <span className="text-dn">●</span> Weak vs peers
+      </span>
+    </div>
+  );
+}
+
+function FundamentalOverviewSubView({ data }: { data: FundamentalMetricsResponse }) {
+  const sections: Array<{
+    name: string;
+    score: number;
+    rows: Array<{ label: string; value: string | null; grade: MetricGrade }>;
+  }> = [
+    {
+      name: "Valuation",
+      score: data.score.breakdown.valuation,
+      rows: [
+        { label: "P/E ratio", value: fmtNumber(data.valuation.peRatio), grade: metricGrade(data.valuation.peRatio, { goodThreshold: 20, badThreshold: 30, inverse: true }) },
+        { label: "Forward P/E", value: fmtNumber(data.valuation.forwardPE), grade: metricGrade(data.valuation.forwardPE, { goodThreshold: 15, badThreshold: 25, inverse: true }) },
+        { label: "PEG ratio", value: fmtNumber(data.valuation.pegRatio), grade: metricGrade(data.valuation.pegRatio, { goodThreshold: 1, badThreshold: 2, inverse: true }) },
+        { label: "P/B ratio", value: fmtNumber(data.valuation.pbRatio), grade: metricGrade(data.valuation.pbRatio, { goodThreshold: 1.5, badThreshold: 3, inverse: true }) },
+      ],
+    },
+    {
+      name: "Profitability",
+      score: data.score.breakdown.profitability,
+      rows: [
+        { label: "Profit margin", value: fmtPercent(data.profitability.profitMargin), grade: metricGrade(data.profitability.profitMargin, { goodThreshold: 0.1, badThreshold: 0 }) },
+        { label: "Operating margin", value: fmtPercent(data.profitability.operatingMargin), grade: metricGrade(data.profitability.operatingMargin, { goodThreshold: 0.15, badThreshold: 0 }) },
+        { label: "Return on equity", value: fmtPercent(data.profitability.roe), grade: metricGrade(data.profitability.roe, { goodThreshold: 0.15, badThreshold: 0 }) },
+        { label: "Return on assets", value: fmtPercent(data.profitability.roa), grade: metricGrade(data.profitability.roa, { goodThreshold: 0.05, badThreshold: 0 }) },
+      ],
+    },
+    {
+      name: "Growth",
+      score: data.score.breakdown.growth,
+      rows: [
+        { label: "Revenue growth", value: fmtPercent(data.growth.revenueGrowth), grade: metricGrade(data.growth.revenueGrowth, { goodThreshold: 0.1, badThreshold: 0 }) },
+        { label: "Earnings growth", value: fmtPercent(data.growth.earningsGrowth), grade: metricGrade(data.growth.earningsGrowth, { goodThreshold: 0.1, badThreshold: 0 }) },
+        { label: "FCF growth", value: fmtPercent(data.growth.fcfGrowth), grade: metricGrade(data.growth.fcfGrowth, { goodThreshold: 0.1, badThreshold: 0 }) },
+      ],
+    },
+    {
+      name: "Health",
+      score: data.score.breakdown.financial,
+      rows: [
+        { label: "Current ratio", value: fmtNumber(data.financial.currentRatio), grade: metricGrade(data.financial.currentRatio, { goodThreshold: 1.5, badThreshold: 1 }) },
+        { label: "Quick ratio", value: fmtNumber(data.financial.quickRatio), grade: metricGrade(data.financial.quickRatio, { goodThreshold: 1, badThreshold: 0.5 }) },
+        { label: "Debt to equity", value: fmtNumber(data.financial.debtToEquity), grade: metricGrade(data.financial.debtToEquity, { goodThreshold: 1, badThreshold: 2, inverse: true }) },
+      ],
+    },
+    {
+      name: "Dividend",
+      score: data.score.breakdown.dividend,
+      rows: [
+        { label: "Dividend yield", value: fmtPercent(data.dividend.yield), grade: metricGrade(data.dividend.yield, { goodThreshold: 0.02, badThreshold: 0 }) },
+        { label: "Payout ratio", value: fmtPercent(data.dividend.payoutRatio), grade: metricGrade(data.dividend.payoutRatio, { goodThreshold: 0.6, badThreshold: 0.9, inverse: true }) },
+        { label: "5Y dividend growth", value: fmtPercent(data.dividend.growthRate), grade: metricGrade(data.dividend.growthRate, { goodThreshold: 0.05, badThreshold: 0 }) },
+      ],
+    },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <SectionCard title="Score breakdown">
+        <div className="grid grid-cols-1 gap-x-10 gap-y-8 sm:grid-cols-2">
+          {sections.map((section) => (
+            <div key={section.name}>
+              <div className="flex items-baseline justify-between pb-3" style={{ borderBottom: "3px double var(--foreground)" }}>
+                <span className="font-serif text-[17px]">{section.name}</span>
+                <ScoreFigure score={section.score} size="sub" showSuffix={false} />
+              </div>
+              <div className="mt-1">
+                {section.rows.map((row) => (
+                  <GradedMetricRow key={row.label} label={row.label} value={row.value} grade={row.grade} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <GradingDotLegend />
+      </SectionCard>
+
+      <SectionCard title="Revenue by segment">
+        <p className="font-serif text-[14.5px] italic text-mut">
+          Segment breakdown not available. {/* TD-DTL-SEG — no segment data from the fundamentals API. */}
+        </p>
+      </SectionCard>
+    </div>
+  );
+}
+
+function ValuationSubView({ data, currency }: { data: FundamentalMetricsResponse; currency?: string }) {
+  const v = data.valuation;
+  return (
+    <SectionCard>
+      <div className="mb-6 flex items-baseline justify-between pb-3" style={{ borderBottom: "3px double var(--foreground)" }}>
+        <span className="font-serif text-[17px]">Valuation</span>
+        <ScoreFigure score={data.score.breakdown.valuation} size="sub" showSuffix={false} />
+      </div>
+
+      <GroupHeading>Valuation ratios</GroupHeading>
+      <div className="mb-6 grid grid-cols-1 gap-x-10 sm:grid-cols-2">
+        <GradedMetricRow label="P/E ratio" value={fmtNumber(v.peRatio)} grade={metricGrade(v.peRatio, { goodThreshold: 20, badThreshold: 30, inverse: true })} />
+        <GradedMetricRow label="Forward P/E" value={fmtNumber(v.forwardPE)} grade={metricGrade(v.forwardPE, { goodThreshold: 15, badThreshold: 25, inverse: true })} />
+        <GradedMetricRow label="PEG ratio" value={fmtNumber(v.pegRatio)} grade={metricGrade(v.pegRatio, { goodThreshold: 1, badThreshold: 2, inverse: true })} />
+        <GradedMetricRow label="P/S ratio" value={fmtNumber(v.psRatio)} grade={metricGrade(v.psRatio, { goodThreshold: 1.5, badThreshold: 5, inverse: true })} />
+        <GradedMetricRow label="P/B ratio" value={fmtNumber(v.pbRatio)} grade={metricGrade(v.pbRatio, { goodThreshold: 1.5, badThreshold: 3, inverse: true })} />
+        <GradedMetricRow label="P/FCF ratio" value={fmtNumber(v.pfcfRatio)} grade={metricGrade(v.pfcfRatio, { goodThreshold: 15, badThreshold: 30, inverse: true })} />
+        <GradedMetricRow label="EV/EBITDA" value={fmtNumber(v.evToEbitda)} grade={metricGrade(v.evToEbitda, { goodThreshold: 10, badThreshold: 20, inverse: true })} />
+      </div>
+
+      <GroupHeading>Per-share metrics</GroupHeading>
+      <div className="mb-6 grid grid-cols-1 gap-x-10 sm:grid-cols-2">
+        <GradedMetricRow label="EPS" value={fmtCurrencyOrNull(v.eps, currency)} hideDot />
+        <GradedMetricRow label="Forward EPS" value={fmtCurrencyOrNull(v.forwardEps, currency)} hideDot />
+        <GradedMetricRow label="Book value" value={fmtCurrencyOrNull(v.bookValue, currency)} hideDot />
+      </div>
+
+      <GroupHeading>Company size</GroupHeading>
+      <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
+        <GradedMetricRow label="Market cap" value={fmtLargeNumber(v.marketCap, currency)} hideDot />
+        <GradedMetricRow label="Enterprise value" value={fmtLargeNumber(v.enterpriseValue, currency)} hideDot />
+      </div>
+    </SectionCard>
+  );
+}
+
+function ProfitabilitySubView({ data }: { data: FundamentalMetricsResponse }) {
+  const p = data.profitability;
+  return (
+    <SectionCard>
+      <div className="mb-6 flex items-baseline justify-between pb-3" style={{ borderBottom: "3px double var(--foreground)" }}>
+        <span className="font-serif text-[17px]">Profitability</span>
+        <ScoreFigure score={data.score.breakdown.profitability} size="sub" showSuffix={false} />
+      </div>
+      <GroupHeading>Margins &amp; returns</GroupHeading>
+      <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
+        <GradedMetricRow label="Profit margin" value={fmtPercent(p.profitMargin)} grade={metricGrade(p.profitMargin, { goodThreshold: 0.1, badThreshold: 0 })} />
+        <GradedMetricRow label="Operating margin" value={fmtPercent(p.operatingMargin)} grade={metricGrade(p.operatingMargin, { goodThreshold: 0.15, badThreshold: 0 })} />
+        <GradedMetricRow label="Return on equity" value={fmtPercent(p.roe)} grade={metricGrade(p.roe, { goodThreshold: 0.15, badThreshold: 0 })} />
+        <GradedMetricRow label="Return on assets" value={fmtPercent(p.roa)} grade={metricGrade(p.roa, { goodThreshold: 0.05, badThreshold: 0 })} />
+      </div>
+      <p className="mt-5 font-serif text-[13.5px] italic text-mut">
+        High ROE driven primarily by buybacks (reduced equity base) rather than earnings growth can overstate capital efficiency.
+      </p>
+    </SectionCard>
+  );
+}
+
+function GrowthSubView({ data }: { data: FundamentalMetricsResponse }) {
+  const g = data.growth;
+  return (
+    <SectionCard>
+      <div className="mb-6 flex items-baseline justify-between pb-3" style={{ borderBottom: "3px double var(--foreground)" }}>
+        <span className="font-serif text-[17px]">Growth</span>
+        <ScoreFigure score={data.score.breakdown.growth} size="sub" showSuffix={false} />
+      </div>
+      <GroupHeading>Year-over-year growth</GroupHeading>
+      <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
+        <GradedMetricRow label="Revenue growth" value={fmtPercent(g.revenueGrowth)} grade={metricGrade(g.revenueGrowth, { goodThreshold: 0.1, badThreshold: 0 })} />
+        <GradedMetricRow label="Earnings growth" value={fmtPercent(g.earningsGrowth)} grade={metricGrade(g.earningsGrowth, { goodThreshold: 0.1, badThreshold: 0 })} />
+        <GradedMetricRow label="Free cash flow growth" value={fmtPercent(g.fcfGrowth)} grade={metricGrade(g.fcfGrowth, { goodThreshold: 0.1, badThreshold: 0 })} />
+      </div>
+    </SectionCard>
+  );
+}
+
+function HealthSubView({ data }: { data: FundamentalMetricsResponse }) {
+  const f = data.financial;
+  return (
+    <SectionCard>
+      <div className="mb-6 flex items-baseline justify-between pb-3" style={{ borderBottom: "3px double var(--foreground)" }}>
+        <span className="font-serif text-[17px]">Health</span>
+        <ScoreFigure score={data.score.breakdown.financial} size="sub" showSuffix={false} />
+      </div>
+      <GroupHeading>Liquidity &amp; leverage</GroupHeading>
+      <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
+        <GradedMetricRow label="Current ratio" value={fmtNumber(f.currentRatio)} grade={metricGrade(f.currentRatio, { goodThreshold: 1.5, badThreshold: 1 })} />
+        <GradedMetricRow label="Quick ratio" value={fmtNumber(f.quickRatio)} grade={metricGrade(f.quickRatio, { goodThreshold: 1, badThreshold: 0.5 })} />
+        <GradedMetricRow label="Debt to equity" value={fmtNumber(f.debtToEquity)} grade={metricGrade(f.debtToEquity, { goodThreshold: 1, badThreshold: 2, inverse: true })} />
+        <GradedMetricRow label="Interest coverage" value={fmtNumber(f.interestCoverage)} grade={metricGrade(f.interestCoverage, { goodThreshold: 3, badThreshold: 1 })} />
+      </div>
+    </SectionCard>
+  );
+}
+
+function DividendSubView({ data }: { data: FundamentalMetricsResponse }) {
+  const d = data.dividend;
+  const hasDividend = d.yield !== null || d.payoutRatio !== null;
+  return (
+    <SectionCard
+      footnote={hasDividend ? "Payout ratios above 90% may not be sustainable through a downturn." : undefined}
+    >
+      <div className="mb-6 flex items-baseline justify-between pb-3" style={{ borderBottom: "3px double var(--foreground)" }}>
+        <span className="font-serif text-[17px]">Dividend</span>
+        <ScoreFigure score={data.score.breakdown.dividend} size="sub" showSuffix={false} />
+      </div>
+      {hasDividend ? (
+        <>
+          <GroupHeading>Payout</GroupHeading>
+          <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
+            <GradedMetricRow label="Dividend yield" value={fmtPercent(d.yield)} grade={metricGrade(d.yield, { goodThreshold: 0.02, badThreshold: 0 })} />
+            <GradedMetricRow label="Payout ratio" value={fmtPercent(d.payoutRatio)} grade={metricGrade(d.payoutRatio, { goodThreshold: 0.6, badThreshold: 0.9, inverse: true })} />
+            <GradedMetricRow label="5Y dividend growth" value={fmtPercent(d.growthRate)} grade={metricGrade(d.growthRate, { goodThreshold: 0.05, badThreshold: 0 })} />
+          </div>
+        </>
+      ) : (
+        <p className="font-serif text-[14.5px] italic text-mut">No dividend data available. This company may not pay dividends.</p>
+      )}
+    </SectionCard>
   );
 }
