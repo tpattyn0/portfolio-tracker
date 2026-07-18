@@ -12,3 +12,4 @@
 | 2026-07-18-meridian-research-detail.md | 2026-07-18 | IMPLEMENTED — 2026-07-18 (iter 1: 3 SUGGESTIONs + 1 QUESTION resolved in `1c524c0a`; iter 2: 0 findings) |
 | 2026-07-18-meridian-dashboard-detail-fixes.md | 2026-07-18 | IMPLEMENTED — 2026-07-18 (0 BLOCKERs/ISSUEs/QUESTIONs; MDF-S1 logged as TD-33) |
 | 2026-07-18-performance-audit-remediation.md | 2026-07-18 | IMPLEMENTED — 2026-07-18 (0 BLOCKERs/ISSUEs; 2 SUGGESTIONs no-action; PAR-Q1 approved + migration applied) |
+| 2026-07-18-yahoo-validation-error.md | 2026-07-18 | IMPLEMENTED — 2026-07-18 (0 BLOCKERs/ISSUEs/QUESTIONs; YV-S1 SUGGESTION no-action) |

@@ -1,4 +1,4 @@
-import yahooFinance from '@/lib/yahoo-finance';
+import { safeQuoteSummary } from '@/lib/yahoo-finance';
 import { prisma } from '@/lib/prisma';
 import { AnalystRating, Prisma } from '@prisma/client';
 
@@ -46,8 +46,13 @@ export class AnalystRatingsService {
         return this.formatCachedData(cached);
       }
 
-      // Fetch fresh data from Yahoo Finance
-      const quoteSummary = await yahooFinance.quoteSummary(symbol, {
+      // Fetch fresh data from Yahoo Finance.
+      // Note: no hard module guard here (unlike fundamentals/market-data) —
+      // a missing `recommendationTrend` legitimately means "no analyst
+      // coverage" and extractRatings already returns totalAnalysts: 0,
+      // which calculateScore treats as a valid neutral 5. Only the wrapper's
+      // own null-result re-throw applies.
+      const quoteSummary = await safeQuoteSummary(symbol, {
         modules: [
           'financialData',
           'recommendationTrend',
