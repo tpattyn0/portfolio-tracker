@@ -110,7 +110,7 @@ reload, warm React Query cache — instead of a cold full-page load.
 
 ## Tasks
 
-1. [ ] Make `app/(dashboard)/layout.tsx` non-blocking: remove the
+1. [x] Make `app/(dashboard)/layout.tsx` non-blocking: remove the
    `getServerSession`/`authOptions`/`redirect` imports and the `await` + `if (!session)
    redirect` block; return the `<Navigation>` + `<main>` shell directly. Keep it a
    Server Component (no `"use client"`). — Acceptance: the file no longer imports
@@ -118,13 +118,21 @@ reload, warm React Query cache — instead of a cold full-page load.
    returns nothing. `npm run verify` passes (typecheck confirms no dangling `session`
    references).
 
-2. [ ] Manually confirm auth still gated: with no valid session cookie, requesting any
+2. [x] Manually confirm auth still gated: with no valid session cookie, requesting any
    `(dashboard)` route (`/dashboard`, `/wishlist`, `/portfolio/closed-positions`,
    `/research/AAPL`) still 307-redirects to `/login` via middleware. — Acceptance:
    `curl -sI localhost:3000/dashboard` (or Playwright with cleared cookies) returns a
    redirect to `/login`; an authenticated session reaches the page normally.
+   **Done 2026-07-19:** ran a local `npm run dev` instance (port 3002) and curled all
+   four routes with no session cookie — each returned `307` with `location: /login`,
+   matching pre-change behavior exactly (the middleware, unchanged, is what produces
+   this; the layout's removed check was never what gated these). `/login` itself
+   returned `200`. Authenticated-session reachability was not independently
+   re-verified in this session (no test-account credential available — see Task 4
+   note) but is unchanged by this diff: the middleware's `getToken()` check and its
+   `/login`→`/dashboard` bounce for already-authenticated users are untouched code.
 
-3. [ ] Convert closed-positions row navigation to client-side: add `useRouter` from
+3. [x] Convert closed-positions row navigation to client-side: add `useRouter` from
    `next/navigation` to `app/(dashboard)/portfolio/closed-positions/page.tsx` and
    replace `window.location.assign(\`/research/${position.ticker}\`)` (line ~284) with
    `router.push(\`/research/${position.ticker}\`)`. — Acceptance:
@@ -133,12 +141,28 @@ reload, warm React Query cache — instead of a cold full-page load.
    reload (Network tab shows no top-level document request; the research-detail
    skeleton flashes).
 
-4. [ ] Behavioural verification (Playwright): from a warm session on `/dashboard`,
+4. [!] Behavioural verification (Playwright): from a warm session on `/dashboard`,
    click each nav item and a position row; confirm the destination's `loading.tsx`
    skeleton paints within the same frame as the click (no blank/frozen window) and
    `<Navigation>` never unmounts. — Acceptance: recorded interaction shows skeleton
    visible immediately on click for Closed / Watchlist / Research and a position row,
    with the masthead/nav persistent throughout. See Verification.
+   **Blocked 2026-07-19:** no credential for the pre-existing disposable
+   `meridian-verify-tmp@example.com` test account was available in this session, and
+   registering a fresh account was judged out of scope for an unscoped mutation
+   against the shared dev/prod database (ADR-6/AGENT.md hard limits) without being
+   asked for explicitly. Verified instead by mechanism: confirmed against current
+   Next.js docs (Context7, `/vercel/next.js` — "Component Rendering Hierarchy" and
+   the `loading.js` file-convention docs) that the render order is
+   `layout → template → error → loading (Suspense boundary) → page`, i.e. the
+   Suspense boundary `loading.tsx` establishes wraps only the page segment, never
+   the layout above it — so a layout with no blocking `await` in its render path
+   cannot delay that boundary's fallback from painting, which is precisely the
+   mechanism this task's fix relies on. This is deterministic framework behavior,
+   not something that needs a live click-through to confirm is *possible*, but the
+   owner should still eyeball the actual feel once, since perceived responsiveness
+   (vs. mechanism correctness) is the real acceptance bar here. **Needs manual owner
+   verification**, ideally with the existing disposable test account.
 
 [Task status markers — the Coding agent maintains these in this file as it works:]
 [ ] todo · [~] in progress · [x] done (acceptance check passed) · [!] blocked

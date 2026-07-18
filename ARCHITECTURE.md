@@ -13,7 +13,7 @@
 
 ## Request flow
 
-1. `middleware.ts` gates all page routes (not `/api/*`) using NextAuth's `getToken()` — unauthenticated users are redirected to `/login`; authenticated users on `/login`/`/register` are redirected to `/dashboard`.
+1. `middleware.ts` gates all page routes (not `/api/*`) using NextAuth's `getToken()` — unauthenticated users are redirected to `/login`; authenticated users on `/login`/`/register` are redirected to `/dashboard`. This is the **sole** enforcement point for page-route auth: `app/(dashboard)/layout.tsx` is a synchronous Server Component with no session check of its own (ADR-16, `plans/2026-07-19-meridian-nav-responsiveness.md`) — it previously duplicated the middleware's check via a render-blocking `await getServerSession()`, which froze the entire dashboard subtree (including the shared `<Navigation>` and every route's `loading.tsx` Suspense fallback) on every intra-group navigation. Removing it changed no observable auth behaviour, only removed a redundant blocking wait.
 2. Every `/api/*` route handler authorises itself — either via the shared helpers in `lib/utils/auth.ts` (`getAuthenticatedUser()`, `getAuthenticatedUserWithPortfolio()`) or an inline `getServerSession(authOptions)` check (see ADR-2 and `AGENT.md` fragile surfaces for the inconsistency between the two patterns).
 3. Route handlers delegate business logic to `lib/services/*.service.ts` (see ADR-3); routes stay thin.
 4. Services call Prisma for persistence/caching and external APIs (Yahoo Finance, NewsAPI, Gemini) for live data.
