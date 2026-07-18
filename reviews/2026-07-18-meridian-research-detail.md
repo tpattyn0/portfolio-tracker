@@ -1,6 +1,6 @@
 # Review: Meridian research/asset detail views (7 tabs)
 Date: 2026-07-18
-Status:
+Status: IMPLEMENTED — 2026-07-18
 
 ## Summary
 Findings (iteration 1): 0 BLOCKERs, 0 ISSUEs, 3 SUGGESTIONs, 1 QUESTION — all resolved in the fix pass (`1c524c0a`).
