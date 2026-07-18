@@ -239,7 +239,7 @@ Ordered so shared primitives land before the tabs that consume them. Each task k
    retokenized, else dropped. Also update `page.tsx`'s inline "Comparative valuation metrics"
    block to the editorial style (or fold into the Valuation sub-view and remove from
    `page.tsx`). — Acceptance: fair value + upside + assumptions render; `npm run verify` passes.
-9. [ ] **Transactions tab (new, 7th)** — create `components/research/transactions-tab.tsx`:
+9. [x] **Transactions tab (new, 7th)** — create `components/research/transactions-tab.tsx`:
    a ruled 4-col stat band (Shares held / Average cost / Market value / Unrealised P/L) fed by
    `/api/portfolio/positions/[ticker]` (React Query; on 404 / not-owned, render a quiet empty
    state: "You do not hold {symbol}." + the "+ Add to portfolio" pill, and no stat band), then
@@ -250,7 +250,7 @@ Ordered so shared primitives land before the tabs that consume them. Each task k
    this tab or supersede it — do not leave two transaction tables in the detail flow). —
    Acceptance: for an owned symbol the stat band + table render; for an unowned symbol the empty
    state renders with no console error from the 404; `npm run verify` passes.
-10. [ ] **News & sentiment tab reskin** — rewrite `components/news-feed.tsx` (or wrap it):
+10. [x] **News & sentiment tab reskin** — rewrite `components/news-feed.tsx` (or wrap it):
     `HeadlineScoreCard` (84px sentiment score + trend kicker + italic summary) with a 3-col
     tone band (Positive/Neutral/Negative %; MoM delta line omitted when history is thin — data
     gap) in the right column, then a "Latest coverage" editorial list (serif 17px headline /
@@ -258,7 +258,7 @@ Ordered so shared primitives land before the tabs that consume them. Each task k
     hover). Drop the `Tabs`/`Card`/`Alert`/`Badge` shadcn chrome; keep the existing empty-state
     guidance content but retokenized. — Acceptance: tone % + coverage list render; sentiment tag
     colors match band; `npm run verify` passes.
-11. [ ] **Wire `page.tsx`: 7 tabs, new order, DetailPriceChart** — update the `tabs` array to
+11. [x] **Wire `page.tsx`: 7 tabs, new order, DetailPriceChart** — update the `tabs` array to
     the 7-tab order, add the Transactions entry, route each tab to its (re)built component, and
     remove the now-dead inline "Comparative valuation metrics" block if folded into Task 8.
     Add `ComponentErrorBoundary` around the tab content region (AGENT.md notes the research

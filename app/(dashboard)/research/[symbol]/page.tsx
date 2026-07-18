@@ -10,7 +10,9 @@ import { IntrinsicValue } from "@/components/intrinsic-value";
 import { Overview } from "@/components/overview";
 import { AnalystRatings } from "@/components/analyst-ratings";
 import { NewsFeed } from "@/components/news-feed";
+import { TransactionsTab } from "@/components/research/transactions-tab";
 import { AddToWishlistModal } from "@/components/add-to-wishlist-modal";
+import { ComponentErrorBoundary } from "@/components/error-boundary";
 import { formatCurrency, formatPercent, formatCompactCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +22,7 @@ const tabs = [
   { value: "fundamental", label: "Fundamental" },
   { value: "analyst", label: "Analysts" },
   { value: "intrinsic", label: "Intrinsic value" },
+  { value: "transactions", label: "Transactions" },
   { value: "news", label: "News & sentiment" },
 ] as const;
 
@@ -29,7 +32,6 @@ export default function ResearchStockPage() {
   const params = useParams();
   const symbol = params.symbol as string;
   const [quote, setQuote] = useState<any>(null);
-  const [fundamentals, setFundamentals] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabValue>("overview");
 
@@ -47,12 +49,6 @@ export default function ResearchStockPage() {
       if (quoteRes.ok) {
         const quoteData = await quoteRes.json();
         setQuote(quoteData);
-      }
-
-      const fundamentalRes = await fetch(`/api/market/fundamentals/${symbol}`);
-      if (fundamentalRes.ok) {
-        const fundamentalData = await fundamentalRes.json();
-        setFundamentals(fundamentalData);
       }
     } catch (error) {
       console.error("Error fetching stock data:", error);
@@ -83,6 +79,7 @@ export default function ResearchStockPage() {
           <div className="mt-2 text-[10.5px] uppercase tracking-[0.14em] text-mut">
             {symbol}
             {quote?.exchange ? ` · ${quote.exchange}` : ""}
+            {/* Sector clause omitted — not in the quote payload today (TD-DTL-SECTOR). */}
           </div>
         </div>
         <div className="flex gap-3">
@@ -159,99 +156,41 @@ export default function ResearchStockPage() {
         ))}
       </div>
 
-      <div>
-        {activeTab === "overview" && quote && (
-          <Overview
-            symbol={symbol}
-            name={quote.name}
-            currentPrice={quote.price}
-            context="wishlist"
-            currency={quote.currency}
-          />
-        )}
+      <ComponentErrorBoundary name="Research detail">
+        <div>
+          {activeTab === "overview" && quote && (
+            <Overview
+              symbol={symbol}
+              name={quote.name}
+              currentPrice={quote.price}
+              context="wishlist"
+              currency={quote.currency}
+            />
+          )}
 
-        {activeTab === "technical" && (
-          <TechnicalAnalysis symbol={symbol} currency={quote?.currency} />
-        )}
+          {activeTab === "technical" && (
+            <TechnicalAnalysis symbol={symbol} currency={quote?.currency} />
+          )}
 
-        {activeTab === "fundamental" && (
-          <FundamentalAnalysis symbol={symbol} currency={quote?.currency} />
-        )}
+          {activeTab === "fundamental" && (
+            <FundamentalAnalysis symbol={symbol} currency={quote?.currency} />
+          )}
 
-        {activeTab === "analyst" && (
-          <AnalystRatings symbol={symbol} currency={quote?.currency} />
-        )}
+          {activeTab === "analyst" && (
+            <AnalystRatings symbol={symbol} currentPrice={quote?.price} currency={quote?.currency} />
+          )}
 
-        {activeTab === "intrinsic" && (
-          <div className="space-y-5">
-            {quote && (
-              <IntrinsicValue symbol={symbol} currentPrice={quote.price} currency={quote.currency} />
-            )}
+          {activeTab === "intrinsic" && quote && (
+            <IntrinsicValue symbol={symbol} currentPrice={quote.price} currency={quote.currency} />
+          )}
 
-            {fundamentals && (
-              <div className="rounded-lg border border-border bg-card px-7 py-6">
-                <div className="mb-4 font-serif text-xl">Comparative valuation metrics</div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <ValuationMetric
-                    label="P/E ratio"
-                    value={fundamentals.peRatio?.toFixed(2)}
-                    caption={
-                      fundamentals.industryAvgPE
-                        ? `Industry avg: ${fundamentals.industryAvgPE.toFixed(2)}`
-                        : undefined
-                    }
-                  />
-                  <ValuationMetric
-                    label="PEG ratio"
-                    value={fundamentals.pegRatio?.toFixed(2)}
-                    caption={
-                      fundamentals.pegRatio
-                        ? fundamentals.pegRatio < 1
-                          ? "Potentially undervalued"
-                          : fundamentals.pegRatio > 2
-                          ? "Potentially overvalued"
-                          : "Fair valued"
-                        : undefined
-                    }
-                  />
-                  <ValuationMetric
-                    label="P/B ratio"
-                    value={fundamentals.pbRatio?.toFixed(2)}
-                    caption={
-                      fundamentals.industryAvgPB
-                        ? `Industry avg: ${fundamentals.industryAvgPB.toFixed(2)}`
-                        : undefined
-                    }
-                  />
-                  <ValuationMetric label="P/S ratio" value={fundamentals.psRatio?.toFixed(2)} />
-                  <ValuationMetric label="EV/EBITDA" value={fundamentals.evToEbitda?.toFixed(2)} />
-                  <ValuationMetric label="Price to FCF" value={fundamentals.priceToFCF?.toFixed(2)} />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+          {activeTab === "transactions" && (
+            <TransactionsTab symbol={symbol} currency={quote?.currency} />
+          )}
 
-        {activeTab === "news" && <NewsFeed symbol={symbol} companyName={quote?.name} />}
-      </div>
-    </div>
-  );
-}
-
-function ValuationMetric({
-  label,
-  value,
-  caption,
-}: {
-  label: string;
-  value?: string;
-  caption?: string;
-}) {
-  return (
-    <div>
-      <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">{label}</div>
-      <div className="mt-1 font-serif text-xl">{value || "—"}</div>
-      {caption && <div className="mt-0.5 text-xs text-mut">{caption}</div>}
+          {activeTab === "news" && <NewsFeed symbol={symbol} companyName={quote?.name} />}
+        </div>
+      </ComponentErrorBoundary>
     </div>
   );
 }
