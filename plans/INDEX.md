@@ -8,4 +8,4 @@
 | plans/2026-07-18-performance-audit-remediation.md | 2026-07-18 | implemented | reviews/2026-07-18-performance-audit-remediation.md |
 | plans/2026-07-18-yahoo-validation-error.md | 2026-07-18 | implemented | reviews/2026-07-18-yahoo-validation-error.md |
 | plans/2026-07-19-meridian-nav-responsiveness.md | 2026-07-19 | implemented | reviews/2026-07-19-meridian-nav-responsiveness.md |
-| plans/2026-07-19-meridian-first-visit-latency.md | 2026-07-19 | in review | — |
+| plans/2026-07-19-meridian-first-visit-latency.md | 2026-07-19 | implemented | reviews/2026-07-19-meridian-first-visit-latency.md |

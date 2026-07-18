@@ -98,7 +98,7 @@ and docs. The orchestrator should skip the Designer stage.
    styles render (Tailwind classes resolve). Capture the ready-banner line and a
    compiled-route line in the PR body. Stop the server after.
 
-3. [!] Behavioural check — first-visit freeze is no longer perceptible.
+3. [~] Behavioural check — deferred to owner manual acceptance (review FVL-Q1); first-visit freeze is no longer perceptible.
    Navigate (via in-app `<Link>` clicks, not hard reloads) to
    `/portfolio/closed-positions`, `/wishlist`, `/research`, and a position
    detail page for the **first** time each, and confirm the multi-hundred-ms
