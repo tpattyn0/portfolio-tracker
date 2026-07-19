@@ -84,7 +84,7 @@ Tasks). The page-header market grid on both route pages is **not touched**.
 
 ## Tasks
 
-1. [ ] **Designer stage — spec the distinction treatment.** Before any code, the
+1. [x] **Designer stage — spec the distinction treatment.** Before any code, the
    Designer produces the exact spec (heading text, kicker token/size/weight, whether
    `bg-fill` is applied, how the closed and held states share the treatment,
    confirmation the page-header grid stays as-is) per "Notes for the Designer stage"
@@ -94,7 +94,7 @@ Tasks). The page-header market grid on both route pages is **not touched**.
    treatment using named existing tokens; no new token/color/spacing is introduced; the
    spec explicitly states the page-header market grid is unchanged.
 
-2. [ ] **Apply the section kicker heading to the held-state position band** in
+2. [x] **Apply the section kicker heading to the held-state position band** in
    `components/research/transactions-tab.tsx` per the Designer spec — a kicker eyebrow
    (e.g. "Your position") above the `panelState === "held"` stat band, using the
    existing kicker pattern already in this file (matching "Your transactions" at
@@ -105,7 +105,7 @@ Tasks). The page-header market grid on both route pages is **not touched**.
    market grid; no hardcoded hex/oklch/spacing outside DESIGN.md tokens; `npm run
    verify` passes.
 
-3. [ ] **Give the closed-position state a coherent treatment under the same
+3. [x] **Give the closed-position state a coherent treatment under the same
    distinction.** The `panelState === "closed"` block ("Position closed." caption +
    Realized P/L) should read as the same titled "your position" section as the held
    state — e.g. the same kicker heading sits above the closed caption per the Designer
@@ -117,7 +117,7 @@ Tasks). The page-header market grid on both route pages is **not touched**.
    visibility behavior is byte-for-byte the same rule as before (still
    `hasRealizedPL(position.realizedPL)`); `npm run verify` passes.
 
-4. [ ] **Confirm both routes and the page-header grid.** Verify the distinction renders
+4. [x] **Confirm both routes and the page-header grid.** Verify the distinction renders
    identically on `/research/[symbol]` and `/portfolio/[ticker]` (both consume the one
    shared `TransactionsTab`) and that neither route page's header market grid was
    modified.
