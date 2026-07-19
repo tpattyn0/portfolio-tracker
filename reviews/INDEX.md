@@ -13,3 +13,5 @@
 | 2026-07-18-meridian-dashboard-detail-fixes.md | 2026-07-18 | IMPLEMENTED — 2026-07-18 (0 BLOCKERs/ISSUEs/QUESTIONs; MDF-S1 logged as TD-33) |
 | 2026-07-18-performance-audit-remediation.md | 2026-07-18 | IMPLEMENTED — 2026-07-18 (0 BLOCKERs/ISSUEs; 2 SUGGESTIONs no-action; PAR-Q1 approved + migration applied) |
 | 2026-07-18-yahoo-validation-error.md | 2026-07-18 | IMPLEMENTED — 2026-07-18 (0 BLOCKERs/ISSUEs/QUESTIONs; YV-S1 SUGGESTION no-action) |
+| 2026-07-19-meridian-nav-responsiveness.md | 2026-07-19 | IMPLEMENTED — 2026-07-19 (0 BLOCKERs/ISSUEs; NAV-Q1 owner acceptance/manual pending, NAV-S1 SUGGESTION optional) |
+| 2026-07-19-meridian-first-visit-latency.md | 2026-07-19 | IMPLEMENTED — 2026-07-19 (0 BLOCKERs/ISSUEs; FVL-Q1 owner click-through pending, FVL-S1 SUGGESTION optional/no-action) |

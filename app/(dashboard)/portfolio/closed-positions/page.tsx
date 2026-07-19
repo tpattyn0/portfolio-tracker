@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { TickerFilter, TickerOption } from "@/components/closed-positions/ticker-filter";
 import Link from "next/link";
 import { formatCurrency, formatPercent, formatNumber } from "@/lib/utils/format";
@@ -41,6 +42,7 @@ const outcomeTabs: { value: "all" | "winners" | "losers"; label: string }[] = [
 ];
 
 export default function ClosedPositionsPage() {
+  const router = useRouter();
   const [sortBy, setSortBy] = useState("closeDate");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [outcomeFilter, setOutcomeFilter] = useState<"all" | "winners" | "losers">("all");
@@ -281,7 +283,7 @@ export default function ClosedPositionsPage() {
                     "cursor-pointer hover:bg-fill",
                     idx !== displayPositions.length - 1 && "border-b border-line2"
                   )}
-                  onClick={() => window.location.assign(`/research/${position.ticker}`)}
+                  onClick={() => router.push(`/research/${position.ticker}`)}
                 >
                   <td className="py-[15px]">
                     <div className="font-serif text-base font-medium">{position.name}</div>
