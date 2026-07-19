@@ -3,9 +3,41 @@ Date: 2026-07-19
 Status:
 
 ## Summary
-Findings: 0 BLOCKERs, 1 ISSUE, 2 SUGGESTIONs, 2 QUESTIONs
-Requires owner decision: PT-Q1 (Realized P/L no longer surfaced in the UI — confirm intended), PT-Q2 (four visual states across both routes — owner click-through)
-Ready for Coding agent: PT-I1, PT-S1, PT-S2
+Findings: 0 BLOCKERs, 2 ISSUEs (PT-I1 resolved iter 2 · PT-I2 new — doc drift), 2 SUGGESTIONs (PT-S1 resolved iter 2 · PT-S2 skipped), 2 QUESTIONs (PT-Q1 resolved by owner · PT-Q2 owner-pending)
+Requires owner decision: PT-Q2 (four visual states across both routes — owner click-through; manual acceptance, not a code defect)
+Ready for Coding agent: PT-I2 (doc-accuracy fix, one line in ADR-18 Evidence; optional direct unit test for computePositionRealizedPL)
+
+---
+
+## Iteration 2 — 2026-07-19 (verifying the PT-Q1/PT-I1/PT-S1 fix)
+
+Reviewed branch HEAD (`11dd9201`) diffed against the iteration-1 review commit (`git diff cb7f8fcd..HEAD`). Working tree clean. `npm run verify` re-run and green: typecheck ok, lint ok (pre-existing warnings only, none new), **106/106 tests** (up from 99), secret-scan clean. Delta is scoped to the realized-P/L re-surfacing + PT-S1 — no unrelated changes.
+
+**Security pass (Step 1):** no new vulnerabilities. The one new endpoint change (`GET /api/portfolio/positions/[ticker]` now computing realizedPL) keeps its `getAuthenticatedUserWithPortfolio()` guard and scopes the Prisma lookup to the caller's `portfolio.id` via the `portfolioId_ticker` composite key — the `ticker` path param cannot reach another user's data (no IDOR), Prisma parameterises the query (no injection). The new service function is pure Decimal math with no I/O or sink. The TSX changes render all values as escaped text nodes (no `dangerouslySetInnerHTML`). No secrets, no PII in logs.
+
+**Correctness — realized-P/L math (the highest-value check):** **verified correct.** `computePositionRealizedPL` (`lib/services/realized-pl.service.ts:138-169`) composes the exact same tested helpers the closed-positions route uses — `matchFifoLots` (mutating, oldest-first depletion), `resolveCostBasisWithFallback` (average-cost fallback for an unmatched remainder), `calculateRealizedPL` (proceeds − sell fees − FIFO cost basis). It sorts BUYs and SELLs ascending by `executedAt` (correct — the route queries `executedAt: desc`, so the explicit sort is load-bearing) and depletes the shared `buyLots` array cumulatively across sells, exactly mirroring the single-pass depletion in `closed-positions/route.ts:78-158`. For identical transaction inputs, the per-sell `realizedPL` values are identical to closed-positions' per-row values and their sum equals its `totalRealizedPL`. Buy fees are prorated into cost basis; sell fees are subtracted from proceeds — no double-counting, no sign error, no fee omission. Currency: computed on raw position-currency Decimals, then `* conversionRate` applied after `.toNumber()`, consistent with every other money field on the response (`route.ts:54-63`). Edge cases confirmed via `route.test.ts`: no sells → 0, partial sell (held, q>0) → +500, full sell (closed, q=0) at a loss → −200, 404 when absent.
+
+**Hide-when-zero semantic:** consistent. `hasRealizedPL` (`positions-tab.ts:59-61`) hides on `undefined`/`null`/exactly `0`, preserving the old header semantic. `transactions-tab.tsx:81` gates a single `showRealizedPL` flag that drives BOTH the held-state 5th cell (`grid-cols-5` when shown, `grid-cols-4` otherwise, with the border-r moved onto the correct trailing cell — `:112`,`:125`,`:134`) AND the closed-state figure (`:100-107`). The ruled-band layout stays intact in both column counts.
+
+**API-change blast radius:** no other consumer relied on the hardcoded `realizedPL: 0`. `portfolio/[ticker]/page.tsx` fetches the endpoint for the header but reads no `.realizedPL` from it (grep confirmed — the field is consumed only inside `TransactionsTab`); `sell-position-modal.tsx` computes its own local preview `realizedPL` from user input, not from this endpoint. The change is purely additive.
+
+**effectiveTab (PT-S1):** correctly applied on both `research/[symbol]/page.tsx` and `portfolio/[ticker]/page.tsx` — the post-commit `useEffect`+`setActiveTab` is replaced by a render-time `const effectiveTab = tabs.some(...) ? activeTab : "overview"`, and every tab-button `className` and body-render switches on `effectiveTab`. This removes the one-render hidden-tab window entirely with no stale-state or infinite-render risk (it derives, never sets, during render). `useEffect` remains imported/used elsewhere in both files, so no unused-import lint break. No regression.
+
+**Resolution status of iteration-1 findings:**
+- **PT-I1 — RESOLVED (iter 2).** Realized P/L is now surfaced in both held and closed states, backed by a real computed value. The root cause the fix surfaced (the endpoint's hardcoded `realizedPL: 0` was dead/always-zero even pre-feature) is genuine and now fixed and logged as TD-35 (Resolved).
+- **PT-S1 — RESOLVED (iter 2).** effectiveTab derived at render time as recommended.
+- **PT-S2 — SKIPPED (accepted).** No component-test harness in this repo; correctly deferred to PT-Q2 owner click-through. No action.
+- **PT-Q1 — RESOLVED by owner.** Owner chose to re-surface Realized P/L (held + closed); implemented per PT-I1.
+- **PT-Q2 — still owner-pending.** Four visual states + base-currency reconversion remain manual acceptance (no Playwright in repo). This is manual verification, not a code defect — it does not block iteration-2 completion.
+
+**New finding this iteration: PT-I2 (doc drift, non-blocking).** See below. It is a one-line ADR-18 Evidence inaccuracy plus an optional test-coverage gap — no code or math defect.
+
+**Iteration-2 verdict:** the realized-P/L computation is correct and consistent with closed-positions; PT-I1 and PT-S1 are genuinely resolved; the only new finding is a documentation-accuracy ISSUE (PT-I2). No new BLOCKERs, no new QUESTIONs. The sole residual owner item is PT-Q2 (manual click-through) — not a code defect. The pipeline may proceed to final report; PT-I2 is a small cleanup a Coding agent can take autonomously.
+
+### PT-I2 — ISSUE (new, iteration 2)
+**File:** `DECISIONS.md` ADR-18 (Evidence line); `lib/services/realized-pl.service.ts:138-169`; `lib/services/realized-pl.service.test.ts`
+**Problem:** ADR-18's Evidence claims `computePositionRealizedPL` is "unit-tested in `realized-pl.service.test.ts`". It is not — that test file never references `computePositionRealizedPL` (grep confirmed: zero matches across all `*.test.ts`). The existing service test covers only the lower-level helpers (`matchFifoLots`, `calculateRealizedPL`, `resolveCostBasisWithFallback`) and an AUD-FIX-01 reconciliation block that predates ADR-18. The new function is exercised only *indirectly*, through `app/api/portfolio/positions/[ticker]/route.test.ts` (held/closed/no-sells/404). That indirect coverage is meaningful and the math is correct by composition — but (a) the ADR states a direct-unit-test fact that is false (a doc-vs-code drift the Reviewer must flag per the "if a doc says something the code doesn't confirm, the doc is wrong" rule), and (b) the multi-buy-lot FIFO-ordering path and the unmatched-remainder fallback *of this specific function* are not directly asserted anywhere (the route tests use single-lot inputs); they are only covered on the sibling helpers/closed-positions path.
+**Recommendation:** Either (a) correct the ADR-18 Evidence line to say `computePositionRealizedPL` is covered *indirectly* via `route.test.ts` (held/closed/no-sells/404), not directly in `realized-pl.service.test.ts`; or (b) preferably, add a direct unit test for `computePositionRealizedPL` in `realized-pl.service.test.ts` asserting: multi-lot FIFO ordering (two BUY lots at different costs, one SELL spanning both → basis uses oldest lots first), a partial sell then a second sell consuming the later lot, and an unmatched-remainder sell falling back to `avgCostBasis` — then the ADR claim becomes true. Option (b) also closes the residual direct-coverage gap on the exact function that now produces a user-facing money figure. Doc-only if (a); test-only (no product code) if (b). Does not touch the computation.
 
 Reviewed branch HEAD (`0aaf2272`) diffed against `origin/main` (`git diff origin/main...HEAD`). Working tree clean. The diff is scoped to the positions-tab feature only — no unrelated changes. `npm run verify` is green: typecheck ok, lint ok (only pre-existing warnings, none new), 99/99 tests, secret-scan clean.
 
@@ -39,4 +71,4 @@ The core correctness crux — the three-state panel gate — is **implemented co
 **Recommendation:** Owner to click through the four states across both routes (and confirm the base-currency switch reconverts the stat band values). This mirrors NAV-Q1 / FVL-Q1 handling on prior work here — not a merge blocker on its own.
 
 ## Proposed DECISIONS.md entries
-None. ADR-18 already exists and is accurate on the header swap, the tab rename/gating, the shared-component unification, and the `quantity>0` crux. The only ADR-18 correction needed is factual (the Realized P/L relocation claim) and is captured by PT-I1 — it should be fixed in the existing ADR text, not added as a new ADR.
+None (no new ADR). ADR-18 now correctly reflects the realized-P/L re-surfacing and the on-read computation (the iteration-1 relocation-claim gap flagged by PT-I1 is fixed). One remaining ADR-18 text inaccuracy is captured by PT-I2 (iteration 2): the Evidence line's "`computePositionRealizedPL`, unit-tested in `realized-pl.service.test.ts`" is false — fix that line (or add the direct test that makes it true) in the existing ADR, not as a new ADR.
