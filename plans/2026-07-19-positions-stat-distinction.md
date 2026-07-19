@@ -176,6 +176,11 @@ lint, tests, secret-scan. Beyond it, manual UI checks (both light and dark theme
 None — the approach is unambiguous within the design system; exact token selection is
 delegated to the Designer stage below (not a blocker for planning).
 
+**Owner steer (2026-07-19):** approved "Title + filled panel" — apply BOTH lever 1
+(the "Your position" section kicker) AND lever 2 (the `bg-fill` surface swap). The
+Designer stage should NOT treat the surface swap as an open yes/no; it is confirmed
+in. Designer still picks exact tokens/wording within DESIGN.md vocabulary.
+
 ## ADR note
 
 No ADR is added. This is a purely presentational refinement applying **existing**
