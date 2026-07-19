@@ -17,6 +17,13 @@ interface IntrinsicValueResult {
   methods: ValuationMethod[];
   confidence: 'high' | 'medium' | 'low';
   lastUpdated: Date;
+  // Method-spread Bear/Bull (OD-2, plans/2026-07-19-research-tab-fixes.md):
+  // min/max of the valid (value > 0) method results. Not a flex-assumptions
+  // scenario model — intrinsicValue (the weighted average) stays the base
+  // case. Null when fewer than 2 methods produced a valid value.
+  scenarioLow: number | null;
+  scenarioHigh: number | null;
+  validMethodCount: number;
 }
 
 export class IntrinsicValueService {
@@ -79,6 +86,11 @@ export class IntrinsicValueService {
     // Determine overall confidence
     const confidence = this.determineConfidence(methods);
 
+    // Method-spread Bear/Bull (OD-2): min/max of the already-computed valid
+    // method values, not a new scenario model. intrinsicValue (weighted
+    // average) remains the Base case.
+    const { scenarioLow, scenarioHigh, validMethodCount } = this.calculateScenarioRange(methods);
+
     return {
       currentPrice,
       intrinsicValue,
@@ -87,6 +99,9 @@ export class IntrinsicValueService {
       methods,
       confidence,
       lastUpdated: new Date(),
+      scenarioLow,
+      scenarioHigh,
+      validMethodCount,
     };
   }
 
@@ -261,6 +276,34 @@ export class IntrinsicValueService {
     });
 
     return totalWeight > 0 ? weightedSum / totalWeight : null;
+  }
+
+  /**
+   * Method-spread Bear/Bull range (OD-2, plans/2026-07-19-research-tab-fixes.md):
+   * min/max of the methods with a valid positive value. Requires at least 2
+   * valid methods to produce a meaningful range — a single value has no
+   * "spread", so scenarioLow/scenarioHigh are null in that case (em-dash at
+   * the component layer), matching the same em-dash convention already used
+   * for every other data-gap in this tab.
+   */
+  private static calculateScenarioRange(methods: ValuationMethod[]): {
+    scenarioLow: number | null;
+    scenarioHigh: number | null;
+    validMethodCount: number;
+  } {
+    const validValues = methods
+      .filter((m) => m.value !== null && m.value > 0)
+      .map((m) => m.value as number);
+
+    if (validValues.length < 2) {
+      return { scenarioLow: null, scenarioHigh: null, validMethodCount: validValues.length };
+    }
+
+    return {
+      scenarioLow: Math.min(...validValues),
+      scenarioHigh: Math.max(...validValues),
+      validMethodCount: validValues.length,
+    };
   }
 
   /**

@@ -65,6 +65,9 @@ describe("GET /api/research/[symbol]/intrinsic-value (ADR-12)", () => {
       ],
       confidence: "medium",
       lastUpdated: new Date("2026-07-18T00:00:00.000Z"),
+      scenarioLow: null,
+      scenarioHigh: null,
+      validMethodCount: 1,
     });
 
     const res = await GET(

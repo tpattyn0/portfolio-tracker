@@ -50,8 +50,8 @@ const ALL_TABS = [
   { value: "fundamental", label: "Fundamental" },
   { value: "analyst", label: "Analysts" },
   { value: "intrinsic", label: "Intrinsic value" },
-  { value: "transactions", label: "Positions" },
   { value: "news", label: "News & sentiment" },
+  { value: "transactions", label: "Positions" },
 ] as const;
 
 type TabValue = (typeof ALL_TABS)[number]["value"];

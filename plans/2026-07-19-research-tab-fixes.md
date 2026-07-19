@@ -152,14 +152,14 @@ built (new logic and/or reverse a documented DESIGN.md data-gap decision).
 
 ### Analyst tab
 
-1. [ ] **[BUG] Fix the washed-out BUY/SELL distribution bars.** In
+1. [x] **[BUG] Fix the washed-out BUY/SELL distribution bars.** In
    `components/analyst-ratings.tsx` change `DISTRIBUTION_ROWS` (lines 30-36) so `buy`
    uses `bg-up` and `sell` uses `bg-dn` (remove the `/70` opacity modifiers). Keep
    `strongBuy`→`bg-up`, `hold`→`bg-amber`, `strongSell`→`bg-dn`. — **Acceptance:** on a
    symbol with a non-zero Buy count, the Buy bar renders as a solidly visible green bar
    proportional to its count; `npm run verify` green.
 
-2. [ ] **[MAPPING] Plumb Low / High target price through service → response, and render
+2. [x] **[MAPPING] Plumb Low / High target price through service → response, and render
    them.**
    - `lib/services/analyst-ratings.service.ts`: add `targetLowPrice: number | null` and
      `targetHighPrice: number | null` to the `AnalystRatings` interface (lines 5-17);
@@ -177,7 +177,7 @@ built (new logic and/or reverse a documented DESIGN.md data-gap decision).
    only a mean target still shows `—` for LOW/HIGH. Unit test the extractor's new
    mapping (present, and absent → null). `npm run verify` green.
 
-3. [ ] **[UPSTREAM-ABSENT / MAPPING — GATED on OD-3] Plumb analyst revisions through and
+3. [x] **[UPSTREAM-ABSENT / MAPPING — GATED on OD-3] Plumb analyst revisions through and
    render real revisions when present.** Only if OD-3 = "include now": extract
    `upgradeDowngradeHistory.history` in `analyst-ratings.service.ts` into a typed
    `revisions` array (firm, action, fromGrade, toGrade, date), add it to the response,
@@ -191,7 +191,7 @@ built (new logic and/or reverse a documented DESIGN.md data-gap decision).
 
 ### Intrinsic value tab
 
-4. [ ] **[BUG] Fix the "Revenue growth" mislabel.** In `intrinsic-value.tsx` the
+4. [x] **[BUG] Fix the "Revenue growth" mislabel.** In `intrinsic-value.tsx` the
    assumption currently labelled "Revenue growth" (line 126-128) shows the DCF Lite
    *earnings*-growth input. Either (a) relabel it "Earnings growth (capped 15%)" to match
    what is computed, or (b) surface the real `revenueGrowth` from the response. Requires
@@ -200,7 +200,7 @@ built (new logic and/or reverse a documented DESIGN.md data-gap decision).
    — **Acceptance:** the displayed assumption label matches the value's actual source
    (verified against `intrinsic-value.service.ts`); no fabricated numbers. `npm run verify` green.
 
-5. [ ] **[FEATURE/DECISION — GATED on OD-1] Model assumptions: replace or remove the
+5. [x] **[FEATURE/DECISION — GATED on OD-1] Model assumptions: replace or remove the
    non-computed FCF margin / Terminal growth rows.** Per OD-1's resolution — either
    relabel to the real DCF Lite inputs (Terminal P/E, Discount rate, Earnings growth,
    and optionally a derived FCF margin from `fcfPerShare × shares / revenue` if the
@@ -210,7 +210,7 @@ built (new logic and/or reverse a documented DESIGN.md data-gap decision).
    (or honestly derived for) the computation; no row is a permanent hardcoded `—` that
    describes a non-existent model. `npm run verify` green.
 
-6. [ ] **[FEATURE/DECISION — GATED on OD-2] Bear / Base / Bull scenario band.** Per OD-2's
+6. [x] **[FEATURE/DECISION — GATED on OD-2] Bear / Base / Bull scenario band.** Per OD-2's
    resolution — default: in `intrinsic-value.service.ts`, after computing `methods`, also
    return `scenarioLow` = min and `scenarioHigh` = max of the valid method values (value
    > 0), with `intrinsicValue` staying the weighted base; extend `IntrinsicValueResult`
@@ -224,7 +224,7 @@ built (new logic and/or reverse a documented DESIGN.md data-gap decision).
 
 ### Positions tab
 
-7. [ ] **[UI] Adopt the other tabs' card + header treatment for the position stat block;
+7. [x] **[UI] Adopt the other tabs' card + header treatment for the position stat block;
    remove the standalone "Your position" kicker.** In
    `components/research/transactions-tab.tsx`, wrap the "held" (lines 114-149) and
    "closed" (lines 97-112) panel bodies in the shared card idiom the other tabs use —
@@ -240,7 +240,7 @@ built (new logic and/or reverse a documented DESIGN.md data-gap decision).
    the card; the `quantity>0` gating and Realized-P/L visibility are unchanged.
    `npm run verify` green; Designer sign-off on the visual.
 
-8. [ ] **[UI] Move Positions to the last tab (both routes).** In BOTH
+8. [x] **[UI] Move Positions to the last tab (both routes).** In BOTH
    `app/(dashboard)/research/[symbol]/page.tsx` (ALL_TABS, lines 47-54) and
    `app/(dashboard)/portfolio/[ticker]/page.tsx` (ALL_TABS, lines 23-30), move the
    `{ value: "transactions", label: "Positions" }` entry to the end of the array (after
@@ -250,7 +250,7 @@ built (new logic and/or reverse a documented DESIGN.md data-gap decision).
 
 ### News & sentiment tab
 
-9. [ ] **[UI] Remove the top "Sentiment Analysis" card (portfolio route only).** In
+9. [x] **[UI] Remove the top "Sentiment Analysis" card (portfolio route only).** In
    `app/(dashboard)/portfolio/[ticker]/page.tsx`, remove the `<SentimentScore ... />`
    render (line 340) and its now-unused import (line 15). Keep the `newsArticles` query
    and the `NewsFeed` render unchanged. Confirm no other consumer of `SentimentScore`

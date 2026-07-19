@@ -2,8 +2,18 @@ import { safeQuoteSummary } from '@/lib/yahoo-finance';
 import { prisma } from '@/lib/prisma';
 import { AnalystRating, Prisma } from '@prisma/client';
 
+export interface AnalystRevision {
+  firm: string;
+  action: string;
+  fromGrade: string | null;
+  toGrade: string | null;
+  date: string;
+}
+
 export interface AnalystRatings {
   targetPrice: number | null;
+  targetLowPrice: number | null;
+  targetHighPrice: number | null;
   strongBuy: number;
   buy: number;
   hold: number;
@@ -14,6 +24,10 @@ export interface AnalystRatings {
   lastUpdated: string;
   score: number;
   scoreInterpretation: string;
+  // Non-persisted (OD-3/A4, plans/2026-07-19-research-tab-fixes.md): no
+  // AnalystRating DB column exists for this yet, so it is present on a fresh
+  // Yahoo fetch and defaults to [] on a 24h cache hit (formatCachedData).
+  revisions: AnalystRevision[];
 }
 
 export class AnalystRatingsService {
@@ -82,22 +96,26 @@ export class AnalystRatingsService {
   private extractRatings(data: Record<string, any>): Omit<AnalystRatings, 'score' | 'scoreInterpretation'> {
     const financialData = data.financialData || {};
     const recommendationTrend = data.recommendationTrend?.trend?.[0] || {};
-    
+
     const strongBuy = recommendationTrend.strongBuy || 0;
     const buy = recommendationTrend.buy || 0;
     const hold = recommendationTrend.hold || 0;
     const sell = recommendationTrend.sell || 0;
     const strongSell = recommendationTrend.strongSell || 0;
-    
+
     const totalAnalysts = strongBuy + buy + hold + sell + strongSell;
-    
+
     // Calculate average rating (1=Strong Buy, 5=Strong Sell)
-    const averageRating = totalAnalysts > 0 
+    const averageRating = totalAnalysts > 0
       ? (strongBuy * 1 + buy * 2 + hold * 3 + sell * 4 + strongSell * 5) / totalAnalysts
       : null;
-    
+
+    const revisions = this.extractRevisions(data.upgradeDowngradeHistory);
+
     return {
       targetPrice: financialData.targetMeanPrice || null,
+      targetLowPrice: financialData.targetLowPrice ?? null,
+      targetHighPrice: financialData.targetHighPrice ?? null,
       strongBuy,
       buy,
       hold,
@@ -105,8 +123,34 @@ export class AnalystRatingsService {
       strongSell,
       totalAnalysts,
       averageRating,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
+      revisions,
     };
+  }
+
+  /**
+   * Extracts recent analyst revisions from Yahoo's `upgradeDowngradeHistory`
+   * module (already fetched, previously unread — TD-DTL-REV). Non-persisted:
+   * OD-3/A4, plans/2026-07-19-research-tab-fixes.md — returned only on a
+   * fresh Yahoo fetch, absent (defaults to []) on a 24h cache hit since no
+   * `AnalystRating` DB column exists for this yet.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private extractRevisions(upgradeDowngradeHistory: Record<string, any> | undefined): AnalystRevision[] {
+    const history = upgradeDowngradeHistory?.history;
+    if (!Array.isArray(history)) return [];
+
+    return history
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .filter((entry: Record<string, any>) => entry && entry.firm && entry.action && entry.epochGradeDate)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((entry: Record<string, any>) => ({
+        firm: String(entry.firm),
+        action: String(entry.action),
+        fromGrade: entry.fromGrade ? String(entry.fromGrade) : null,
+        toGrade: entry.toGrade ? String(entry.toGrade) : null,
+        date: new Date(entry.epochGradeDate).toISOString(),
+      }));
   }
 
   private calculateScore(ratings: Omit<AnalystRatings, 'score' | 'scoreInterpretation'>): number {
@@ -171,6 +215,11 @@ export class AnalystRatingsService {
   private formatCachedData(cached: AnalystRating): AnalystRatings {
     return {
       targetPrice: cached.targetPrice ? Number(cached.targetPrice) : null,
+      // Non-persisted (OD-3/A4): no AnalystRating DB columns for these yet,
+      // so a cache hit returns null/[] rather than the fresh-fetch values.
+      targetLowPrice: null,
+      targetHighPrice: null,
+      revisions: [],
       strongBuy: cached.strongBuy,
       buy: cached.buy,
       hold: cached.hold,
