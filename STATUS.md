@@ -5,7 +5,7 @@ Orchestration: Research-detail tab fixes — Analyst (buy bar / low-high / revis
 Plan: plans/2026-07-19-research-tab-fixes.md
 Since: 2026-07-19
 Branch: fix/research-tab-fixes
-Coding agent: running
+Reviewer: running (iteration 1)
 
 ## Blocked
 TD-01 — NEWS_API_KEY live + public in history; risk accepted per ADR-7, blocks production deploys only
