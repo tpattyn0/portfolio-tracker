@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Overview } from "@/components/overview";
-import { TransactionHistory } from "@/components/transaction-history";
+import { TransactionsTab } from "@/components/research/transactions-tab";
 import { TechnicalAnalysis } from "@/components/technical-analysis";
 import { FundamentalAnalysis } from "@/components/fundamental-analysis";
 import { IntrinsicValue } from "@/components/intrinsic-value";
@@ -16,20 +16,21 @@ import { SentimentScore } from "@/components/sentiment-score";
 import { SellPositionModal } from "@/components/sell-position-modal";
 import { BuyMoreModal } from "@/components/buy-more-modal";
 import { ComponentErrorBoundary } from "@/components/error-boundary";
-import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils/format";
+import { formatCurrency, formatPercent, formatCompactCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
+import { shouldShowPositionsTab } from "@/lib/utils/positions-tab";
 
-const tabs = [
+const ALL_TABS = [
   { value: "overview", label: "Overview" },
   { value: "technical", label: "Technical" },
   { value: "fundamental", label: "Fundamental" },
   { value: "analyst", label: "Analysts" },
   { value: "intrinsic", label: "Intrinsic value" },
-  { value: "transactions", label: "Transactions" },
+  { value: "transactions", label: "Positions" },
   { value: "news", label: "News & sentiment" },
 ] as const;
 
-type TabValue = (typeof tabs)[number]["value"];
+type TabValue = (typeof ALL_TABS)[number]["value"];
 
 export default function PositionDetailPage() {
   const params = useParams();
@@ -95,6 +96,33 @@ export default function PositionDetailPage() {
     enabled: mounted && !!ticker && !!position,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
+
+  // "Has or had a position" signal for the Positions tab's conditional
+  // visibility (plan Assumption A1) — same has-transactions guard as
+  // research/[symbol]/page.tsx, applied here for consistency even though
+  // this route is only ever reached for a ticker with a position.
+  const { data: transactions } = useQuery({
+    queryKey: ["transactions", ticker],
+    queryFn: async () => {
+      const res = await fetch(`/api/portfolio/transactions?ticker=${ticker}`);
+      if (!res.ok) throw new Error("Failed to fetch transactions");
+      return res.json();
+    },
+    enabled: mounted && !!ticker,
+    staleTime: 5 * 60 * 1000,
+  });
+  const showPositionsTab = shouldShowPositionsTab(transactions);
+  const tabs = ALL_TABS.filter((tab) => tab.value !== "transactions" || showPositionsTab);
+
+  // Defensive fallback: if the active tab is ever no longer in the visible
+  // set, fall back to Overview rather than rendering a selected-but-hidden
+  // tab with no matching button (mirrors research/[symbol]/page.tsx).
+  useEffect(() => {
+    if (!tabs.some((tab) => tab.value === activeTab)) {
+      setActiveTab("overview");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showPositionsTab]);
 
   // Delete position mutation
   const deleteMutation = useMutation({
@@ -163,14 +191,6 @@ export default function PositionDetailPage() {
   }
 
   const marketValue = position.quantity * currentPrice;
-  const totalCost = position.quantity * position.avgCostBasis;
-  const unrealizedPL = marketValue - totalCost;
-  const unrealizedPLPercent = totalCost > 0 ? (unrealizedPL / totalCost) * 100 : 0;
-  const dayChange = quote ? (quote.change || 0) * position.quantity * (position.conversionRate || 1) : 0;
-  const dayChangePercent = quote?.changePercent ? quote.changePercent * 100 : 0;
-  const totalPL = unrealizedPL + (position.realizedPL || 0);
-  
-  const hasRealizedPL = position.realizedPL !== undefined && position.realizedPL !== 0;
 
   return (
     <div>
@@ -186,7 +206,7 @@ export default function PositionDetailPage() {
           <h1 className="font-serif text-[52px] font-medium leading-[1.05]">{position.name}</h1>
           <div className="mt-2 text-[10.5px] uppercase tracking-[0.14em] text-mut">
             {position.ticker}
-            {position.quantity === 0 && " · Position closed"}
+            {quote?.exchange ? ` · ${quote.exchange}` : ""}
           </div>
         </div>
         <div className="flex gap-3">
@@ -219,61 +239,46 @@ export default function PositionDetailPage() {
         </div>
       </div>
 
-      {/* Quote card — Research-detail 4-col ruled quote grid pattern, extended
-          to 5 columns for this page's own metrics (DESIGN.md "Position
-          detail"): kicker / serif value / detail line per cell, --line2
-          internal verticals, signed figures via --up/--dn aliases. */}
-      <div
-        className={cn(
-          "mb-5 grid rounded-lg border border-border bg-card",
-          hasRealizedPL ? "grid-cols-5" : "grid-cols-4"
-        )}
-      >
-        <div className="border-r border-line2 px-7 py-[22px]">
-          <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Market value</div>
-          <div className="mt-1.5 font-serif text-[28px]">{formatCurrency(marketValue, baseCurrency)}</div>
-          <div className="mt-0.5 text-[12.5px] text-mut">
-            {formatNumber(position.quantity)} shares @ {formatCurrency(currentPrice, baseCurrency)}
-          </div>
-        </div>
-        <div className="border-r border-line2 px-7 py-[22px]">
-          <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Unrealized P/L</div>
-          <div className={cn("mt-1.5 font-serif text-[28px]", unrealizedPL >= 0 ? "text-up" : "text-dn")}>
-            {unrealizedPL >= 0 && "+"}
-            {formatCurrency(unrealizedPL, baseCurrency)}
-          </div>
-          <div className={cn("mt-0.5 text-[12.5px]", unrealizedPLPercent >= 0 ? "text-up" : "text-dn")}>
-            {formatPercent(unrealizedPLPercent)}
-          </div>
-        </div>
-        {hasRealizedPL && (
+      {/* Quote card — general market grid (plan Task 2 / ADR-18): spec parity
+          with research/[symbol]/page.tsx's 4-col ruled quote grid (Current
+          price / Day range / 52-week range / Market cap), fed by the same
+          `quote` this page already fetches. The former position-centric grid
+          (Market value / Unrealized P/L / Realized P/L / Today's change / Avg
+          cost) has moved into the Positions tab's stat band. */}
+      {quote && (
+        <div className="mb-5 grid grid-cols-4 rounded-lg border border-border bg-card">
           <div className="border-r border-line2 px-7 py-[22px]">
-            <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Realized P/L</div>
-            <div className={cn("mt-1.5 font-serif text-[28px]", position.realizedPL >= 0 ? "text-up" : "text-dn")}>
-              {position.realizedPL >= 0 && "+"}
-              {formatCurrency(position.realizedPL, baseCurrency)}
+            <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">
+              Current price
             </div>
-            <div className="mt-0.5 text-[12.5px] text-mut">From previous sales</div>
+            <div className="mt-1.5 font-serif text-[28px]">
+              {formatCurrency(quote.price, quote.currency)}
+            </div>
+            <div className={cn("mt-0.5 text-[12.5px]", quote.change >= 0 ? "text-up" : "text-dn")}>
+              {quote.change >= 0 ? "▲" : "▼"} {formatCurrency(Math.abs(quote.change), quote.currency)} (
+              {formatPercent(quote.changePercent * 100)})
+            </div>
           </div>
-        )}
-        <div className="border-r border-line2 px-7 py-[22px]">
-          <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Today&apos;s change</div>
-          <div className={cn("mt-1.5 font-serif text-[28px]", dayChange >= 0 ? "text-up" : "text-dn")}>
-            {dayChange >= 0 && "+"}
-            {formatCurrency(dayChange, baseCurrency)}
+          <div className="border-r border-line2 px-7 py-[22px]">
+            <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Day range</div>
+            <div className="mt-2.5 font-serif text-[22px]">
+              {formatCurrency(quote.dayLow, quote.currency)} – {formatCurrency(quote.dayHigh, quote.currency)}
+            </div>
           </div>
-          <div className={cn("mt-0.5 text-[12.5px]", dayChangePercent >= 0 ? "text-up" : "text-dn")}>
-            {formatPercent(dayChangePercent)}
+          <div className="border-r border-line2 px-7 py-[22px]">
+            <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">52-week range</div>
+            <div className="mt-2.5 font-serif text-[22px]">
+              {formatCurrency(quote.yearLow, quote.currency)} – {formatCurrency(quote.yearHigh, quote.currency)}
+            </div>
+          </div>
+          <div className="px-7 py-[22px]">
+            <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Market cap</div>
+            <div className="mt-2.5 font-serif text-[22px]">
+              {quote.marketCap ? formatCompactCurrency(quote.marketCap, quote.currency) : "—"}
+            </div>
           </div>
         </div>
-        <div className="px-7 py-[22px]">
-          <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Avg cost</div>
-          <div className="mt-1.5 font-serif text-[28px]">{formatCurrency(position.avgCostBasis, baseCurrency)}</div>
-          <div className="mt-0.5 text-[12.5px] text-mut">
-            First buy: {new Date(position.firstBuyDate || position.createdAt).toLocaleDateString()}
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Tab bar — Research-detail Segmented tabs pattern (DESIGN.md "Position
           detail" / "Segmented tabs"). Tab bodies keep rendering the existing
@@ -327,8 +332,8 @@ export default function PositionDetailPage() {
       )}
 
       {activeTab === "transactions" && (
-        <ComponentErrorBoundary name="Transaction History">
-          <TransactionHistory positionId={position.id} baseCurrency={baseCurrency} />
+        <ComponentErrorBoundary name="Positions">
+          <TransactionsTab symbol={position.ticker} currency={baseCurrency} />
         </ComponentErrorBoundary>
       )}
 

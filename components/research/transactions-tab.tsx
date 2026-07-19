@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils/format";
+import { getPositionsPanelState } from "@/lib/utils/positions-tab";
 
 interface TransactionsTabProps {
   symbol: string;
@@ -40,9 +41,12 @@ async function fetchPosition(symbol: string): Promise<PositionResponse | null> {
 }
 
 /**
- * The Transactions tab (new, 7th) — reuses the existing positions/[ticker]
- * and transactions APIs; supersedes the old transaction-history.tsx table
- * with the editorial shell (DESIGN.md "Research detail" §6).
+ * The Positions tab (renamed from "Transactions" per
+ * plans/2026-07-19-positions-tab.md; conditional — omitted from the tab bar
+ * when the symbol has no transactions on file) — reuses the existing
+ * positions/[ticker] and transactions APIs; the single shared body for both
+ * /research/[symbol] and /portfolio/[ticker], superseding the old
+ * transaction-history.tsx table (DESIGN.md "Research detail" §6).
  */
 export function TransactionsTab({ symbol, currency }: TransactionsTabProps) {
   const positionQ = useQuery({
@@ -59,13 +63,17 @@ export function TransactionsTab({ symbol, currency }: TransactionsTabProps) {
     },
   });
 
-  const isOwned = !positionQ.isLoading && !!positionQ.data;
   const position = positionQ.data;
   const transactions = transactionsQ.data ?? [];
 
+  // Three states, gated on quantity > 0 specifically — NOT merely "a position
+  // record exists" (a fully-sold position still returns a 200 with
+  // quantity: 0). See lib/utils/positions-tab.ts for the shared, tested rule.
+  const panelState = !positionQ.isLoading ? getPositionsPanelState(position) : null;
+
   return (
     <div className="space-y-5">
-      {!positionQ.isLoading && !isOwned && (
+      {panelState === "none" && (
         <div className="flex flex-col items-start gap-4 rounded-lg border border-border bg-card px-7 py-8">
           <p className="text-sub">You do not hold {symbol}.</p>
           <Link
@@ -77,7 +85,11 @@ export function TransactionsTab({ symbol, currency }: TransactionsTabProps) {
         </div>
       )}
 
-      {isOwned && position && (
+      {panelState === "closed" && (
+        <p className="font-serif text-[14.5px] italic text-mut">Position closed.</p>
+      )}
+
+      {panelState === "held" && position && (
         <div className="grid grid-cols-4 rounded-lg border border-border bg-card">
           <div className="border-r border-line2 px-7 py-[22px]">
             <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Shares held</div>

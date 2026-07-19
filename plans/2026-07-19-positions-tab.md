@@ -125,7 +125,7 @@ UI-relocation change with no touch to the sell/buy/delete flows or their fragile
 
 ## Tasks
 
-1. [ ] **Rename the tab label to "Positions" and gate visibility on transactions in
+1. [x] **Rename the tab label to "Positions" and gate visibility on transactions in
    `research/[symbol]/page.tsx`.** Add a transactions-count query (reuse the same
    `GET /api/portfolio/transactions?ticker=` the tab already calls, or lift it to the
    page and pass down) to compute `hasTransactions`. Filter the `tabs` array so the
@@ -136,7 +136,7 @@ UI-relocation change with no touch to the sell/buy/delete flows or their fragile
    "Positions" and renders the position panel + table; on a never-transacted symbol
    only 6 tabs render and no "Positions"/"Transactions" tab appears.
 
-2. [ ] **Swap `portfolio/[ticker]` header from position grid to the general market
+2. [x] **Swap `portfolio/[ticker]` header from position grid to the general market
    grid.** Replace the position-centric quote card (`portfolio/[ticker]/page.tsx:222-276`)
    with the general market grid JSX from `research/[symbol]/page.tsx:149-182`, fed by the
    already-fetched `quote` (currency, price, change, dayLow/High, yearLow/High, marketCap).
@@ -146,7 +146,7 @@ UI-relocation change with no touch to the sell/buy/delete flows or their fragile
    Market cap (values populated from the live quote), and Buy more / Sell / Delete remain
    functional.
 
-3. [ ] **Move position stats into the Positions tab on `portfolio/[ticker]` by switching
+3. [x] **Move position stats into the Positions tab on `portfolio/[ticker]` by switching
    its tab body to the shared `TransactionsTab`.** Replace the `TransactionHistory`
    usage (`portfolio/[ticker]/page.tsx:329-333`) with `TransactionsTab` from
    `components/research/transactions-tab.tsx` (`symbol={position.ticker}`,
@@ -156,7 +156,7 @@ UI-relocation change with no touch to the sell/buy/delete flows or their fragile
    cost / Market value / Unrealised P/L) above the transaction table; the old
    `Card`-wrapped shadcn table is gone.
 
-4. [ ] **Handle the closed-position (quantity 0) case on both routes.** Confirm that a
+4. [x] **Handle the closed-position (quantity 0) case on both routes.** Confirm that a
    fully-sold position (Position row present, `quantity: 0`, transactions present) shows
    the Positions tab with the transaction table but a graceful panel: `TransactionsTab`
    currently shows the stat panel whenever `positionQ.data` is truthy — a quantity-0
@@ -166,13 +166,13 @@ UI-relocation change with no touch to the sell/buy/delete flows or their fragile
    — **Acceptance:** a fully-sold-but-not-deleted symbol shows the Positions tab with the
    transaction history and no misleading zero-value live stat panel.
 
-5. [ ] **Remove or retire the now-unused legacy `components/transaction-history.tsx` if it
+5. [x] **Remove or retire the now-unused legacy `components/transaction-history.tsx` if it
    has no remaining importer** (grep after Task 3). If another surface still imports it
    (e.g. a closed-positions view), leave it and note in the summary. — **Acceptance:**
    `grep -rn "transaction-history" app components` shows either no importers (then the file
    is deleted) or the remaining importer is named in the summary.
 
-6. [ ] **Tests.** Add/adjust unit tests for the tab-visibility logic (a pure helper
+6. [x] **Tests.** Add/adjust unit tests for the tab-visibility logic (a pure helper
    `shouldShowPositionsTab(transactions)` or equivalent extracted from the pages, so it is
    testable without rendering) covering: has transactions → true; empty → false. Add a test
    for the closed-position panel-suppression rule from Task 4 (quantity 0 → panel hidden,

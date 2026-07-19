@@ -11,6 +11,7 @@ import { AddToWishlistModal } from "@/components/add-to-wishlist-modal";
 import { ComponentErrorBoundary } from "@/components/error-boundary";
 import { formatCurrency, formatPercent, formatCompactCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
+import { shouldShowPositionsTab } from "@/lib/utils/positions-tab";
 
 // Only the Overview tab (the default active tab, plan Task 9) is a static
 // import — the other six tabs are not needed until a user clicks them, so
@@ -43,17 +44,17 @@ const NewsFeed = dynamic(
   { ssr: false }
 );
 
-const tabs = [
+const ALL_TABS = [
   { value: "overview", label: "Overview" },
   { value: "technical", label: "Technical" },
   { value: "fundamental", label: "Fundamental" },
   { value: "analyst", label: "Analysts" },
   { value: "intrinsic", label: "Intrinsic value" },
-  { value: "transactions", label: "Transactions" },
+  { value: "transactions", label: "Positions" },
   { value: "news", label: "News & sentiment" },
 ] as const;
 
-type TabValue = (typeof tabs)[number]["value"];
+type TabValue = (typeof ALL_TABS)[number]["value"];
 
 export default function ResearchStockPage() {
   const params = useParams();
@@ -99,6 +100,33 @@ export default function ResearchStockPage() {
     staleTime: 5 * 60 * 1000,
   });
   const overviewContext: "portfolio" | "wishlist" = positionQ.data ? "portfolio" : "wishlist";
+
+  // "Has or had a position" signal for the Positions tab's conditional
+  // visibility (plan Assumption A1) — transactions existing for the ticker,
+  // not merely a live Position record (a fully-sold position keeps its
+  // transactions; only Delete removes both, which correctly hides the tab).
+  const transactionsQ = useQuery({
+    queryKey: ["transactions", symbol],
+    queryFn: async () => {
+      const res = await fetch(`/api/portfolio/transactions?ticker=${symbol}`);
+      if (!res.ok) throw new Error("Failed to fetch transactions");
+      return res.json();
+    },
+    enabled: !!symbol,
+    staleTime: 5 * 60 * 1000,
+  });
+  const showPositionsTab = shouldShowPositionsTab(transactionsQ.data);
+  const tabs = ALL_TABS.filter((tab) => tab.value !== "transactions" || showPositionsTab);
+
+  // Defensive fallback: if the active tab is ever no longer in the visible
+  // set (e.g. the Positions tab disappears), fall back to Overview rather
+  // than rendering a selected-but-hidden tab with no matching button.
+  useEffect(() => {
+    if (!tabs.some((tab) => tab.value === activeTab)) {
+      setActiveTab("overview");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showPositionsTab]);
 
   if (loading) {
     return (
