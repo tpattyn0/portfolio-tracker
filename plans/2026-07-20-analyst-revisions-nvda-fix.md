@@ -95,7 +95,7 @@ symbol with dozens of revisions inside 90 days — order newest-first.
 
 ## Tasks
 
-1. [ ] **[BUG] Add the 90-day window filter to revision extraction.** In
+1. [x] **[BUG] Add the 90-day window filter to revision extraction.** In
    `lib/services/analyst-ratings.service.ts`, filter `extractRevisions`' output to
    entries whose `epochGradeDate` is within the last 90 days (inclusive of the
    boundary, exclude future-dated), sorted newest-first, capped to the 25 most
@@ -109,7 +109,7 @@ symbol with dozens of revisions inside 90 days — order newest-first.
    future-dated entry is excluded; the cap truncates a >25-entry in-window set to 25.
    `npm run verify` green.
 
-2. [ ] **[BUG — Fix A, per OD-1 resolution] Make revisions + low/high survive a
+2. [x] **[BUG — Fix A, per OD-1 resolution] Make revisions + low/high survive a
    cache hit.**
    - **If OD-1 = Option A (recommended, persist):** add `targetLowPrice`
      `Decimal?`, `targetHighPrice` `Decimal?`, and `revisions` `Json?` columns to
@@ -133,7 +133,7 @@ symbol with dozens of revisions inside 90 days — order newest-first.
    (Option A: revisions/low/high now populated from the row; Option B: populated
    from the mocked secondary fetch). `npm run verify` green.
 
-3. [ ] **[DOC] Reconcile docs with the fix.** Update `TECH_DEBT.md` TD-DTL-REV2
+3. [x] **[DOC] Reconcile docs with the fix.** Update `TECH_DEBT.md` TD-DTL-REV2
    (Option A: mark Resolved with date + migration reference, matching ADR-14's
    Resolved style; Option B: narrow it to "low/high still non-persisted if only
    revisions were addressed," or Resolved if Option B covers all three). Add an ADR

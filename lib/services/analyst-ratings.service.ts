@@ -10,6 +10,33 @@ export interface AnalystRevision {
   date: string;
 }
 
+/**
+ * Pure window/sort/cap helper for analyst revisions (Task 1,
+ * plans/2026-07-20-analyst-revisions-nvda-fix.md). Keeps entries whose `date`
+ * falls within the last `windowDays` days, inclusive of the boundary instant
+ * (a revision dated exactly `windowDays` ago is kept; one day further back is
+ * excluded), excludes future-dated entries, sorts newest-first, and caps to
+ * the `cap` most recent. `now` is an explicit parameter so this is
+ * deterministically testable without mocking the system clock.
+ */
+export function filterRecentRevisions(
+  revisions: AnalystRevision[],
+  now: Date,
+  windowDays = 90,
+  cap = 25
+): AnalystRevision[] {
+  const nowMs = now.getTime();
+  const windowStartMs = nowMs - windowDays * 24 * 60 * 60 * 1000;
+
+  return revisions
+    .filter((r) => {
+      const t = new Date(r.date).getTime();
+      return t >= windowStartMs && t <= nowMs;
+    })
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, cap);
+}
+
 export interface AnalystRatings {
   targetPrice: number | null;
   targetLowPrice: number | null;
@@ -24,9 +51,11 @@ export interface AnalystRatings {
   lastUpdated: string;
   score: number;
   scoreInterpretation: string;
-  // Non-persisted (OD-3/A4, plans/2026-07-19-research-tab-fixes.md): no
-  // AnalystRating DB column exists for this yet, so it is present on a fresh
-  // Yahoo fetch and defaults to [] on a 24h cache hit (formatCachedData).
+  // Persisted as of plans/2026-07-20-analyst-revisions-nvda-fix.md Task 2
+  // (`AnalystRating.revisions` Json? column) — populated on both a fresh
+  // Yahoo fetch and a 24h cache hit (formatCachedData reads the stored
+  // value). Rows written before the migration applies have a null column
+  // and coalesce to [] (see formatCachedData).
   revisions: AnalystRevision[];
 }
 
@@ -40,6 +69,8 @@ export class AnalystRatingsService {
           id: true,
           symbol: true,
           targetPrice: true,
+          targetLowPrice: true,
+          targetHighPrice: true,
           strongBuy: true,
           buy: true,
           hold: true,
@@ -49,6 +80,7 @@ export class AnalystRatingsService {
           averageRating: true,
           score: true,
           scoreInterpretation: true,
+          revisions: true,
           lastUpdated: true,
           createdAt: true,
           updatedAt: true,
@@ -110,7 +142,10 @@ export class AnalystRatingsService {
       ? (strongBuy * 1 + buy * 2 + hold * 3 + sell * 4 + strongSell * 5) / totalAnalysts
       : null;
 
-    const revisions = this.extractRevisions(data.upgradeDowngradeHistory);
+    const revisions = filterRecentRevisions(
+      this.extractRevisions(data.upgradeDowngradeHistory),
+      new Date()
+    );
 
     return {
       targetPrice: financialData.targetMeanPrice || null,
@@ -129,11 +164,13 @@ export class AnalystRatingsService {
   }
 
   /**
-   * Extracts recent analyst revisions from Yahoo's `upgradeDowngradeHistory`
-   * module (already fetched, previously unread — TD-DTL-REV). Non-persisted:
-   * OD-3/A4, plans/2026-07-19-research-tab-fixes.md — returned only on a
-   * fresh Yahoo fetch, absent (defaults to []) on a 24h cache hit since no
-   * `AnalystRating` DB column exists for this yet.
+   * Extracts ALL matching revisions from Yahoo's `upgradeDowngradeHistory`
+   * module (already fetched, previously unread — TD-DTL-REV), unfiltered by
+   * date. Callers (`extractRatings`) apply `filterRecentRevisions` to window
+   * this down to the last 90 days — a symbol with long history (e.g. NVDA's
+   * 982 entries) would otherwise return every entry ever recorded, mislabelled
+   * under the "last 90 days" UI copy (plans/2026-07-20-analyst-revisions-nvda-fix.md
+   * Task 1).
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private extractRevisions(upgradeDowngradeHistory: Record<string, any> | undefined): AnalystRevision[] {
@@ -184,6 +221,8 @@ export class AnalystRatingsService {
       where: { symbol },
       update: {
         targetPrice: data.targetPrice !== null ? new Prisma.Decimal(data.targetPrice) : null,
+        targetLowPrice: data.targetLowPrice !== null ? new Prisma.Decimal(data.targetLowPrice) : null,
+        targetHighPrice: data.targetHighPrice !== null ? new Prisma.Decimal(data.targetHighPrice) : null,
         strongBuy: data.strongBuy,
         buy: data.buy,
         hold: data.hold,
@@ -193,11 +232,14 @@ export class AnalystRatingsService {
         averageRating: data.averageRating !== null ? new Prisma.Decimal(data.averageRating) : null,
         score: data.score,
         scoreInterpretation: data.scoreInterpretation,
+        revisions: data.revisions as unknown as Prisma.InputJsonValue,
         lastUpdated: new Date()
       },
       create: {
         symbol,
         targetPrice: data.targetPrice !== null ? new Prisma.Decimal(data.targetPrice) : null,
+        targetLowPrice: data.targetLowPrice !== null ? new Prisma.Decimal(data.targetLowPrice) : null,
+        targetHighPrice: data.targetHighPrice !== null ? new Prisma.Decimal(data.targetHighPrice) : null,
         strongBuy: data.strongBuy,
         buy: data.buy,
         hold: data.hold,
@@ -207,6 +249,7 @@ export class AnalystRatingsService {
         averageRating: data.averageRating !== null ? new Prisma.Decimal(data.averageRating) : null,
         score: data.score,
         scoreInterpretation: data.scoreInterpretation,
+        revisions: data.revisions as unknown as Prisma.InputJsonValue,
         lastUpdated: new Date()
       }
     });
@@ -215,11 +258,13 @@ export class AnalystRatingsService {
   private formatCachedData(cached: AnalystRating): AnalystRatings {
     return {
       targetPrice: cached.targetPrice ? Number(cached.targetPrice) : null,
-      // Non-persisted (OD-3/A4): no AnalystRating DB columns for these yet,
-      // so a cache hit returns null/[] rather than the fresh-fetch values.
-      targetLowPrice: null,
-      targetHighPrice: null,
-      revisions: [],
+      // Persisted as of Task 2 (plans/2026-07-20-analyst-revisions-nvda-fix.md)
+      // — read back from the AnalystRating row. Rows written before the
+      // migration applied have a null column here; coalesce to null/[] for
+      // back-compat rather than throwing.
+      targetLowPrice: cached.targetLowPrice ? Number(cached.targetLowPrice) : null,
+      targetHighPrice: cached.targetHighPrice ? Number(cached.targetHighPrice) : null,
+      revisions: Array.isArray(cached.revisions) ? (cached.revisions as unknown as AnalystRevision[]) : [],
       strongBuy: cached.strongBuy,
       buy: cached.buy,
       hold: cached.hold,
