@@ -5,7 +5,7 @@ Orchestration: Positions tab — visually distinguish the in-tab position stat b
 Plan: plans/2026-07-19-positions-stat-distinction.md
 Since: 2026-07-19
 Branch: feature/positions-tab
-Designer: running
+Coding agent: running
 
 ## Blocked
 TD-01 — NEWS_API_KEY live + public in history; risk accepted per ADR-7, blocks production deploys only
