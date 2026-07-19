@@ -796,67 +796,144 @@ figure).
    estimate" kicker + 34px serif fair-value figure + a colored "Trading X%
    above/below fair value" line (13px/500, banded), then an italic summary — all on
    the left. Right: a 3-col scenario band (Bear `--dn` kicker / Base `--mut` kicker
-   / Bull `--up` kicker, each a 26px serif value + a 12px `--mut` caption; Bear/Bull
-   render em-dash when only a single-point estimate exists — data gap, Base always
-   populated), then "Model assumptions" label/value rows (Revenue growth + Discount
-   rate available from the DCF Lite method; FCF margin + terminal growth em-dash —
-   data gap).
+   / Bull `--up` kicker, each a 26px serif value + a 12px `--mut` caption — geometry
+   unchanged since the prior spec), then "Model assumptions" label/value rows.
+
+   **OD-1 resolved (2026-07-20, `plans/2026-07-19-research-tab-fixes.md`) — honest
+   relabel, no new DCF model.** The two rows that used to read "Revenue growth" and
+   "FCF margin"/"Terminal growth" described inputs the DCF Lite method never
+   computes (it is an EPS-multiple model — `EPS × (1+g)^5 × Terminal P/E ÷ (1+r)^5`
+   — with no FCF basis and no terminal-growth rate at all; "Revenue growth" was
+   additionally a mislabel of the earnings-growth input it actually reads). The
+   **"Model assumptions" row list is now the three real DCF Lite inputs**, each
+   pulled from `dcfLite.inputs` and rendered with the existing `AssumptionRow`
+   label-left/value-right row pattern (unchanged: `flex items-center
+   justify-between border-b border-line2 py-2.5 text-[13.5px] last:border-b-0`,
+   label `text-sub`, value `font-medium text-foreground`, em-dash only when the
+   underlying input is genuinely absent):
+   - **Earnings growth (capped)** — was "Revenue growth"; now correctly labelled
+     and reads `inputs.growthRate` (already capped at +15%, uncapped on the
+     downside, per the service).
+   - **Terminal P/E** — new row, `inputs.terminalPE`.
+   - **Discount rate (WACC)** — unchanged row and label, `inputs.discountRate`.
+   "FCF margin" and "Terminal growth" are **dropped**, not em-dashed — a permanently
+   hardcoded `—` for a row describing a model that doesn't run is the thing being
+   fixed, not a state to keep documenting. The row *count* changes (three rows, not
+   four) but the row *pattern* does not.
+
+   **OD-2 resolved (2026-07-20) — method-spread Bear/Bull, kicker labels kept,
+   captions made honest.** Bear/Base/Bull now surface **already-computed** values
+   (min / weighted-average / max of the intrinsic-value service's five valuation
+   methods) rather than a flex-assumptions scenario model. Designer call on
+   labelling: **keep the BEAR / BASE / BULL kicker words**, do not rename to
+   "Low / Weighted / High." Rationale — the band's column geometry, its position
+   directly under the fair-value headline, and its `--dn`/`--mut`/`--up` coloring
+   already establish it as a range-of-outcomes read; every other numeric band in
+   this system (Score figure, Grading dot, Analysts' rating tiers) uses the same
+   `--dn`/`--amber-or-mut`/`--up` triad to mean "worse / neutral / better", so
+   relabelling only this one band to a neutral statistical vocabulary would make it
+   the odd one out rather than the honest one. The dishonesty was never the *label*
+   — "bear" and "bull" are standard, well-understood shorthand for a valuation
+   range's low and high ends in this domain — it was the **silent `—` implying no
+   range existed.** So the fix is in the **caption**, which is what actually claims
+   how the number was derived:
+   - **Bear** kicker `--dn` (unchanged) → value 26px serif → caption 12px `--mut`,
+     now reads **"Lowest of N methods"** (N = count of methods with a valid
+     positive value), replacing the old "Single-point estimate" placeholder text.
+   - **Base** kicker `--mut` (unchanged) → value → caption **"Weighted estimate"**
+     (unchanged wording — this was already accurate).
+   - **Bull** kicker `--up` (unchanged) → value → caption **"Highest of N methods"**.
+   - **Em-dash rule:** Bear/Bull render `—` (not a fabricated range) when fewer than
+     2 methods produced a valid value — same em-dash treatment, same `--mut`
+     value color, as the prior single-point-estimate state, now correctly scoped to
+     "insufficient methods" rather than "always, because the feature doesn't
+     exist." Base is unaffected (already always-populated-or-em-dash on
+     `intrinsicValue`).
+   No new token, color, or geometry — only the assumptions row list (OD-1) and the
+   Bear/Bull caption strings + em-dash condition (OD-2) change.
 6. **Positions** *(renamed from "Transactions" per `plans/2026-07-19-positions-tab.md`;
    conditional — omitted from the tab bar entirely when the symbol has no
-   transactions on file)* — a "Your position" section kicker above a **bare,
-   top-ruled editorial band** (spec below; `plans/2026-07-19-positions-band-restyle.md`,
-   owner steer "same style as the other tabs, like Intrinsic") holding Shares held /
-   Average cost / Market value / Unrealised P/L (banded `--up`/`--dn` when signed),
-   plus a 5th Realized P/L cell (banded, same treatment) whenever `hasRealizedPL(
+   transactions on file)* — a **card-wrapped "Position" stat block** (spec below;
+   `plans/2026-07-19-research-tab-fixes.md` item 7, supersedes the bare-band
+   treatment — see superseded note below) holding Shares held / Average cost /
+   Market value / Unrealised P/L (banded `--up`/`--dn` when signed), plus a 5th
+   Realized P/L cell (banded, same treatment) whenever `hasRealizedPL(
    position.realizedPL)` is true (re-surfaced per ADR-18/PT-I1 — a settled historical
    number valid regardless of current quantity) — shown only when the symbol is
    **currently held** (`quantity > 0`, live `Position` record present). Below the
-   band: a "Your transactions" card with a "+ Add transaction" outlined pill
+   card: a "Your transactions" card with a "+ Add transaction" outlined pill
    (height 32px, per Spacing/shape's secondary-button pattern) and the standard
    table shell (Date / Type / Shares / Price / Fees / Total), Type cell using the
    Outlined type badge.
 
-   **"Your position" band — bare, top-ruled editorial treatment, matching the other
-   tabs' section bands (`plans/2026-07-19-positions-band-restyle.md`).** This
-   **supersedes** `plans/2026-07-19-positions-stat-distinction.md`'s titled
-   `bg-fill`-surfaced panel — the owner looked at that result and asked for the
-   in-tab band to instead read as the same editorial idiom the other tabs already
-   use for their own section bands, specifically the **Intrinsic value tab's**
-   BEAR/BASE/BULL scenario band (Components → "Bare stat band"; see item 5 above).
+   **"Position" card — editorial card + header-row treatment, matching the other
+   tabs' `HeadlineScoreCard` idiom (`plans/2026-07-19-research-tab-fixes.md` item 7).**
+   The owner asked for the in-tab stat block to read like the other research tabs'
+   cards and for the standalone "Your position" kicker heading to go away. Rather
+   than reuse `HeadlineScoreCard` wholesale (Components → "Headline score card") —
+   which is scored-headline shaped, built around an 84px `ScoreFigure` left column
+   the Positions stat block has no equivalent of — this wraps the existing stat band
+   body in a card carrying **the same chrome, editorial top rule, and header-row
+   idiom**, with the title now living in the header row instead of a standalone
+   kicker above the band:
+   - **Card chrome:** `rounded-lg border border-border bg-card px-7 pb-7 pt-6` with
+     `border-top: 3px double var(--foreground)` — identical tokens to `HeadlineScoreCard`
+     (Components → "Card" → "Editorial card" variant; `border-border`, `bg-card`,
+     `border-double border-foreground`, no new token).
+   - **Header row:** `flex items-center justify-between border-b border-line2 pb-4`,
+     left kicker **"Position"** at `text-[11px] font-semibold uppercase
+     tracking-[0.14em]` — chosen over "Your Position" because every other tab's card
+     header is a plain noun-phrase title ("Analyst ratings", "Intrinsic value",
+     "News & sentiment"), not a possessive; matching that vocabulary reads as one
+     family of cards rather than singling this one out, and it still fully replaces
+     the old standalone "Your position" heading's function (the second-person framing
+     was never load-bearing — the card body already says "Shares held", "Your
+     transactions" etc.). No right meta kicker — unlike Analysts'/Intrinsic's meta
+     ("19 analysts · last 90 days", "Discounted cash flow · 10-year model"), the
+     Positions card has no equivalent secondary fact to put there (no data source or
+     model window to disclose); an empty right side is a valid header-row state,
+     not a missing token.
+   - **Body:** the existing stat band is unchanged in every internal token — first
+     cell no left border/padding, every column after gets `border-l border-line2
+     pl-5`; cell kickers `text-[10.5px] uppercase tracking-[0.12em] text-mut`; values
+     `mt-1.5 font-serif text-[26px]`, colored `--up`/`--dn` on the two signed cells
+     (Unrealised P/L, Realized P/L); the Unrealised P/L percent sub-line
+     `mt-0.5 text-[12px]`, signed-colored. Only the band's own top rule changes: the
+     band no longer carries its own `border-t border-line pt-5` (the card's header
+     row `border-b border-line2` already closes the header above it), so the grid
+     sits directly under the header row at the card's standard `pt-7`-equivalent
+     body spacing (matching `HeadlineScoreCard`'s `padding-top:28px` body rhythm —
+     use the card's existing top padding, no separate rule needed between header and
+     band). No new token, color, spacing, or component introduced.
+
+   **Superseded note.** This card+header treatment **supersedes**
+   `plans/2026-07-19-positions-band-restyle.md`'s bare, top-ruled editorial band
+   (itself superseding `plans/2026-07-19-positions-stat-distinction.md`'s titled
+   `bg-fill` panel before it) — kept below for history, not deleted:
+
+   <details>
+   <summary>Superseded: bare, top-ruled band (2026-07-19, one revision prior)</summary>
+
+   The bare-band step put a standalone "Your position" kicker (`text-[11px]
+   font-semibold uppercase tracking-[0.14em]`, `mb-4`) directly above a
+   `grid grid-cols-4|5 border-t border-line pt-5` band — no card wrapper, no
+   `bg-fill`/`bg-card`, no `rounded-lg`, no outer border — reasoning it should read
+   as the *bare* stat-band idiom the Intrinsic tab's BEAR/BASE/BULL row uses
+   (Components → "Bare stat band"). The owner has now asked for the *card* idiom
+   instead (this tab's cards, not its bare bands, matching the other tabs' cards) —
+   superseded by the treatment above.
+   </details>
+
    The page header above the tab bar (Current price / Day range / 52-week range /
    Market cap — see "Position detail" below and Components → "Ruled stat band"'s
-   card-wrapped variant) is unchanged and remains the reference the in-tab band is
-   visually distinct from — only the mechanism for that distinction has changed
-   (bare ruled band vs. the header's card-wrapped grid, not a fill-color swap):
-   - **Section kicker heading ("Your position")** sits directly above the band,
-     unchanged from the prior step: sans, `text-[11px] font-semibold uppercase
-     tracking-[0.14em]`, default text color (`--ink`, inherited), matching "Your
-     transactions"'s own kicker markup exactly (same house pattern Tone of voice's
-     "Kickers over labels" names). `margin-bottom` (`mb-4`) is unchanged.
-   - **Band wrapper:** `grid grid-cols-4|5 border-t border-line pt-5` — a single
-     **top** hairline rule and top padding only. **No `bg-fill`/`bg-card` fill, no
-     `rounded-lg`, no outer `border border-border` box, no `px-7`/`-mx-7` bleed
-     hack.** This is the exact Intrinsic-band wrapper shape (`components/
-     intrinsic-value.tsx`'s BEAR/BASE/BULL grid), reused verbatim rather than a new
-     pattern.
-   - **Columns:** the **first** cell has no left border/padding; **every column
-     after the first** gets `border-l border-line2 pl-5` — a single thin hairline
-     vertical + left padding, replacing the prior step's per-cell `border-r
-     border-line2 px-7`/`-mx-7` full-bleed pattern. No per-cell right borders.
-   - **Cell kickers stay `text-[10.5px] uppercase tracking-[0.12em] text-mut`**
-     (neutral, not semantic red/green — unlike Intrinsic's directional Bear/Bull
-     kickers, these are neutral metric labels, matching Intrinsic's own neutral
-     Base kicker). **Values stay `mt-1.5 font-serif text-[26px]`**, colored
-     `--up`/`--dn` on the two signed cells (Unrealised P/L, Realized P/L) exactly
-     as before; the Unrealised P/L percent sub-line stays `mt-0.5 text-[12px]`,
-     signed-colored. No new token, color, spacing, or component was introduced —
-     `border-line`, `border-line2`, `text-mut`, `text-up`/`text-dn`, and
-     `font-serif` are all pre-existing tokens already used by the Intrinsic band.
+   card-wrapped variant) is unchanged and remains visually distinct from the in-tab
+   card: the header grid has no kicker/header row at all, while the in-tab card
+   carries the full editorial-card + header-row idiom.
 
-   **Three visual states, same tab, same bare-band treatment:**
-   - **Currently held (`quantity > 0`)** — the "Your position" kicker sits above
-     the bare, top-ruled stat band, populated with live figures (4 or 5 columns per
-     the `hasRealizedPL` rule above); transaction table below it, unaffected.
+   **Three visual states, same tab, same card treatment:**
+   - **Currently held (`quantity > 0`)** — the "Position" card header sits above the
+     stat band body, populated with live figures (4 or 5 columns per the
+     `hasRealizedPL` rule above); transaction table below it, unaffected.
    - **Closed position (`quantity === 0`, Position record still present, transactions
      exist)** *(Assumption A2)* — the live stat band is **suppressed** (zero shares
      / zero market value would be misleading) and replaced by the muted italic
@@ -864,10 +941,10 @@ figure).
      helper/caption" row (11–14.5px, Newsreader italic, `--mut`), followed —
      unchanged wording/gating — by the Realized P/L line (`text-mut` label +
      `--up`/`--dn` value) whenever `hasRealizedPL(position.realizedPL)` is true
-     (ADR-18/PT-I1 — do not re-gate on `quantity`). This block sits under the same
-     "Your position" kicker as the held state, inside a bare `border-t border-line
-     pt-5` block — no card fill, no rounded box (the same bare treatment as the
-     held state, not the prior step's `bg-fill` panel).
+     (ADR-18/PT-I1 — do not re-gate on `quantity`). This block sits inside the same
+     "Position" card as the held state, directly under the header row — no separate
+     top rule, no bare block; both held and closed bodies now live inside the one
+     card.
    - **Never held, never transacted** — this state cannot be reached once the tab is
      conditional (the tab itself is omitted), but the underlying "You do not hold
      {symbol}." empty state (quiet card, `--sub` text, + the "+ Add to portfolio"
@@ -875,8 +952,9 @@ figure).
      position is fully sold *and* somehow has no transactions — it should not be
      reachable in normal use once Assumption A1 (has-or-had-transactions gates the
      tab) holds. This "none" state is **unchanged** and **out of scope** for the
-     bare-band treatment — it keeps its existing quiet-card treatment (`rounded-lg
-     border border-border bg-card`), no kicker, no bare ruled band.
+     card+header treatment — it keeps its own existing quiet-card treatment
+     (`rounded-lg border border-border bg-card`, no top rule, no header row, no
+     kicker), which was already a plain card before this change and stays that way.
 
    **Page-header market grid is unchanged (reference).** The 4-col quote grid
    above the tab bar on both routes (Current price / Day range / 52-week range /
@@ -887,10 +965,13 @@ figure).
    `/research/[symbol]` and `/portfolio/[ticker]` in one place; neither route
    page's header grid is touched.
 
-   **Rhythm check (header grid → tab bar → "Your position" band → "Your
-   transactions" card):** the band sits in the same `space-y-5` stack as "Your
-   transactions" today (see Shared component note) — that gap is unchanged by this
-   restyle.
+   **Rhythm check (header grid → tab bar → "Position" card → "Your transactions"
+   card):** the "Position" card sits in the same `space-y-5` stack as "Your
+   transactions" below it (see Shared component note) — that gap is unchanged by
+   this restyle; the two cards now read as siblings in the same idiom (editorial
+   top rule on "Position", plain card on "Your transactions" — the same
+   card-hierarchy pairing the Analysts tab already uses for its `HeadlineScoreCard`
+   + "Recent revisions" card).
 
    **Shared component note:** `components/research/transactions-tab.tsx`
    (`TransactionsTab`) is the single source for this tab's body on **both**
@@ -903,6 +984,25 @@ figure).
    on the right (Positive/Neutral/Negative %, each with a colored MoM-delta caption
    line — omitted when history is too thin to compute, data gap). Below: the
    Editorial coverage list ("Latest coverage").
+
+   **Portfolio-route lead-in (`plans/2026-07-19-research-tab-fixes.md` item 9).** On
+   `/portfolio/[ticker]` only, the top `SentimentScore` card that used to sit above
+   this tab's `NewsFeed` (a second, duplicate sentiment summary reading the same
+   `newsArticles` query `NewsFeed`'s own `HeadlineScoreCard` already scores) has been
+   removed — it added a second scored-card above the tab's own `HeadlineScoreCard`
+   with no distinct information, breaking the "one editorial headline per tab"
+   pattern every other tab follows. Confirmed lead-in on `/portfolio/[ticker]` after
+   removal: **"Refresh news" outlined-pill row** (right-aligned, height 32px, same
+   token as the "Position" card's transaction-add pill) → `NewsFeed`'s own
+   `HeadlineScoreCard` ("News & sentiment" kicker + editorial top rule) → "Latest
+   coverage" card — all inside the same `space-y-5` stack, gap unchanged. This now
+   reads identically to `/research/[symbol]`'s News tab, which has only ever
+   rendered `NewsFeed` alone (no `SentimentScore`, no button row) — the two routes'
+   News tabs converge on the same single-headline-card lead-in, differing only by
+   the portfolio route's extra "Refresh news" action row above it. No token change;
+   `space-y-5` rhythm and the editorial top rule are unaffected by removing the
+   `SentimentScore` card — a card being deleted from a `space-y-5` stack does not
+   require any spacing adjustment to the cards that remain.
 
 **Explicitly out of scope for this pass:** `app/page.tsx` (marketing landing page,
 not behind auth) — unchanged, stock-shadcn look retained.
