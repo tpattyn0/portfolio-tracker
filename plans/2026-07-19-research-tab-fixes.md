@@ -319,6 +319,13 @@ secret-scan). Beyond it, manual/Playwright checks:
 
 ## Open decisions
 
+**RESOLVED 2026-07-20 by owner — all three took the recommended option (no ADR warranted):**
+- **OD-1 → (A) Honest relabel.** Drop the FCF margin / Terminal growth rows; show the model's real inputs (Earnings growth capped, Terminal P/E, Discount rate) and fix the "Revenue growth" mislabel. No new DCF model.
+- **OD-2 → (A) Method spread.** Bear = min, Bull = max, Base = weighted average of the 5 already-computed valuation methods; truthful captions (Designer confirms "bear/bull" vs "valuation range" wording). No new scenario model.
+- **OD-3 → include the plumbing now, non-persisted (no DB migration).** Map revisions through; earned empty state when the array is empty.
+
+All nine items now proceed. Original decision text retained below for context.
+
 These block the Coding agent for their specific items only (items 3, 5, 6, and the
 choice within item 4). Items 1, 2, 7, 8, 9 proceed on plan approval regardless.
 
