@@ -1,6 +1,6 @@
 # Review: Positions tab — visually distinguish the in-tab stat band from the page-header market grid
 Date: 2026-07-19
-Status:
+Status: IMPLEMENTED — 2026-07-19
 
 ## Summary
 Findings: 0 BLOCKERs, 0 ISSUEs, 0 SUGGESTIONs, 1 QUESTION
