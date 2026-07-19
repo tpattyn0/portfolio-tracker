@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils/format";
+import { getPositionsPanelState, hasRealizedPL } from "@/lib/utils/positions-tab";
 
 interface TransactionsTabProps {
   symbol: string;
@@ -19,6 +20,7 @@ interface PositionResponse {
   unrealizedPL: number;
   unrealizedPLPercent: number;
   baseCurrency: string;
+  realizedPL: number;
 }
 
 interface TransactionResponse {
@@ -40,9 +42,12 @@ async function fetchPosition(symbol: string): Promise<PositionResponse | null> {
 }
 
 /**
- * The Transactions tab (new, 7th) — reuses the existing positions/[ticker]
- * and transactions APIs; supersedes the old transaction-history.tsx table
- * with the editorial shell (DESIGN.md "Research detail" §6).
+ * The Positions tab (renamed from "Transactions" per
+ * plans/2026-07-19-positions-tab.md; conditional — omitted from the tab bar
+ * when the symbol has no transactions on file) — reuses the existing
+ * positions/[ticker] and transactions APIs; the single shared body for both
+ * /research/[symbol] and /portfolio/[ticker], superseding the old
+ * transaction-history.tsx table (DESIGN.md "Research detail" §6).
  */
 export function TransactionsTab({ symbol, currency }: TransactionsTabProps) {
   const positionQ = useQuery({
@@ -59,13 +64,25 @@ export function TransactionsTab({ symbol, currency }: TransactionsTabProps) {
     },
   });
 
-  const isOwned = !positionQ.isLoading && !!positionQ.data;
   const position = positionQ.data;
   const transactions = transactionsQ.data ?? [];
 
+  // Three states, gated on quantity > 0 specifically — NOT merely "a position
+  // record exists" (a fully-sold position still returns a 200 with
+  // quantity: 0). See lib/utils/positions-tab.ts for the shared, tested rule.
+  const panelState = !positionQ.isLoading ? getPositionsPanelState(position) : null;
+
+  // Realized P/L is re-surfaced for BOTH held and closed positions (owner
+  // decision PT-Q1, reviews/2026-07-19-positions-tab.md) — a settled
+  // historical number, valid regardless of current quantity, unlike Market
+  // value / Unrealised P/L which only make sense while shares are held.
+  // Hidden when exactly zero/absent, preserving the old header's
+  // `hasRealizedPL` semantic (see lib/utils/positions-tab.ts).
+  const showRealizedPL = position != null && hasRealizedPL(position.realizedPL);
+
   return (
     <div className="space-y-5">
-      {!positionQ.isLoading && !isOwned && (
+      {panelState === "none" && (
         <div className="flex flex-col items-start gap-4 rounded-lg border border-border bg-card px-7 py-8">
           <p className="text-sub">You do not hold {symbol}.</p>
           <Link
@@ -77,28 +94,56 @@ export function TransactionsTab({ symbol, currency }: TransactionsTabProps) {
         </div>
       )}
 
-      {isOwned && position && (
-        <div className="grid grid-cols-4 rounded-lg border border-border bg-card">
-          <div className="border-r border-line2 px-7 py-[22px]">
-            <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Shares held</div>
-            <div className="mt-1.5 font-serif text-[26px]">{formatNumber(position.quantity, 4)}</div>
+      {panelState === "closed" && (
+        <div>
+          <div className="mb-4 text-[11px] font-semibold uppercase tracking-[0.14em]">Your position</div>
+          <div className="space-y-1 border-t border-line pt-5">
+            <p className="font-serif text-[14.5px] italic text-mut">Position closed.</p>
+            {showRealizedPL && position && (
+              <p className="text-[13px]">
+                <span className="text-mut">Realized P/L: </span>
+                <span className={cn("font-medium", position.realizedPL >= 0 ? "text-up" : "text-dn")}>
+                  {formatCurrency(position.realizedPL, currency)}
+                </span>
+              </p>
+            )}
           </div>
-          <div className="border-r border-line2 px-7 py-[22px]">
-            <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Average cost</div>
-            <div className="mt-1.5 font-serif text-[26px]">{formatCurrency(position.avgCostBasis, currency)}</div>
-          </div>
-          <div className="border-r border-line2 px-7 py-[22px]">
-            <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Market value</div>
-            <div className="mt-1.5 font-serif text-[26px]">{formatCurrency(position.marketValue, currency)}</div>
-          </div>
-          <div className="px-7 py-[22px]">
-            <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Unrealised P/L</div>
-            <div className={cn("mt-1.5 font-serif text-[26px]", position.unrealizedPL >= 0 ? "text-up" : "text-dn")}>
-              {formatCurrency(position.unrealizedPL, currency)}
+        </div>
+      )}
+
+      {panelState === "held" && position && (
+        <div>
+          <div className="mb-4 text-[11px] font-semibold uppercase tracking-[0.14em]">Your position</div>
+          <div className={cn("grid border-t border-line pt-5", showRealizedPL ? "grid-cols-5" : "grid-cols-4")}>
+            <div>
+              <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Shares held</div>
+              <div className="mt-1.5 font-serif text-[26px]">{formatNumber(position.quantity, 4)}</div>
             </div>
-            <div className={cn("mt-0.5 text-[12px]", position.unrealizedPL >= 0 ? "text-up" : "text-dn")}>
-              {formatPercent(position.unrealizedPLPercent)}
+            <div className="border-l border-line2 pl-5">
+              <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Average cost</div>
+              <div className="mt-1.5 font-serif text-[26px]">{formatCurrency(position.avgCostBasis, currency)}</div>
             </div>
+            <div className="border-l border-line2 pl-5">
+              <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Market value</div>
+              <div className="mt-1.5 font-serif text-[26px]">{formatCurrency(position.marketValue, currency)}</div>
+            </div>
+            <div className="border-l border-line2 pl-5">
+              <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Unrealised P/L</div>
+              <div className={cn("mt-1.5 font-serif text-[26px]", position.unrealizedPL >= 0 ? "text-up" : "text-dn")}>
+                {formatCurrency(position.unrealizedPL, currency)}
+              </div>
+              <div className={cn("mt-0.5 text-[12px]", position.unrealizedPL >= 0 ? "text-up" : "text-dn")}>
+                {formatPercent(position.unrealizedPLPercent)}
+              </div>
+            </div>
+            {showRealizedPL && (
+              <div className="border-l border-line2 pl-5">
+                <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Realized P/L</div>
+                <div className={cn("mt-1.5 font-serif text-[26px]", position.realizedPL >= 0 ? "text-up" : "text-dn")}>
+                  {formatCurrency(position.realizedPL, currency)}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

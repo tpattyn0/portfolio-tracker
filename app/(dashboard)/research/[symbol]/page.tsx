@@ -11,6 +11,7 @@ import { AddToWishlistModal } from "@/components/add-to-wishlist-modal";
 import { ComponentErrorBoundary } from "@/components/error-boundary";
 import { formatCurrency, formatPercent, formatCompactCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
+import { shouldShowPositionsTab } from "@/lib/utils/positions-tab";
 
 // Only the Overview tab (the default active tab, plan Task 9) is a static
 // import — the other six tabs are not needed until a user clicks them, so
@@ -43,17 +44,17 @@ const NewsFeed = dynamic(
   { ssr: false }
 );
 
-const tabs = [
+const ALL_TABS = [
   { value: "overview", label: "Overview" },
   { value: "technical", label: "Technical" },
   { value: "fundamental", label: "Fundamental" },
   { value: "analyst", label: "Analysts" },
   { value: "intrinsic", label: "Intrinsic value" },
-  { value: "transactions", label: "Transactions" },
+  { value: "transactions", label: "Positions" },
   { value: "news", label: "News & sentiment" },
 ] as const;
 
-type TabValue = (typeof tabs)[number]["value"];
+type TabValue = (typeof ALL_TABS)[number]["value"];
 
 export default function ResearchStockPage() {
   const params = useParams();
@@ -99,6 +100,32 @@ export default function ResearchStockPage() {
     staleTime: 5 * 60 * 1000,
   });
   const overviewContext: "portfolio" | "wishlist" = positionQ.data ? "portfolio" : "wishlist";
+
+  // "Has or had a position" signal for the Positions tab's conditional
+  // visibility (plan Assumption A1) — transactions existing for the ticker,
+  // not merely a live Position record (a fully-sold position keeps its
+  // transactions; only Delete removes both, which correctly hides the tab).
+  const transactionsQ = useQuery({
+    queryKey: ["transactions", symbol],
+    queryFn: async () => {
+      const res = await fetch(`/api/portfolio/transactions?ticker=${symbol}`);
+      if (!res.ok) throw new Error("Failed to fetch transactions");
+      return res.json();
+    },
+    enabled: !!symbol,
+    staleTime: 5 * 60 * 1000,
+  });
+  const showPositionsTab = shouldShowPositionsTab(transactionsQ.data);
+  const tabs = ALL_TABS.filter((tab) => tab.value !== "transactions" || showPositionsTab);
+
+  // Defensive fallback derived at render time: if the active tab is ever no
+  // longer in the visible set (e.g. the Positions tab disappears), fall back
+  // to Overview rather than rendering a selected-but-hidden tab with no
+  // matching button. Deriving this during render (rather than correcting
+  // `activeTab` state after commit in a useEffect) removes the one-render
+  // window where the stale `activeTab` briefly has no matching tab button
+  // (PT-S1, reviews/2026-07-19-positions-tab.md).
+  const effectiveTab = tabs.some((tab) => tab.value === activeTab) ? activeTab : "overview";
 
   if (loading) {
     return (
@@ -189,7 +216,7 @@ export default function ResearchStockPage() {
             onClick={() => setActiveTab(tab.value)}
             className={cn(
               "cursor-pointer pb-3 text-[11px] uppercase tracking-[0.14em]",
-              activeTab === tab.value
+              effectiveTab === tab.value
                 ? "border-b-2 border-foreground font-semibold text-foreground"
                 : "text-mut"
             )}
@@ -201,7 +228,7 @@ export default function ResearchStockPage() {
 
       <ComponentErrorBoundary name="Research detail">
         <div>
-          {activeTab === "overview" && quote && (
+          {effectiveTab === "overview" && quote && (
             <Overview
               symbol={symbol}
               name={quote.name}
@@ -211,27 +238,27 @@ export default function ResearchStockPage() {
             />
           )}
 
-          {activeTab === "technical" && (
+          {effectiveTab === "technical" && (
             <TechnicalAnalysis symbol={symbol} currency={quote?.currency} />
           )}
 
-          {activeTab === "fundamental" && (
+          {effectiveTab === "fundamental" && (
             <FundamentalAnalysis symbol={symbol} currency={quote?.currency} />
           )}
 
-          {activeTab === "analyst" && (
+          {effectiveTab === "analyst" && (
             <AnalystRatings symbol={symbol} currentPrice={quote?.price} currency={quote?.currency} />
           )}
 
-          {activeTab === "intrinsic" && quote && (
+          {effectiveTab === "intrinsic" && quote && (
             <IntrinsicValue symbol={symbol} currentPrice={quote.price} currency={quote.currency} />
           )}
 
-          {activeTab === "transactions" && (
+          {effectiveTab === "transactions" && (
             <TransactionsTab symbol={symbol} currency={quote?.currency} />
           )}
 
-          {activeTab === "news" && <NewsFeed symbol={symbol} companyName={quote?.name} />}
+          {effectiveTab === "news" && <NewsFeed symbol={symbol} companyName={quote?.name} />}
         </div>
       </ComponentErrorBoundary>
     </div>

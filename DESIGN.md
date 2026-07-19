@@ -389,10 +389,12 @@ Inline pill, sans 10px/600 uppercase, 0.14em letter-spacing, `border-radius:10px
 - **BUY** — `1px --up` border, `--up` text.
 - **Other** (SELL, or any type outside the schema's BUY/SELL — see
   `TECH_DEBT.md TD-DTL-TXTYPE`) — `1px --line` border, `--mut` text.
-Used in the Transactions tab's table Type column only; do not reuse for the
-Analysts "Recent revisions" RAISED/HELD/LOWERED tags, which are unbordered colored
-text (`--up`/`--mut`/`--dn`, 10.5px/600, 0.14em) matching the Editorial coverage
-list's tag treatment, not this badge.
+Used in the **Positions** tab's table Type column only (tab renamed from
+"Transactions" per `plans/2026-07-19-positions-tab.md` — see UX flows → "Research
+detail — tab-by-tab" item 6); do not reuse for the Analysts "Recent revisions"
+RAISED/HELD/LOWERED tags, which are unbordered colored text (`--up`/`--mut`/`--dn`,
+10.5px/600, 0.14em) matching the Editorial coverage list's tag treatment, not this
+badge.
 
 ### TARGET REACHED badge
 Outlined pill, no fill: 1px `--up` border, `--up` text, radius 10px, padding `2px 8px`,
@@ -525,7 +527,7 @@ none defines new one-off markup):**
 | `research/[symbol]/loading.tsx` | Kicker-height back-link block; H1-height block (company name) + kicker block beneath (ticker/exchange) on the left, two pill-shaped blocks on the right (Watchlist / Add to portfolio actions) — mirrors the company header; a `SkeletonCard` in the 4-col quote-stat-card shape (`grid grid-cols-4`, `border-r border-line2` between, same cell geometry as `SkeletonStatBand` but card-wrapped, matching the quote card's own card+internal-rule treatment); `SkeletonTabBar` for the 7-tab bar; a `SkeletonCard editorial` sized to the Headline score card (kicker+meta row, then the 84px-score-column-width block beside a wide content block) as the tab body placeholder — always render the Overview tab's shape since it is the default active tab. |
 | `wishlist/loading.tsx` | Kicker block + H1-height block on the left, one pill block (add-to-watchlist) on the right; `SkeletonStatBand columns={3}`; `SkeletonTable rows={5}`. Replaces the inline `WishlistSkeleton` (same shape, now shared). |
 | `portfolio/closed-positions/loading.tsx` | Kicker block + H1-height block + a detail-line block (realized-to-date line) on the left, one pill block (Export CSV) on the right; a `SkeletonCard` in the 6-col summary shape (reuse `SkeletonStatBand columns={6}`, card-wrapped per the Ruled stat band card-wrapped variant); a filter row (one pill-shaped block for the ticker filter, three short label blocks for All/Winning/Losing); `SkeletonTable rows={6}`. |
-| `portfolio/[ticker]/loading.tsx` | Same header/quote-card/tab-bar composition as `research/[symbol]/loading.tsx` (TD-32: this page reuses the Research detail screen's chrome, see UX flows → "Position detail" — its skeleton reuses the *same* skeleton composition for the same reason), with the quote card's 4 cells relabeled in spirit only (skeletons never render real cell labels, so this is a non-issue — the geometry is identical: 4 equal columns, card-wrapped, `border-line2` verticals). |
+| `portfolio/[ticker]/loading.tsx` | Same header/quote-card/tab-bar composition as `research/[symbol]/loading.tsx` (TD-32: this page reuses the Research detail screen's chrome, see UX flows → "Position detail" — its skeleton reuses the *same* skeleton composition for the same reason). Per `plans/2026-07-19-positions-tab.md`, the quote card is now literal parity, not just geometric similarity — both pages render the identical general-market 4-col grid (Current price / Day range / 52-week range / Market cap), so the skeleton's 4 equal columns, card-wrapped, `border-line2` verticals need no per-page distinction at all (skeletons never render real cell labels regardless). |
 
 **Rule for the Coding agent:** every skeleton mirrors its real page's column
 count, card count, and block order — never a generic "3 boxes" placeholder. If a
@@ -584,8 +586,22 @@ Research-detail's own tab bar is the same pattern at its exact handoff values: f
 row `gap:32px`, `padding:4px 4px 0`, `1px --line` bottom border under the whole row.
 Each tab: sans 11px/uppercase/0.14em, `padding-bottom:12px`, `cursor:pointer`,
 `white-space:nowrap`. Inactive: `--mut`, no border. Active: weight 600, `--ink` text,
-`2px solid --ink` bottom border. Client-side tab state, 7 tabs: Overview · Technical
-· Fundamental · Analysts · Intrinsic value · Transactions · News & sentiment.
+`2px solid --ink` bottom border. Client-side tab state, up to 7 tabs: Overview ·
+Technical · Fundamental · Analysts · Intrinsic value · **Positions** · News &
+sentiment.
+
+**Positions tab — conditional, not always present (per
+`plans/2026-07-19-positions-tab.md`):** the tab formerly labeled "Transactions" is
+renamed **"Positions"** and is now **omitted from the tab bar entirely** when the
+symbol has no transactions on file (the "has-or-had-a-position" signal — see UX
+flows → "Research detail — tab-by-tab" item 6 for the exact rule and the
+closed-position state). A never-transacted symbol therefore renders a **6-tab** bar
+(Overview · Technical · Fundamental · Analysts · Intrinsic value · News &
+sentiment); a symbol with any transaction history (currently held or fully sold)
+renders the full 7-tab bar with Positions in its usual 6th slot. This conditional
+count applies identically on both `/research/[symbol]` and `/portfolio/[ticker]` —
+see "Position detail" below. No change to the tab bar's chrome (gap, padding,
+active-state underline) — only which tabs are present.
 
 ### Pill sub-nav (Fundamental tab)
 A second-level nav, distinct from Segmented tabs — filled/outlined pills, not
@@ -712,10 +728,11 @@ unchanged. The 7 screens covered (per the plan) and their navigation:
    discipline cards (Technical/Fundamental/Intrinsic) linking into the existing
    research flow (no new routes). Reached via nav "Research".
 5. **Research detail** (`/research/[symbol]`) — company header, 4-col stat card,
-   a 7-tab bar (Overview/Technical/Fundamental/Analysts/Intrinsic value/Transactions/
-   News & sentiment), a custom-SVG `DetailPriceChart` (ADR-11, supersedes the earlier
-   retained-Recharts plan), and a headline score card per tab. Reached from any table
-   row or the research index. Full tab-by-tab spec: see "Research detail" below.
+   an up-to-7-tab bar (Overview/Technical/Fundamental/Analysts/Intrinsic value/
+   **Positions** (conditional — see below)/News & sentiment), a custom-SVG
+   `DetailPriceChart` (ADR-11, supersedes the earlier retained-Recharts plan), and a
+   headline score card per tab. Reached from any table row or the research index.
+   Full tab-by-tab spec: see "Research detail" below.
 6. **Add position** (`/portfolio/add`) — narrow form, stock search, shares/date,
    price-per-share ↔ total-amount tab pair, order summary, Cancel/Add pills. Reached
    from the dashboard's "+ Add position" and research detail's "+ Add to portfolio".
@@ -784,14 +801,103 @@ figure).
    populated), then "Model assumptions" label/value rows (Revenue growth + Discount
    rate available from the DCF Lite method; FCF margin + terminal growth em-dash —
    data gap).
-6. **Transactions** *(new tab)* — a bare (no card) 4-col ruled stat band (`1px
-   --line` top+bottom, `--line2` verticals) — Shares held / Average cost / Market
-   value / Unrealised P/L (banded `--up`/`--dn` when signed) — shown only when the
-   symbol is held; unowned symbols render a quiet empty state ("You do not hold
-   {symbol}." + the "+ Add to portfolio" pill) with no stat band. Below: a "Your
-   transactions" card with a "+ Add transaction" outlined pill (height 32px, per
-   Spacing/shape's secondary-button pattern) and the standard table shell (Date /
-   Type / Shares / Price / Fees / Total), Type cell using the Outlined type badge.
+6. **Positions** *(renamed from "Transactions" per `plans/2026-07-19-positions-tab.md`;
+   conditional — omitted from the tab bar entirely when the symbol has no
+   transactions on file)* — a "Your position" section kicker above a **bare,
+   top-ruled editorial band** (spec below; `plans/2026-07-19-positions-band-restyle.md`,
+   owner steer "same style as the other tabs, like Intrinsic") holding Shares held /
+   Average cost / Market value / Unrealised P/L (banded `--up`/`--dn` when signed),
+   plus a 5th Realized P/L cell (banded, same treatment) whenever `hasRealizedPL(
+   position.realizedPL)` is true (re-surfaced per ADR-18/PT-I1 — a settled historical
+   number valid regardless of current quantity) — shown only when the symbol is
+   **currently held** (`quantity > 0`, live `Position` record present). Below the
+   band: a "Your transactions" card with a "+ Add transaction" outlined pill
+   (height 32px, per Spacing/shape's secondary-button pattern) and the standard
+   table shell (Date / Type / Shares / Price / Fees / Total), Type cell using the
+   Outlined type badge.
+
+   **"Your position" band — bare, top-ruled editorial treatment, matching the other
+   tabs' section bands (`plans/2026-07-19-positions-band-restyle.md`).** This
+   **supersedes** `plans/2026-07-19-positions-stat-distinction.md`'s titled
+   `bg-fill`-surfaced panel — the owner looked at that result and asked for the
+   in-tab band to instead read as the same editorial idiom the other tabs already
+   use for their own section bands, specifically the **Intrinsic value tab's**
+   BEAR/BASE/BULL scenario band (Components → "Bare stat band"; see item 5 above).
+   The page header above the tab bar (Current price / Day range / 52-week range /
+   Market cap — see "Position detail" below and Components → "Ruled stat band"'s
+   card-wrapped variant) is unchanged and remains the reference the in-tab band is
+   visually distinct from — only the mechanism for that distinction has changed
+   (bare ruled band vs. the header's card-wrapped grid, not a fill-color swap):
+   - **Section kicker heading ("Your position")** sits directly above the band,
+     unchanged from the prior step: sans, `text-[11px] font-semibold uppercase
+     tracking-[0.14em]`, default text color (`--ink`, inherited), matching "Your
+     transactions"'s own kicker markup exactly (same house pattern Tone of voice's
+     "Kickers over labels" names). `margin-bottom` (`mb-4`) is unchanged.
+   - **Band wrapper:** `grid grid-cols-4|5 border-t border-line pt-5` — a single
+     **top** hairline rule and top padding only. **No `bg-fill`/`bg-card` fill, no
+     `rounded-lg`, no outer `border border-border` box, no `px-7`/`-mx-7` bleed
+     hack.** This is the exact Intrinsic-band wrapper shape (`components/
+     intrinsic-value.tsx`'s BEAR/BASE/BULL grid), reused verbatim rather than a new
+     pattern.
+   - **Columns:** the **first** cell has no left border/padding; **every column
+     after the first** gets `border-l border-line2 pl-5` — a single thin hairline
+     vertical + left padding, replacing the prior step's per-cell `border-r
+     border-line2 px-7`/`-mx-7` full-bleed pattern. No per-cell right borders.
+   - **Cell kickers stay `text-[10.5px] uppercase tracking-[0.12em] text-mut`**
+     (neutral, not semantic red/green — unlike Intrinsic's directional Bear/Bull
+     kickers, these are neutral metric labels, matching Intrinsic's own neutral
+     Base kicker). **Values stay `mt-1.5 font-serif text-[26px]`**, colored
+     `--up`/`--dn` on the two signed cells (Unrealised P/L, Realized P/L) exactly
+     as before; the Unrealised P/L percent sub-line stays `mt-0.5 text-[12px]`,
+     signed-colored. No new token, color, spacing, or component was introduced —
+     `border-line`, `border-line2`, `text-mut`, `text-up`/`text-dn`, and
+     `font-serif` are all pre-existing tokens already used by the Intrinsic band.
+
+   **Three visual states, same tab, same bare-band treatment:**
+   - **Currently held (`quantity > 0`)** — the "Your position" kicker sits above
+     the bare, top-ruled stat band, populated with live figures (4 or 5 columns per
+     the `hasRealizedPL` rule above); transaction table below it, unaffected.
+   - **Closed position (`quantity === 0`, Position record still present, transactions
+     exist)** *(Assumption A2)* — the live stat band is **suppressed** (zero shares
+     / zero market value would be misleading) and replaced by the muted italic
+     caption line, **"Position closed."**, styled per the Type scale's "Italic
+     helper/caption" row (11–14.5px, Newsreader italic, `--mut`), followed —
+     unchanged wording/gating — by the Realized P/L line (`text-mut` label +
+     `--up`/`--dn` value) whenever `hasRealizedPL(position.realizedPL)` is true
+     (ADR-18/PT-I1 — do not re-gate on `quantity`). This block sits under the same
+     "Your position" kicker as the held state, inside a bare `border-t border-line
+     pt-5` block — no card fill, no rounded box (the same bare treatment as the
+     held state, not the prior step's `bg-fill` panel).
+   - **Never held, never transacted** — this state cannot be reached once the tab is
+     conditional (the tab itself is omitted), but the underlying "You do not hold
+     {symbol}." empty state (quiet card, `--sub` text, + the "+ Add to portfolio"
+     pill) is kept in the component as a defensive fallback for the edge case where a
+     position is fully sold *and* somehow has no transactions — it should not be
+     reachable in normal use once Assumption A1 (has-or-had-transactions gates the
+     tab) holds. This "none" state is **unchanged** and **out of scope** for the
+     bare-band treatment — it keeps its existing quiet-card treatment (`rounded-lg
+     border border-border bg-card`), no kicker, no bare ruled band.
+
+   **Page-header market grid is unchanged (reference).** The 4-col quote grid
+   above the tab bar on both routes (Current price / Day range / 52-week range /
+   Market cap — see "Position detail" below) keeps its documented `bg-card`
+   treatment with no kicker; it is unaffected by this restyle. This change lives
+   entirely in `components/research/transactions-tab.tsx` (the single shared tab
+   body — see "Shared component note" below), so it applies identically to both
+   `/research/[symbol]` and `/portfolio/[ticker]` in one place; neither route
+   page's header grid is touched.
+
+   **Rhythm check (header grid → tab bar → "Your position" band → "Your
+   transactions" card):** the band sits in the same `space-y-5` stack as "Your
+   transactions" today (see Shared component note) — that gap is unchanged by this
+   restyle.
+
+   **Shared component note:** `components/research/transactions-tab.tsx`
+   (`TransactionsTab`) is the single source for this tab's body on **both**
+   `/research/[symbol]` and `/portfolio/[ticker]` — no per-route fork. The legacy
+   `components/transaction-history.tsx` (a stock-shadcn `Card`/`Table`/`Badge`
+   pattern, off-design — no serif values, no Meridian tokens, plain shadcn `Badge`
+   instead of the Outlined type badge) is retired once no importer remains.
 7. **News & sentiment** — Headline score card: 84px sentiment score + trend kicker
    (banded, e.g. "Warming" in `--up`) + italic summary on the left; 3-col tone band
    on the right (Positive/Neutral/Negative %, each with a colored MoM-delta caption
@@ -801,32 +907,53 @@ figure).
 **Explicitly out of scope for this pass:** `app/page.tsx` (marketing landing page,
 not behind auth) — unchanged, stock-shadcn look retained.
 
-**Position detail (`/portfolio/[ticker]`) — shares research-detail chrome (TD-32).**
-This route is reachable from the dashboard/closed-positions tables but is not one of
-the 7 designed screens above; it has no dedicated mock-up. Per
-`plans/2026-07-18-meridian-dashboard-detail-fixes.md` (Task 7), its header +
-quote-card + tab-bar region is reskinned to Meridian by **reusing the Research
-detail screen's existing named patterns** — no new pattern is introduced for this
-page:
-- **Header** — the Research detail company header (serif 52px company name over a
-  `TICKER · EXCHANGE` `--mut` kicker; see "Research detail — tab-by-tab" above),
-  with pill action buttons (primary `--btnbg`/`--btnfg`, secondary transparent +
-  `--line` border — see Spacing/shape → Buttons) in place of Buy more / Sell /
-  Delete.
-- **Quote card** — either the Research detail **4-col ruled quote grid** (Current
-  price / Day range / 52-week range / Market cap pattern, restyled with this page's
-  own metrics: Market value / Unrealized P/L / Realized P/L / Today's change / Avg
-  cost) or the **Ruled stat band**'s card-wrapped variant (see Components → "Ruled
-  stat band") — either is faithful; whichever is used, signed figures are colored via
-  the `--up`/`--dn` token aliases (never `text-green-600`/`text-red-600`), no lucide
-  icons, no shadows.
-- **Tab bar** — the Research detail **Segmented tabs** research-detail variant (see
-  Components → "Segmented tabs"): `flex gap-8|32px border-b`, uppercase 11px kicker
-  tabs, active = weight 600 + 2px `--ink` underline. Tab bodies keep rendering the
-  existing shared Meridian tab components (Overview, Technical, etc.) — only the tab
-  chrome changes.
+**Position detail (`/portfolio/[ticker]`) — shares research-detail chrome (TD-32),
+now header-for-header identical to Research detail (per
+`plans/2026-07-19-positions-tab.md`, OD-1 resolved as Option B: keep both routes,
+align their behaviour).** This route is reachable from the dashboard/closed-positions
+tables and is not one of the 7 designed screens above (it has no dedicated
+mock-up), but it now renders the **same general market header** `/research/[symbol]`
+uses, with position detail relocated into the conditional Positions tab described
+above:
 
-No new tokens or components are defined for this page. Any lower section of
+- **Header** — the Research detail company header (serif 52px company name over a
+  `TICKER · EXCHANGE` `--mut` kicker; see "Research detail — tab-by-tab" above), with
+  pill action buttons in the row where Research detail shows Watchlist/Add-to-portfolio:
+  **Buy more** (secondary — transparent background, `--ink` text, 1px `--line` border)
+  / **Sell** (secondary, same style) / **Delete** (primary — `--btnbg` background,
+  `--btnfg` text, no border), per Spacing/shape → Buttons. Buy more / Sell are hidden
+  when `quantity === 0` (nothing to buy more of or sell); Delete always shows. This
+  matches the current `portfolio/[ticker]` header action row already on disk — no
+  change to the action row itself, only to what sits below it.
+- **Quote card — now the general market grid, not the position grid (this is the
+  behavior change this plan makes).** Replace the page's former 4/5-col
+  position-metrics grid (Market value / Unrealized P/L / Realized P/L / Today's
+  change / Avg cost — the pre-existing pattern this section used to describe) with
+  the **exact same Research detail 4-col ruled quote grid** `/research/[symbol]`
+  renders (Current price / Day range / 52-week range / Market cap — see "Research
+  detail — tab-by-tab" above and Components → "Ruled stat band"'s card-wrapped
+  variant): `--card` background, 1px `--line` border, radius 8px, `border-r
+  border-line2` verticals between the 4 cells, kicker (10.5px uppercase `--mut`) over
+  serif value (28px) over a 12.5px detail/change line, signed change colored
+  `--up`/`--dn` with the ▲/▼ glyph prefix exactly as `research/[symbol]/page.tsx`
+  already renders it. This is **spec parity with an existing pattern, not a new
+  one** — same grid, same tokens, fed by the `quote` this page already fetches (no
+  new query). The position-specific figures (Market value / Unrealized P/L /
+  Realized P/L / Today's change / Avg cost) move into the Positions tab's stat band
+  (see item 6 above) — they no longer appear in the header at all.
+- **Tab bar** — the Research detail **Segmented tabs** research-detail variant (see
+  Components → "Segmented tabs"): `flex gap-8 border-b`, uppercase 11px kicker tabs,
+  active = weight 600 + 2px `--ink` underline. Tab bodies keep rendering the existing
+  shared Meridian tab components (Overview, Technical, etc.) — only the tab chrome
+  changes. The **Positions** tab (see item 6 above) is conditional here exactly as on
+  `/research/[symbol]`: present when the ticker has any transaction on file, omitted
+  otherwise. In practice this route is only ever reached for a ticker that has (or
+  had) a position, so the tab is expected to be present essentially always here —
+  the guard is applied anyway for correctness and to keep both routes' logic
+  identical (see Assumption A1 in the governing plan).
+
+No new tokens or components are defined for this page — the header is now a direct
+reuse of an existing pattern, not a variant. Any lower section of
 `/portfolio/[ticker]` not covered by this header/quote-card/tab-bar scope remains
 tracked under TD-32 until reskinned in a later pass.
 
@@ -845,9 +972,12 @@ popular-stocks list, but still gets one per the plan's blanket Task 7 scope. Thi
 a rendering-boundary addition only — no client data-fetching behavior changes.
 
 **Research-detail-specific edge cases (new with the 7-tab structure):** the
-Transactions tab's owned-vs-not-owned empty state (see item 6 above); every data
-gap in the plan's data-gap map renders a quiet editorial placeholder (em-dash cell
-or a muted italic caption) rather than fabricated numbers or a broken layout — never
-hide the surrounding card/row, only the missing value. Placeholder wording is a
+Positions tab's three states — currently held (live stat band), closed/quantity-0
+(muted "Position closed." caption, table unaffected), and the defensive
+never-held/never-transacted empty state (see item 6 above, `plans/2026-07-19-positions-tab.md`);
+every data gap in the plan's data-gap map renders a quiet editorial placeholder
+(em-dash cell or a muted italic caption) rather than fabricated numbers or a broken
+layout — never hide the surrounding card/row, only the missing value. Placeholder
+wording is a
 Coding-agent detail within the tone-of-voice rules above, not a fixed string this
 file mandates.

@@ -4,7 +4,9 @@ import {
   matchFifoLots,
   calculateRealizedPL,
   resolveCostBasisWithFallback,
+  computePositionRealizedPL,
   type Lot,
+  type TransactionForRealizedPL,
 } from "./realized-pl.service";
 
 function lot(quantity: number, price: number, fees: number, date: string): Lot {
@@ -203,5 +205,137 @@ describe("sell route vs closed-positions reconciliation (AUD-FIX-01)", () => {
   it("agrees with closed-positions across three sells spanning both lots and an unmatched remainder", () => {
     const sells = [5, 10, 10]; // 25 total against 20 available -> last sell partially unmatched
     expect(sellRouteTotal(sells).toNumber()).toBe(closedPositionsTotal(sells).toNumber());
+  });
+});
+
+describe("computePositionRealizedPL (PT-I2 — direct coverage of the composed function)", () => {
+  // GET /api/portfolio/positions/[ticker]/route.test.ts already drives this
+  // function end-to-end through the route handler (held/closed/no-sells/404),
+  // but only with single-buy-lot inputs. These cases assert the function
+  // directly and cover the multi-lot FIFO-ordering and fallback paths that
+  // the route tests don't exercise (PT-I2, reviews/2026-07-19-positions-tab.md).
+
+  function tx(
+    type: "BUY" | "SELL",
+    quantity: number,
+    price: number,
+    fees: number,
+    executedAt: string
+  ): TransactionForRealizedPL {
+    return {
+      type,
+      quantity: new Decimal(quantity),
+      price: new Decimal(price),
+      fees: new Decimal(fees),
+      executedAt: new Date(executedAt),
+    };
+  }
+
+  it("returns 0 when the position has no SELL transactions", () => {
+    const transactions = [tx("BUY", 10, 100, 0, "2026-01-01")];
+
+    const result = computePositionRealizedPL(transactions, new Decimal(100));
+
+    expect(result.toNumber()).toBe(0);
+  });
+
+  it("computes a gain for a partial sell against a single buy lot", () => {
+    // 20 bought @100, 10 sold @150 -> 10 remain held.
+    const transactions = [
+      tx("BUY", 20, 100, 0, "2026-01-01"),
+      tx("SELL", 10, 150, 0, "2026-03-01"),
+    ];
+
+    const result = computePositionRealizedPL(transactions, new Decimal(100));
+
+    // cost basis 10*100=1000, proceeds 10*150=1500 -> realized +500
+    expect(result.toNumber()).toBe(500);
+  });
+
+  it("computes a loss for a partial sell against a single buy lot", () => {
+    const transactions = [
+      tx("BUY", 20, 100, 0, "2026-01-01"),
+      tx("SELL", 10, 80, 0, "2026-03-01"),
+    ];
+
+    const result = computePositionRealizedPL(transactions, new Decimal(100));
+
+    // cost basis 10*100=1000, proceeds 10*80=800 -> realized -200
+    expect(result.toNumber()).toBe(-200);
+  });
+
+  it("computes realized P/L for a full sell that closes the position", () => {
+    const transactions = [
+      tx("BUY", 10, 100, 0, "2026-01-01"),
+      tx("SELL", 10, 150, 0, "2026-02-01"),
+    ];
+
+    const result = computePositionRealizedPL(transactions, new Decimal(100));
+
+    // cost basis 10*100=1000, proceeds 10*150=1500 -> realized +500
+    expect(result.toNumber()).toBe(500);
+  });
+
+  it("depletes multiple buy lots FIFO (oldest first) when a sell spans both", () => {
+    // BUY 10@100 (Jan), BUY 10@200 (Feb); SELL 15@250 (Mar) must consume the
+    // full Jan lot before touching the Feb lot: 10@100 + 5@200 = 2000 cost.
+    const transactions = [
+      tx("BUY", 10, 100, 0, "2026-01-01"),
+      tx("BUY", 10, 200, 0, "2026-02-01"),
+      tx("SELL", 15, 250, 0, "2026-03-01"),
+    ];
+
+    const result = computePositionRealizedPL(transactions, new Decimal(150));
+
+    // proceeds 15*250=3750, cost basis 2000 -> realized +1750
+    expect(result.toNumber()).toBe(1750);
+  });
+
+  it("prorates buy fees into cost basis and subtracts sell fees from proceeds", () => {
+    // BUY 10@100 with $20 total fee ($2/share); SELL 10@150 with $15 sell fee.
+    const transactions = [
+      tx("BUY", 10, 100, 20, "2026-01-01"),
+      tx("SELL", 10, 150, 15, "2026-02-01"),
+    ];
+
+    const result = computePositionRealizedPL(transactions, new Decimal(100));
+
+    // cost basis = 10*100 + 10*2 = 1020; proceeds = 10*150 - 15 = 1485
+    // realized = 1485 - 1020 = 465 (differs from the no-fee 500, proving fees are applied)
+    expect(result.toNumber()).toBe(465);
+  });
+
+  it("falls back to avgCostBasis for the unmatched remainder when a sell exceeds recorded buy lots", () => {
+    // Only 5 shares were ever bought, but the sell is for 8 — a data
+    // inconsistency resolveCostBasisWithFallback covers with avgCostBasis
+    // rather than silently dropping value.
+    const transactions = [
+      tx("BUY", 5, 100, 0, "2026-01-01"),
+      tx("SELL", 8, 120, 0, "2026-02-01"),
+    ];
+
+    const result = computePositionRealizedPL(transactions, new Decimal(110));
+
+    // matched: 5*100=500; fallback: 3*110=330; total cost basis=830
+    // proceeds: 8*120=960 -> realized = 960 - 830 = 130
+    expect(result.toNumber()).toBe(130);
+  });
+
+  it("sums realized P/L across multiple sells, each depleting lots cumulatively", () => {
+    // BUY 10@100 (Jan), BUY 10@200 (Feb); SELL 10@250 (Mar) consumes lot1;
+    // SELL 10@250 (Apr) must consume lot2, not re-match lot1.
+    const transactions = [
+      tx("BUY", 10, 100, 0, "2026-01-01"),
+      tx("BUY", 10, 200, 0, "2026-02-01"),
+      tx("SELL", 10, 250, 0, "2026-03-01"),
+      tx("SELL", 10, 250, 0, "2026-04-01"),
+    ];
+
+    const result = computePositionRealizedPL(transactions, new Decimal(150));
+
+    // sell1: cost 1000, proceeds 2500 -> PL 1500
+    // sell2: cost 2000, proceeds 2500 -> PL 500
+    // total = 2000
+    expect(result.toNumber()).toBe(2000);
   });
 });

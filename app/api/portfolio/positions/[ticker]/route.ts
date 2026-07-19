@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUserWithPortfolio } from "@/lib/utils/auth";
 import { prisma } from "@/lib/prisma";
 import { exchangeRateService } from "@/lib/services/exchange-rate.service";
+import { computePositionRealizedPL } from "@/lib/services/realized-pl.service";
 
 export async function GET(
   request: NextRequest,
@@ -44,6 +45,23 @@ export async function GET(
       }
     }
 
+    // Realized P/L has no persisted per-position column (only
+    // `Portfolio.realizedPL`, a portfolio-wide accumulator, exists) — compute
+    // it on read from this position's own transaction history, the same FIFO
+    // algorithm `GET /api/portfolio/closed-positions` uses per position
+    // (plans/2026-07-19-positions-tab.md, PT-I1). Converted to base currency
+    // like the other money fields on this response.
+    const realizedPL = computePositionRealizedPL(
+      position.transactions.map((tx) => ({
+        type: tx.type,
+        quantity: tx.quantity,
+        price: tx.price,
+        fees: tx.fees,
+        executedAt: tx.executedAt,
+      })),
+      position.avgCostBasis
+    ).toNumber() * conversionRate;
+
     // Convert Decimal to number and apply currency conversion
     const serializedPosition = {
       ...position,
@@ -56,7 +74,7 @@ export async function GET(
       baseCurrency,
       originalCurrency: positionCurrency,
       conversionRate,
-      realizedPL: 0, // Add realizedPL field (not yet implemented in schema, default to 0)
+      realizedPL,
       transactions: position.transactions.map(tx => ({
         ...tx,
         quantity: tx.quantity.toNumber(),

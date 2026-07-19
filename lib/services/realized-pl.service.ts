@@ -112,3 +112,58 @@ export function calculateRealizedPL(
     : realizedPL.dividedBy(totalBuyCost).times(100);
   return { realizedPL, realizedPLPercent };
 }
+
+export interface TransactionForRealizedPL {
+  type: string;
+  quantity: Decimal;
+  price: Decimal;
+  fees: Decimal;
+  executedAt: Date;
+}
+
+/**
+ * Total realized P/L for a single position, summed across every SELL
+ * transaction on file, FIFO-matched against that position's own BUY
+ * transactions and depleted cumulatively in chronological order — the same
+ * algorithm `GET /api/portfolio/closed-positions` uses per position, applied
+ * here to one position's transaction list (`GET
+ * /api/portfolio/positions/[ticker]` — plans/2026-07-19-positions-tab.md,
+ * PT-I1). `Position` has no persisted per-position `realizedPL` column (only
+ * `Portfolio.realizedPL`, a portfolio-wide accumulator, exists — see
+ * `sell/route.ts`), so this is computed on read rather than stored,
+ * mirroring how closed-positions already avoids persisting a `ClosedPosition`
+ * row. `avgCostBasis` is the position's current average cost basis, used only
+ * as the unmatched-remainder fallback (see `resolveCostBasisWithFallback`).
+ */
+export function computePositionRealizedPL(
+  transactions: TransactionForRealizedPL[],
+  avgCostBasis: Decimal
+): Decimal {
+  const buyLots: Lot[] = transactions
+    .filter((t) => t.type === "BUY")
+    .sort((a, b) => a.executedAt.getTime() - b.executedAt.getTime())
+    .map((t) => ({
+      quantity: t.quantity,
+      price: t.price,
+      fees: t.fees,
+      date: t.executedAt,
+    }));
+
+  const sellTransactions = transactions
+    .filter((t) => t.type === "SELL")
+    .sort((a, b) => a.executedAt.getTime() - b.executedAt.getTime());
+
+  let totalRealizedPL = new Decimal(0);
+  for (const sell of sellTransactions) {
+    const matchResult = matchFifoLots(buyLots, sell.quantity);
+    const { totalCostBasis } = resolveCostBasisWithFallback(
+      matchResult,
+      avgCostBasis,
+      `computePositionRealizedPL: sell of ${sell.quantity.toString()} on ${sell.executedAt.toISOString()}`
+    );
+    const { realizedPL } = calculateRealizedPL(sell.quantity, sell.price, sell.fees, totalCostBasis);
+    totalRealizedPL = totalRealizedPL.plus(realizedPL);
+  }
+
+  return totalRealizedPL;
+}

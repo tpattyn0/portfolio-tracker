@@ -32,6 +32,10 @@ Captured 2026-07-18 from a feature-brainstorm session. Ordering within each sect
 - Real peer comparison — populate `IndustryComparison` (TD-13, TD-DTL-PEER).
 - Support/resistance reference lines on the technical chart (TD-DTL-SR).
 
+## Deferred technical consolidation
+
+- **Consolidate `/portfolio/[ticker]` and `/research/[symbol]` into one route (Option A).** Logged 2026-07-19 per `plans/2026-07-19-positions-tab.md` OD-1, resolved as Option B for that plan (keep both routes, align their behaviour — see ADR-18). The two routes still duplicate header/tab scaffolding; a future pass could redirect `/portfolio/[ticker]` → `/research/[symbol]` and migrate the Buy more / Sell / Delete actions into the research view's Positions tab, collapsing to one detail route entirely. Larger change than Option B: touches the mutation flows and the dashboard/closed-positions link targets, and risks the fragile sell/FIFO surfaces (`AGENT.md` known fragile surfaces) — deliberately deferred rather than attempted alongside the Positions-tab rename.
+
 ## Prerequisites before any paid launch (not features, but gating)
 
 - Product analytics instrumentation (signup / first-position / first-analysis events) — GTM.md launch KPIs are unmeasurable without it.
