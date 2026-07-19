@@ -195,7 +195,14 @@ tests, secret-scan). Beyond it:
 
 ## Open decisions
 
-- **OD-1 — How to make revisions/low/high survive the 24h cache hit.** This is the
+- **OD-1 — RESOLVED 2026-07-20 by owner: Option A (persist via additive migration).**
+  Add `targetLowPrice`/`targetHighPrice`/`revisions (Json)` columns to `AnalystRating`;
+  populate in `saveToDatabase`, read in `formatCachedData`. Additive `ADD COLUMN` only,
+  held for owner `prisma migrate deploy` sign-off (ADR-6/ADR-14 protocol). A new ADR is
+  written. Task 2 proceeds on Option A; Task 1 (90-day filter) proceeds regardless.
+  Original decision text retained below for context.
+
+- **OD-1 (original — now resolved above) — How to make revisions/low/high survive the 24h cache hit.** This is the
   one material choice; it changes what gets built.
   - **(A) Persist on `AnalystRating` via an additive migration (recommended).**
     Add `targetLowPrice`/`targetHighPrice`/`revisions (Json)` columns; populate in

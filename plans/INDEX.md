@@ -13,4 +13,4 @@
 | plans/2026-07-19-positions-stat-distinction.md | 2026-07-19 | implemented | reviews/2026-07-19-positions-stat-distinction.md |
 | plans/2026-07-19-positions-band-restyle.md | 2026-07-19 | implemented | reviews/2026-07-19-positions-band-restyle.md |
 | plans/2026-07-19-research-tab-fixes.md | 2026-07-19 | implemented | reviews/2026-07-19-research-tab-fixes.md |
-| plans/2026-07-20-analyst-revisions-nvda-fix.md | 2026-07-20 | planned | — |
+| plans/2026-07-20-analyst-revisions-nvda-fix.md | 2026-07-20 | planned (approved; OD-1 → A persist+migration) | — |
