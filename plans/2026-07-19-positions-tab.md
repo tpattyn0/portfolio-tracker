@@ -226,7 +226,11 @@ these; Coding agent should eyeball them):
 
 ## Open decisions
 
-- **OD-1 (architectural — owner sign-off before Coding agent starts): consolidate the two
+- **OD-1 — RESOLVED 2026-07-19 by owner: keep both routes, align behaviour (Option B).**
+  The plan below (Option B) is approved as-is; Option A (consolidation) is logged in
+  `future_ideas.md` as a candidate. No task changes.
+
+- **OD-1 (original text — architectural, now resolved above): consolidate the two
   routes, or keep both?** This plan keeps both routes and aligns their behaviour (Option B),
   because `/portfolio/[ticker]` owns position actions (Buy more / Sell / Delete + modals +
   Realized P/L) that `/research/[symbol]` does not. The alternative (Option A) is to redirect
