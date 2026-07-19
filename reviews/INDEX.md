@@ -17,3 +17,4 @@
 | 2026-07-19-meridian-first-visit-latency.md | 2026-07-19 | IMPLEMENTED — 2026-07-19 (0 BLOCKERs/ISSUEs; FVL-Q1 owner click-through pending, FVL-S1 SUGGESTION optional/no-action) |
 | 2026-07-19-positions-tab.md | 2026-07-19 | IMPLEMENTED — 2026-07-19 (0 BLOCKERs; PT-I1 Realized P/L re-surfaced + PT-I2 test/ADR fixed over 3 iters; PT-Q2 owner click-through pending; PT-S2 skipped) |
 | 2026-07-19-positions-stat-distinction.md | 2026-07-19 | IMPLEMENTED — 2026-07-19 (0 BLOCKERs/ISSUEs/SUGGESTIONs; PSD-Q1 owner visual acceptance pending) |
+| 2026-07-19-positions-band-restyle.md | 2026-07-19 |  |
