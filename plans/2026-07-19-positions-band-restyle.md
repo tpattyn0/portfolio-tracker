@@ -176,7 +176,7 @@ achieved now by the editorial bare-band idiom rather than a `bg-fill` tint.
 
 ## Tasks
 
-1. [ ] **Restyle the held-state position band to the Intrinsic bare ruled band** in
+1. [x] **Restyle the held-state position band to the Intrinsic bare ruled band** in
    `components/research/transactions-tab.tsx` (the `panelState === "held"` block,
    currently lines ~114-149). Replace the `rounded-lg border border-border bg-fill px-7
    pt-[22px]` wrapper and the `-mx-7 grid … px-7 pb-[22px]`/`border-r border-line2` cell
@@ -197,7 +197,7 @@ achieved now by the editorial bare-band idiom rather than a `bg-fill` tint.
    values and signed coloring are unchanged; no hardcoded hex/oklch or off-token spacing;
    `npm run verify` passes.
 
-2. [ ] **Restyle the closed-state block to the same bare treatment** (the
+2. [x] **Restyle the closed-state block to the same bare treatment** (the
    `panelState === "closed"` block, currently lines ~97-112). Replace the `rounded-lg
    border border-border bg-fill px-7 py-[22px]` wrapper with an outer `<div>` holding the
    "Your position" kicker above a `border-t border-line pt-5` block containing the italic
@@ -210,14 +210,14 @@ achieved now by the editorial bare-band idiom rather than a `bg-fill` tint.
    byte-for-byte the same rule as before (`hasRealizedPL(position.realizedPL)`,
    **not** re-gated on `quantity`); `npm run verify` passes.
 
-3. [ ] **Leave the "none" empty state and the "Your transactions" card unchanged.**
+3. [x] **Leave the "none" empty state and the "Your transactions" card unchanged.**
    Confirm the `panelState === "none"` block and the transactions card below the band are
    not modified by Tasks 1-2.
    — Acceptance: `git diff` shows no change to the `panelState === "none"` block or the
    "Your transactions" `bg-card` card; the "You do not hold {symbol}." wording and the
    "+ Add to portfolio" / "+ Add transaction" pills are untouched.
 
-4. [ ] **Update DESIGN.md item 6 (Positions tab) to describe the new Intrinsic-matching
+4. [x] **Update DESIGN.md item 6 (Positions tab) to describe the new Intrinsic-matching
    bare ruled-band treatment, superseding the prior `bg-fill` panel spec.** Rewrite the
    "Your position panel" spec (currently DESIGN.md ~lines 806-912) so it documents: the
    band now uses the **bare, top-ruled editorial band** treatment (the same idiom as the
@@ -235,7 +235,7 @@ achieved now by the editorial bare-band idiom rather than a `bg-fill` tint.
    it supersedes the `bg-fill` panel spec, and states the page-header grid and "none"
    state are unchanged; no new token/color/spacing appears; `npm run verify` passes.
 
-5. [ ] **Confirm both routes and the untouched header grid.** Verify the restyle renders
+5. [x] **Confirm both routes and the untouched header grid.** Verify the restyle renders
    identically on `/research/[symbol]` and `/portfolio/[ticker]` (both consume the one
    shared `TransactionsTab`) and that neither route page's header market grid changed.
    — Acceptance: manual check on both routes (see Verification) shows the bare,

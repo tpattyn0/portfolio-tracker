@@ -803,113 +803,94 @@ figure).
    data gap).
 6. **Positions** *(renamed from "Transactions" per `plans/2026-07-19-positions-tab.md`;
    conditional — omitted from the tab bar entirely when the symbol has no
-   transactions on file)* — a titled, **`bg-fill`-surfaced** "Your position" panel
-   (spec below; per `plans/2026-07-19-positions-stat-distinction.md`, owner steer
-   "Title + filled panel") holding a ruled stat band — Shares held / Average cost /
-   Market value / Unrealised P/L (banded `--up`/`--dn` when signed), plus a 5th
-   Realized P/L cell (banded, same treatment) whenever `hasRealizedPL(position.
-   realizedPL)` is true (re-surfaced per ADR-18/PT-I1 — a settled historical number
-   valid regardless of current quantity) — shown only when the symbol is
+   transactions on file)* — a "Your position" section kicker above a **bare,
+   top-ruled editorial band** (spec below; `plans/2026-07-19-positions-band-restyle.md`,
+   owner steer "same style as the other tabs, like Intrinsic") holding Shares held /
+   Average cost / Market value / Unrealised P/L (banded `--up`/`--dn` when signed),
+   plus a 5th Realized P/L cell (banded, same treatment) whenever `hasRealizedPL(
+   position.realizedPL)` is true (re-surfaced per ADR-18/PT-I1 — a settled historical
+   number valid regardless of current quantity) — shown only when the symbol is
    **currently held** (`quantity > 0`, live `Position` record present). Below the
-   panel: a "Your transactions" card with a "+ Add transaction" outlined pill
+   band: a "Your transactions" card with a "+ Add transaction" outlined pill
    (height 32px, per Spacing/shape's secondary-button pattern) and the standard
    table shell (Date / Type / Shares / Price / Fees / Total), Type cell using the
    Outlined type badge.
 
-   **"Your position" panel — distinguishes the in-tab position band from the
-   page-header market grid (`plans/2026-07-19-positions-stat-distinction.md`).**
+   **"Your position" band — bare, top-ruled editorial treatment, matching the other
+   tabs' section bands (`plans/2026-07-19-positions-band-restyle.md`).** This
+   **supersedes** `plans/2026-07-19-positions-stat-distinction.md`'s titled
+   `bg-fill`-surfaced panel — the owner looked at that result and asked for the
+   in-tab band to instead read as the same editorial idiom the other tabs already
+   use for their own section bands, specifically the **Intrinsic value tab's**
+   BEAR/BASE/BULL scenario band (Components → "Bare stat band"; see item 5 above).
    The page header above the tab bar (Current price / Day range / 52-week range /
    Market cap — see "Position detail" below and Components → "Ruled stat band"'s
-   card-wrapped variant) and this in-tab band render the same underlying grid
-   pattern (card-wrapped ruled stat band) but must read as two different sections:
-   "page-header market data" vs. "your position, inside the tab." The header stays
-   exactly as documented (`bg-card`, no kicker) — it is the reference and does not
-   change. Only the in-tab band changes, via two existing-vocabulary levers applied
-   together (both required, per owner steer — not an either/or):
-   - **Section kicker heading ("Your position").** A kicker eyebrow sits directly
-     above the panel, reusing the **exact same pattern already in this file** for
-     "Your transactions" (`components/research/transactions-tab.tsx`): sans,
-     `text-[11px] font-semibold uppercase tracking-[0.14em]`, default text color
-     (`--ink`, inherited — no explicit `text-mut`/`text-sub` override, matching
-     "Your transactions"'s own markup exactly). `margin-bottom` matches the gap
-     "Your transactions" itself uses below its own heading row before its table
-     starts (do not invent a new gap value). This is the same house pattern Tone of
-     voice's "Kickers over labels" names ("Every screen's H1 gets one") — the two
-     in-tab section kickers ("Your position" and "Your transactions") now match
-     each other exactly, reinforcing that both are tab-owned sections distinct from
-     the untitled page-header grid above the tab bar.
-   - **Surface swap: `bg-card` → `bg-fill`.** The panel wrapper itself moves from
-     the header's `bg-card` to `bg-fill` (the `--fill` surface-fill token — same
-     token named in Colors and already used for Row hover and the loading-skeleton
-     `SkeletonBlock`; not a new color). `--fill` over the page `--bg` reads as a
-     contained tinted surface, distinguishing the panel from the header's bare
-     `bg-card` grid at a glance, without introducing a fourth chromatic accent. The
-     outer `border border-border` **stays** (radius 8px, unchanged) — the panel is
-     still a bordered, contained shape, just tinted instead of card-white; only the
-     fill changes, not the border treatment. Internal cell verticals **stay
-     `border-line2`** unchanged — `--line2` is a neutral hairline rule that sits
-     correctly on `--fill` exactly as it already does on `--card` elsewhere (e.g.
-     Row hover's `--fill` background never required recoloring the row's own
-     dividers). **Inside** the panel, cell kickers stay `text-[10.5px] uppercase
-     tracking-[0.12em] text-mut` and values stay `font-serif text-[26px]`
-     (colored `--up`/`--dn` when signed) — unchanged from today; only the wrapper
-     surface (`bg-card` → `bg-fill`) and the new heading above it change. No new
-     token, color, spacing, or component is introduced by either lever. **Confirmed
-     out of scope for this refinement:** the `border-t-[3px] border-double
-     var(--ink)` editorial double-rule (reserved for Morning Note, the score-
-     breakdown card, the login masthead, and the order-summary total row — applying
-     it here would overload a reserved emphasis marker) and any fourth chromatic
-     accent hue beyond `--up`/`--dn`/`--amber` — neither is used.
+   card-wrapped variant) is unchanged and remains the reference the in-tab band is
+   visually distinct from — only the mechanism for that distinction has changed
+   (bare ruled band vs. the header's card-wrapped grid, not a fill-color swap):
+   - **Section kicker heading ("Your position")** sits directly above the band,
+     unchanged from the prior step: sans, `text-[11px] font-semibold uppercase
+     tracking-[0.14em]`, default text color (`--ink`, inherited), matching "Your
+     transactions"'s own kicker markup exactly (same house pattern Tone of voice's
+     "Kickers over labels" names). `margin-bottom` (`mb-4`) is unchanged.
+   - **Band wrapper:** `grid grid-cols-4|5 border-t border-line pt-5` — a single
+     **top** hairline rule and top padding only. **No `bg-fill`/`bg-card` fill, no
+     `rounded-lg`, no outer `border border-border` box, no `px-7`/`-mx-7` bleed
+     hack.** This is the exact Intrinsic-band wrapper shape (`components/
+     intrinsic-value.tsx`'s BEAR/BASE/BULL grid), reused verbatim rather than a new
+     pattern.
+   - **Columns:** the **first** cell has no left border/padding; **every column
+     after the first** gets `border-l border-line2 pl-5` — a single thin hairline
+     vertical + left padding, replacing the prior step's per-cell `border-r
+     border-line2 px-7`/`-mx-7` full-bleed pattern. No per-cell right borders.
+   - **Cell kickers stay `text-[10.5px] uppercase tracking-[0.12em] text-mut`**
+     (neutral, not semantic red/green — unlike Intrinsic's directional Bear/Bull
+     kickers, these are neutral metric labels, matching Intrinsic's own neutral
+     Base kicker). **Values stay `mt-1.5 font-serif text-[26px]`**, colored
+     `--up`/`--dn` on the two signed cells (Unrealised P/L, Realized P/L) exactly
+     as before; the Unrealised P/L percent sub-line stays `mt-0.5 text-[12px]`,
+     signed-colored. No new token, color, spacing, or component was introduced —
+     `border-line`, `border-line2`, `text-mut`, `text-up`/`text-dn`, and
+     `font-serif` are all pre-existing tokens already used by the Intrinsic band.
 
-   **Three visual states, same tab, same "Your position" panel treatment:**
+   **Three visual states, same tab, same bare-band treatment:**
    - **Currently held (`quantity > 0`)** — the "Your position" kicker sits above
-     the `bg-fill` stat band, populated with live figures (4 or 5 columns per the
-     `hasRealizedPL` rule above); transaction table below it, unaffected.
+     the bare, top-ruled stat band, populated with live figures (4 or 5 columns per
+     the `hasRealizedPL` rule above); transaction table below it, unaffected.
    - **Closed position (`quantity === 0`, Position record still present, transactions
      exist)** *(Assumption A2)* — the live stat band is **suppressed** (zero shares
      / zero market value would be misleading) and replaced by the muted italic
      caption line, **"Position closed."**, styled per the Type scale's "Italic
      helper/caption" row (11–14.5px, Newsreader italic, `--mut`), followed —
-     unchanged wording/gating — by the Realized P/L line
-     (`text-mut` label + `--up`/`--dn` value) whenever `hasRealizedPL(position.
-     realizedPL)` is true (ADR-18/PT-I1 — do not re-gate on `quantity`). Per the
-     owner steer, this caption + Realized P/L block now sits **inside the same
-     `bg-fill` panel under the same "Your position" kicker** as the held state —
-     not bare on the page background — so the tab reads as one coherent titled
-     section across both states: `rounded-lg border border-border bg-fill` wrapper
-     (same radius/border as the held-state panel; padding matches the panel's
-     existing cell padding, e.g. `px-7 py-[22px]`, rather than a new value), "Your
-     position" kicker, then the caption + conditional Realized P/L line stacked
-     inside it. This is a coherent-panel requirement, not a re-gating of
-     `hasRealizedPL` or a wording change to "Position closed."
+     unchanged wording/gating — by the Realized P/L line (`text-mut` label +
+     `--up`/`--dn` value) whenever `hasRealizedPL(position.realizedPL)` is true
+     (ADR-18/PT-I1 — do not re-gate on `quantity`). This block sits under the same
+     "Your position" kicker as the held state, inside a bare `border-t border-line
+     pt-5` block — no card fill, no rounded box (the same bare treatment as the
+     held state, not the prior step's `bg-fill` panel).
    - **Never held, never transacted** — this state cannot be reached once the tab is
      conditional (the tab itself is omitted), but the underlying "You do not hold
      {symbol}." empty state (quiet card, `--sub` text, + the "+ Add to portfolio"
      pill) is kept in the component as a defensive fallback for the edge case where a
      position is fully sold *and* somehow has no transactions — it should not be
      reachable in normal use once Assumption A1 (has-or-had-transactions gates the
-     tab) holds. This "none" state is **out of scope** for the "Your position"
-     panel treatment (per the governing plan) — it keeps its existing quiet-card
-     treatment unchanged, no kicker, no `bg-fill`.
+     tab) holds. This "none" state is **unchanged** and **out of scope** for the
+     bare-band treatment — it keeps its existing quiet-card treatment (`rounded-lg
+     border border-border bg-card`), no kicker, no bare ruled band.
 
    **Page-header market grid is unchanged (reference).** The 4-col quote grid
    above the tab bar on both routes (Current price / Day range / 52-week range /
    Market cap — see "Position detail" below) keeps its documented `bg-card`
-   treatment with no kicker; it is the deliberately bare, untitled band the
-   in-tab panel is now visually distinguished from. This change lives entirely in
-   `components/research/transactions-tab.tsx` (the single shared tab body — see
-   "Shared component note" below), so it applies identically to both
+   treatment with no kicker; it is unaffected by this restyle. This change lives
+   entirely in `components/research/transactions-tab.tsx` (the single shared tab
+   body — see "Shared component note" below), so it applies identically to both
    `/research/[symbol]` and `/portfolio/[ticker]` in one place; neither route
    page's header grid is touched.
 
-   **Rhythm check (header grid → tab bar → "Your position" panel → "Your
-   transactions" card):** the panel sits in the same `space-y-5` stack as
-   "Your transactions" today (see Shared component note) — keep that existing
-   `space-y-5` gap between the "Your position" panel and the "Your transactions"
-   card unchanged; do not add a second, larger gap on top of it just because the
-   panel is now titled and tinted. The visual distinction comes from the kicker +
-   `bg-fill` fill change, not from extra whitespace — introducing a bespoke larger
-   gap here would be a new spacing value this file does not define.
+   **Rhythm check (header grid → tab bar → "Your position" band → "Your
+   transactions" card):** the band sits in the same `space-y-5` stack as "Your
+   transactions" today (see Shared component note) — that gap is unchanged by this
+   restyle.
 
    **Shared component note:** `components/research/transactions-tab.tsx`
    (`TransactionsTab`) is the single source for this tab's body on **both**

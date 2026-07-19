@@ -95,9 +95,9 @@ export function TransactionsTab({ symbol, currency }: TransactionsTabProps) {
       )}
 
       {panelState === "closed" && (
-        <div className="rounded-lg border border-border bg-fill px-7 py-[22px]">
+        <div>
           <div className="mb-4 text-[11px] font-semibold uppercase tracking-[0.14em]">Your position</div>
-          <div className="space-y-1">
+          <div className="space-y-1 border-t border-line pt-5">
             <p className="font-serif text-[14.5px] italic text-mut">Position closed.</p>
             {showRealizedPL && position && (
               <p className="text-[13px]">
@@ -112,22 +112,22 @@ export function TransactionsTab({ symbol, currency }: TransactionsTabProps) {
       )}
 
       {panelState === "held" && position && (
-        <div className="rounded-lg border border-border bg-fill px-7 pt-[22px]">
+        <div>
           <div className="mb-4 text-[11px] font-semibold uppercase tracking-[0.14em]">Your position</div>
-          <div className={cn("-mx-7 grid", showRealizedPL ? "grid-cols-5" : "grid-cols-4")}>
-            <div className="border-r border-line2 px-7 pb-[22px]">
+          <div className={cn("grid border-t border-line pt-5", showRealizedPL ? "grid-cols-5" : "grid-cols-4")}>
+            <div>
               <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Shares held</div>
               <div className="mt-1.5 font-serif text-[26px]">{formatNumber(position.quantity, 4)}</div>
             </div>
-            <div className="border-r border-line2 px-7 pb-[22px]">
+            <div className="border-l border-line2 pl-5">
               <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Average cost</div>
               <div className="mt-1.5 font-serif text-[26px]">{formatCurrency(position.avgCostBasis, currency)}</div>
             </div>
-            <div className="border-r border-line2 px-7 pb-[22px]">
+            <div className="border-l border-line2 pl-5">
               <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Market value</div>
               <div className="mt-1.5 font-serif text-[26px]">{formatCurrency(position.marketValue, currency)}</div>
             </div>
-            <div className={cn("px-7 pb-[22px]", showRealizedPL && "border-r border-line2")}>
+            <div className="border-l border-line2 pl-5">
               <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Unrealised P/L</div>
               <div className={cn("mt-1.5 font-serif text-[26px]", position.unrealizedPL >= 0 ? "text-up" : "text-dn")}>
                 {formatCurrency(position.unrealizedPL, currency)}
@@ -137,7 +137,7 @@ export function TransactionsTab({ symbol, currency }: TransactionsTabProps) {
               </div>
             </div>
             {showRealizedPL && (
-              <div className="px-7 pb-[22px]">
+              <div className="border-l border-line2 pl-5">
                 <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Realized P/L</div>
                 <div className={cn("mt-1.5 font-serif text-[26px]", position.realizedPL >= 0 ? "text-up" : "text-dn")}>
                   {formatCurrency(position.realizedPL, currency)}
