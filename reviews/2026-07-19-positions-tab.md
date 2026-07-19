@@ -1,11 +1,11 @@
 # Review: Positions tab — held stocks keep the general market header; position detail moves to a conditional "Positions" tab
 Date: 2026-07-19
-Status:
+Status: IMPLEMENTED — 2026-07-19
 
 ## Summary
-Findings: 0 BLOCKERs, 2 ISSUEs (PT-I1 resolved iter 2 · PT-I2 new — doc drift), 2 SUGGESTIONs (PT-S1 resolved iter 2 · PT-S2 skipped), 2 QUESTIONs (PT-Q1 resolved by owner · PT-Q2 owner-pending)
+Findings: 0 BLOCKERs, 2 ISSUEs (PT-I1 resolved iter 2 · PT-I2 resolved iter 3 — direct test added + ADR-18 corrected), 2 SUGGESTIONs (PT-S1 resolved iter 2 · PT-S2 skipped/accepted), 2 QUESTIONs (PT-Q1 resolved by owner · PT-Q2 owner click-through pending — manual acceptance, not a code defect)
 Requires owner decision: PT-Q2 (four visual states across both routes — owner click-through; manual acceptance, not a code defect)
-Ready for Coding agent: PT-I2 (doc-accuracy fix, one line in ADR-18 Evidence; optional direct unit test for computePositionRealizedPL)
+Ready for Coding agent: none — all actionable findings resolved
 
 ---
 
