@@ -6,7 +6,7 @@ import { Plus } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils/format";
-import { getPositionsPanelState } from "@/lib/utils/positions-tab";
+import { getPositionsPanelState, hasRealizedPL } from "@/lib/utils/positions-tab";
 
 interface TransactionsTabProps {
   symbol: string;
@@ -20,6 +20,7 @@ interface PositionResponse {
   unrealizedPL: number;
   unrealizedPLPercent: number;
   baseCurrency: string;
+  realizedPL: number;
 }
 
 interface TransactionResponse {
@@ -71,6 +72,14 @@ export function TransactionsTab({ symbol, currency }: TransactionsTabProps) {
   // quantity: 0). See lib/utils/positions-tab.ts for the shared, tested rule.
   const panelState = !positionQ.isLoading ? getPositionsPanelState(position) : null;
 
+  // Realized P/L is re-surfaced for BOTH held and closed positions (owner
+  // decision PT-Q1, reviews/2026-07-19-positions-tab.md) — a settled
+  // historical number, valid regardless of current quantity, unlike Market
+  // value / Unrealised P/L which only make sense while shares are held.
+  // Hidden when exactly zero/absent, preserving the old header's
+  // `hasRealizedPL` semantic (see lib/utils/positions-tab.ts).
+  const showRealizedPL = position != null && hasRealizedPL(position.realizedPL);
+
   return (
     <div className="space-y-5">
       {panelState === "none" && (
@@ -86,11 +95,21 @@ export function TransactionsTab({ symbol, currency }: TransactionsTabProps) {
       )}
 
       {panelState === "closed" && (
-        <p className="font-serif text-[14.5px] italic text-mut">Position closed.</p>
+        <div className="space-y-1">
+          <p className="font-serif text-[14.5px] italic text-mut">Position closed.</p>
+          {showRealizedPL && position && (
+            <p className="text-[13px]">
+              <span className="text-mut">Realized P/L: </span>
+              <span className={cn("font-medium", position.realizedPL >= 0 ? "text-up" : "text-dn")}>
+                {formatCurrency(position.realizedPL, currency)}
+              </span>
+            </p>
+          )}
+        </div>
       )}
 
       {panelState === "held" && position && (
-        <div className="grid grid-cols-4 rounded-lg border border-border bg-card">
+        <div className={cn("grid rounded-lg border border-border bg-card", showRealizedPL ? "grid-cols-5" : "grid-cols-4")}>
           <div className="border-r border-line2 px-7 py-[22px]">
             <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Shares held</div>
             <div className="mt-1.5 font-serif text-[26px]">{formatNumber(position.quantity, 4)}</div>
@@ -103,7 +122,7 @@ export function TransactionsTab({ symbol, currency }: TransactionsTabProps) {
             <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Market value</div>
             <div className="mt-1.5 font-serif text-[26px]">{formatCurrency(position.marketValue, currency)}</div>
           </div>
-          <div className="px-7 py-[22px]">
+          <div className={cn("px-7 py-[22px]", showRealizedPL && "border-r border-line2")}>
             <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Unrealised P/L</div>
             <div className={cn("mt-1.5 font-serif text-[26px]", position.unrealizedPL >= 0 ? "text-up" : "text-dn")}>
               {formatCurrency(position.unrealizedPL, currency)}
@@ -112,6 +131,14 @@ export function TransactionsTab({ symbol, currency }: TransactionsTabProps) {
               {formatPercent(position.unrealizedPLPercent)}
             </div>
           </div>
+          {showRealizedPL && (
+            <div className="px-7 py-[22px]">
+              <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Realized P/L</div>
+              <div className={cn("mt-1.5 font-serif text-[26px]", position.realizedPL >= 0 ? "text-up" : "text-dn")}>
+                {formatCurrency(position.realizedPL, currency)}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

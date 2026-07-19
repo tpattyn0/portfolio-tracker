@@ -42,3 +42,20 @@ export function getPositionsPanelState(
   if (!position) return "none";
   return position.quantity > 0 ? "held" : "closed";
 }
+
+/**
+ * Whether a Realized P/L figure should be surfaced at all (plan
+ * `plans/2026-07-19-positions-tab.md`, PT-I1 — owner decision PT-Q1:
+ * re-surface Realized P/L in the Positions tab, for both held and closed
+ * positions). Preserves the old `/portfolio/[ticker]` header's
+ * `hasRealizedPL` semantic — `undefined`/`null` (not yet loaded, or the API
+ * genuinely omitted it) and exactly `0` (nothing realized yet) both hide the
+ * figure, since "no realized P/L" and "€0.00 realized P/L" read the same to a
+ * user and a bare zero cell every time a position hasn't sold anything would
+ * be noise on the far more common held-position case. This does not change
+ * how realizedPL is computed — see `lib/services/realized-pl.service.ts`
+ * `computePositionRealizedPL`, the single source of the actual number.
+ */
+export function hasRealizedPL(realizedPL: number | null | undefined): boolean {
+  return realizedPL !== undefined && realizedPL !== null && realizedPL !== 0;
+}

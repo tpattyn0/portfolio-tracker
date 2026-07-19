@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getPositionsPanelState, shouldShowPositionsTab } from "./positions-tab";
+import { getPositionsPanelState, hasRealizedPL, shouldShowPositionsTab } from "./positions-tab";
 
 describe("shouldShowPositionsTab", () => {
   it("returns true when transactions exist (happy path)", () => {
@@ -30,5 +30,22 @@ describe("getPositionsPanelState", () => {
   it("returns 'none' when there is no position record at all", () => {
     expect(getPositionsPanelState(null)).toBe("none");
     expect(getPositionsPanelState(undefined)).toBe("none");
+  });
+});
+
+describe("hasRealizedPL", () => {
+  it("returns true for a positive or negative realized P/L (happy path)", () => {
+    expect(hasRealizedPL(500)).toBe(true);
+    expect(hasRealizedPL(-200)).toBe(true);
+    expect(hasRealizedPL(0.01)).toBe(true);
+  });
+
+  it("returns false when realized P/L is exactly zero — nothing realized yet", () => {
+    expect(hasRealizedPL(0)).toBe(false);
+  });
+
+  it("returns false when realized P/L is absent (undefined/null) — API gap or not loaded", () => {
+    expect(hasRealizedPL(undefined)).toBe(false);
+    expect(hasRealizedPL(null)).toBe(false);
   });
 });

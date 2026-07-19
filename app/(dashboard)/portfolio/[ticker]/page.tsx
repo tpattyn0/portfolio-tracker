@@ -114,15 +114,11 @@ export default function PositionDetailPage() {
   const showPositionsTab = shouldShowPositionsTab(transactions);
   const tabs = ALL_TABS.filter((tab) => tab.value !== "transactions" || showPositionsTab);
 
-  // Defensive fallback: if the active tab is ever no longer in the visible
-  // set, fall back to Overview rather than rendering a selected-but-hidden
-  // tab with no matching button (mirrors research/[symbol]/page.tsx).
-  useEffect(() => {
-    if (!tabs.some((tab) => tab.value === activeTab)) {
-      setActiveTab("overview");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showPositionsTab]);
+  // Defensive fallback derived at render time: if the active tab is ever no
+  // longer in the visible set, fall back to Overview rather than rendering a
+  // selected-but-hidden tab with no matching button (mirrors
+  // research/[symbol]/page.tsx; PT-S1, reviews/2026-07-19-positions-tab.md).
+  const effectiveTab = tabs.some((tab) => tab.value === activeTab) ? activeTab : "overview";
 
   // Delete position mutation
   const deleteMutation = useMutation({
@@ -291,7 +287,7 @@ export default function PositionDetailPage() {
             onClick={() => setActiveTab(tab.value)}
             className={cn(
               "cursor-pointer pb-3 text-[11px] uppercase tracking-[0.14em]",
-              activeTab === tab.value
+              effectiveTab === tab.value
                 ? "border-b-2 border-foreground font-semibold text-foreground"
                 : "text-mut"
             )}
@@ -301,43 +297,43 @@ export default function PositionDetailPage() {
         ))}
       </div>
 
-      {activeTab === "overview" && (
+      {effectiveTab === "overview" && (
         <ComponentErrorBoundary name="Overview">
           <Overview symbol={position.ticker} name={position.name} currentPrice={currentPrice} currency={baseCurrency} />
         </ComponentErrorBoundary>
       )}
 
-      {activeTab === "technical" && (
+      {effectiveTab === "technical" && (
         <ComponentErrorBoundary name="Technical Analysis">
           <TechnicalAnalysis symbol={position.ticker} currency={baseCurrency} />
         </ComponentErrorBoundary>
       )}
 
-      {activeTab === "fundamental" && (
+      {effectiveTab === "fundamental" && (
         <ComponentErrorBoundary name="Fundamental Analysis">
           <FundamentalAnalysis symbol={position.ticker} currency={baseCurrency} />
         </ComponentErrorBoundary>
       )}
 
-      {activeTab === "analyst" && (
+      {effectiveTab === "analyst" && (
         <ComponentErrorBoundary name="Analyst Ratings">
           <AnalystRatings symbol={position.ticker} currentPrice={currentPrice} currency={baseCurrency} />
         </ComponentErrorBoundary>
       )}
 
-      {activeTab === "intrinsic" && (
+      {effectiveTab === "intrinsic" && (
         <ComponentErrorBoundary name="Intrinsic Value">
           <IntrinsicValue symbol={position.ticker} currentPrice={currentPrice} currency={baseCurrency} />
         </ComponentErrorBoundary>
       )}
 
-      {activeTab === "transactions" && (
+      {effectiveTab === "transactions" && (
         <ComponentErrorBoundary name="Positions">
           <TransactionsTab symbol={position.ticker} currency={baseCurrency} />
         </ComponentErrorBoundary>
       )}
 
-      {activeTab === "news" && (
+      {effectiveTab === "news" && (
         <ComponentErrorBoundary name="News & Sentiment">
           <div className="space-y-5">
             {newsArticles && newsArticles.length > 0 && (
