@@ -1,7 +1,7 @@
 # Review: analyst-revisions-nvda-fix
 
 Date: 2026-07-20
-Status:
+Status: IMPLEMENTED — 2026-07-20 (code + review complete; migration created but NOT applied — owner `prisma migrate deploy` required before the fix is live)
 
 ## Summary
 
