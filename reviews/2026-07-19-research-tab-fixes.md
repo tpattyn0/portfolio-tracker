@@ -1,6 +1,6 @@
 # Review: research-tab-fixes (Analyst / Intrinsic / Positions / News — 9-item batch)
 Date: 2026-07-20
-Status:
+Status: IMPLEMENTED — 2026-07-20
 
 ## Summary
 Findings: 0 BLOCKERs, 0 ISSUEs, 0 SUGGESTIONs, 2 QUESTIONs
