@@ -18,3 +18,4 @@
 | 2026-07-19-positions-tab.md | 2026-07-19 | IMPLEMENTED — 2026-07-19 (0 BLOCKERs; PT-I1 Realized P/L re-surfaced + PT-I2 test/ADR fixed over 3 iters; PT-Q2 owner click-through pending; PT-S2 skipped) |
 | 2026-07-19-positions-stat-distinction.md | 2026-07-19 | IMPLEMENTED — 2026-07-19 (0 BLOCKERs/ISSUEs/SUGGESTIONs; PSD-Q1 owner visual acceptance pending) |
 | 2026-07-19-positions-band-restyle.md | 2026-07-19 | IMPLEMENTED — 2026-07-19 (0 BLOCKERs/ISSUEs/SUGGESTIONs; supersedes stat-distinction bg-fill panel with Intrinsic-style bare band; PBR-Q1 owner visual acceptance pending) |
+| 2026-07-19-research-tab-fixes.md | 2026-07-20 | (0 BLOCKERs/ISSUEs/SUGGESTIONs; 2 owner-acceptance QUESTIONs RTF-Q1/Q2; verify green 122/122) |
