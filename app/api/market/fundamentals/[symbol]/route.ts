@@ -1,22 +1,26 @@
 // app/api/market/fundamentals/[symbol]/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/utils/auth";
 import { fundamentalAnalysisService } from "@/lib/services/fundamental-analysis.service";
+import { getWeights } from "@/lib/services/scoring-preferences.service";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ symbol: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await getAuthenticatedUser();
+    if (auth.error) return auth.error;
 
     const { symbol } = await params;
+
+    // Per-user fundamental reweight (plans/2026-07-20-configurable-scoring-weights.md,
+    // ADR-21): the route reads the user's weights and passes them in — the
+    // service itself never reads UserScoringPreferences (ADR-3).
+    const weights = await getWeights(auth.userId);
     const fundamentals = await fundamentalAnalysisService.fetchFundamentals(
-      symbol
+      symbol,
+      weights.fundamental
     );
 
     return NextResponse.json(fundamentals);

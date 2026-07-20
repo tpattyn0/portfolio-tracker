@@ -211,7 +211,7 @@ cards) is the **Designer stage's** job — see "Notes for the Designer stage".
 Ordered, independently verifiable. Task status markers maintained by the Coding agent
 in this file: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 
-1. [ ] **Pure weights module + defaults + normalization.** Create
+1. [x] **Pure weights module + defaults + normalization.** Create
    `lib/utils/scoring-weights.ts` exporting: `DEFAULT_SCORING_WEIGHTS` (the verified
    defaults above), types (`CompositeWeights`, `FundamentalWeights`),
    `normalizeWeights(raw)` (clamp-negatives, all-zero→defaults, single→1.0, normal→sum-to-1),
@@ -225,7 +225,7 @@ in this file: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
    `weightedCompositeTotal` with default weights matches `overview.tsx`'s current formula
    for a known score set. `npm run verify` green.
 
-2. [ ] **Prisma model + owner-gated migration.** Add `UserScoringPreferences` (shape
+2. [x] **Prisma model + owner-gated migration.** Add `UserScoringPreferences` (shape
    above) and the `User.userScoringPreferences` back-relation to
    `prisma/schema.prisma`. Generate the migration with
    `prisma migrate dev --create-only` (session-mode `DIRECT_URL`), run
@@ -236,7 +236,7 @@ in this file: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
    `ADD CONSTRAINT` FK — no `DROP`/`ALTER ... DROP`). `prisma migrate status` shows it
    as pending (not applied). Typecheck passes against the regenerated client.
 
-3. [ ] **Preferences service.** Create `lib/services/scoring-preferences.service.ts`
+3. [x] **Preferences service.** Create `lib/services/scoring-preferences.service.ts`
    with `getWeights(userId): { composite, fundamental }` (reads the row, coalesces each
    null column to its default, returns the RAW-but-defaulted set — normalization is a
    read-model concern the callers apply) and `saveWeights(userId, input)` (validates,
@@ -247,7 +247,7 @@ in this file: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
    mocked): no row → all-defaults; partial row (some nulls) → nulls filled with
    defaults, set values preserved; `saveWeights` upserts; negative/NaN input rejected.
 
-4. [ ] **Preferences API route.** Create `app/api/settings/scoring-weights/route.ts`
+4. [x] **Preferences API route.** Create `app/api/settings/scoring-weights/route.ts`
    with `GET` (auth via `getAuthenticatedUser()`, returns
    `{ composite, fundamental }` from the service) and `PUT` (auth, validates body,
    calls `saveWeights`, returns the saved+defaulted set). Thin — delegates to the
@@ -256,7 +256,7 @@ in this file: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
    unauthenticated; GET returns defaults for a user with no row; PUT persists and GET
    reflects it; PUT with a negative weight → 400.
 
-5. [ ] **Composite goes user-weighted (research Overview).** In `overview.tsx`, add the
+5. [x] **Composite goes user-weighted (research Overview).** In `overview.tsx`, add the
    `["scoring-weights"]` query, replace the hardcoded weights object
    (`overview.tsx:136-141`) with `weightedCompositeTotal(scores, normalizeWeights(prefs.composite))`
    using the shared module, and add the weights query to the `isLoading` OR-gate
@@ -267,7 +267,7 @@ in this file: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
    Overview tab, the composite reflects the new weighting without a market-data
    refetch. `npm run verify` green.
 
-6. [ ] **Fundamental score goes user-weighted (server).** Add the optional
+6. [x] **Fundamental score goes user-weighted (server).** Add the optional
    `fundamentalWeights` param to `fetchFundamentals` and the post-step reweight (both
    fresh and cached paths) using `weightedFundamentalTotal`. Migrate
    `app/api/market/fundamentals/[symbol]/route.ts` to `getAuthenticatedUser()`, load the
@@ -281,7 +281,7 @@ in this file: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
    custom fundamental weights differs from a default user, while `breakdown` is identical.
    Verify the cache row is not rewritten with a per-user total. `npm run verify` green.
 
-7. [ ] **Settings page.** Create `app/(dashboard)/settings/page.tsx` implementing the
+7. [x] **Settings page.** Create `app/(dashboard)/settings/page.tsx` implementing the
    Designer's spec (Task 0 of the Designer stage): two labelled sections, per-dimension
    weight controls, live normalized-% readout, reset-to-defaults, save (PUT +
    `["scoring-weights"]` invalidation + toast). Uses only DESIGN.md tokens/components.
@@ -290,7 +290,7 @@ in this file: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
    ten controls seeded from GET, the live % updates as weights change, reset restores
    defaults, save persists (reload shows saved values). `npm run verify` green.
 
-8. [ ] **Wishlist uses the SAME single scoring definition (owner requirement — not optional).**
+8. [x] **Wishlist uses the SAME single scoring definition (owner requirement — not optional).**
    Owner decision (2026-07-20): **there must be exactly ONE definition of the scores — no
    two parallel implementations.** The wishlist currently DUPLICATES the composite math
    (`wishlist.service.ts:274-280` hardcodes the same weights + formula that `overview.tsx`

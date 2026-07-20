@@ -1,0 +1,49 @@
+import { SkeletonBlock, SkeletonCard, SkeletonStatBand, SkeletonText } from "@/components/ui/loading-skeleton";
+
+/**
+ * Settings route-level loading boundary (DESIGN.md "Loading skeleton
+ * (route-level loading.tsx)" -> per-route composition table, "settings/loading.tsx").
+ * Kicker + H1 block (no right-side page-level action — Save lives inside
+ * each section). Two editorial SkeletonCards in page order (Composite score,
+ * then Fundamental score), each with a 5-col SkeletonStatBand (the live
+ * normalized-% band) and five label+field row approximations, ending in a
+ * pill-shaped block for the reset action.
+ */
+export default function SettingsLoading() {
+  return (
+    <div>
+      <div className="mb-9 space-y-2">
+        <SkeletonText variant="kicker" className="w-64" />
+        <SkeletonBlock className="h-[52px] w-80 rounded" />
+        <SkeletonText variant="detail" className="w-full max-w-[560px]" />
+      </div>
+
+      <div className="space-y-6">
+        {[0, 1].map((section) => (
+          <SkeletonCard key={section} editorial className="px-7 pb-7 pt-6">
+            <div className="flex items-center justify-between border-b border-line2 pb-4">
+              <SkeletonText variant="kicker" className="w-40" />
+              <SkeletonText variant="kicker" className="w-56" />
+            </div>
+
+            <SkeletonStatBand columns={5} className="mt-7" />
+
+            <div className="mt-7 grid grid-cols-1 gap-6 sm:grid-cols-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <SkeletonText variant="kicker" className="w-32" />
+                  <SkeletonBlock className="h-10 w-full rounded-md" />
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <SkeletonText variant="pill" />
+              <SkeletonText variant="pill" />
+            </div>
+          </SkeletonCard>
+        ))}
+      </div>
+    </div>
+  );
+}

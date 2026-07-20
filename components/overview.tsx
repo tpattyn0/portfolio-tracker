@@ -6,6 +6,13 @@ import { DetailPriceChart } from "@/components/research/detail-price-chart";
 import { HeadlineScoreCard } from "@/components/research/headline-score-card";
 import { SubscoreBand } from "@/components/research/subscore-band";
 import { round1, sentimentToScore, upsideToScore, verdictLabel } from "@/lib/utils/research-scores";
+import {
+  DEFAULT_SCORING_WEIGHTS,
+  normalizeCompositeWeights,
+  weightedCompositeTotal,
+  weightsEqualDefaults,
+  type CompositeWeights,
+} from "@/lib/utils/scoring-weights";
 
 interface OverviewProps {
   symbol: string;
@@ -74,6 +81,20 @@ export function Overview({ symbol, name, currentPrice, context = "portfolio", cu
     staleTime: 5 * 60 * 1000,
   });
 
+  // User's scoring weights (plans/2026-07-20-configurable-scoring-weights.md).
+  // This is user config, not market data — long staleTime, no periodic
+  // refetch. Settings page invalidates ["scoring-weights"] on save so an
+  // open Overview tab picks up a changed weighting without a manual refresh.
+  const weightsQ = useQuery<{ composite: CompositeWeights }>({
+    queryKey: ["scoring-weights"],
+    queryFn: async () => {
+      const res = await fetch("/api/settings/scoring-weights");
+      if (!res.ok) throw new Error("Failed to fetch scoring weights");
+      return res.json();
+    },
+    staleTime: Infinity,
+  });
+
   // Derive subscores. Each dimension defaults to a neutral `5` when its query
   // has *resolved with no usable data* (the pre-existing behavior), but
   // reports `null` when its query *errored* — the composite math substitutes
@@ -129,45 +150,57 @@ export function Overview({ symbol, name, currentPrice, context = "portfolio", cu
     return round1(sentimentToScore(avg));
   }, [newsQ.data, newsQ.isError]);
 
-  // Composite score per user story — a `null` (errored) dimension substitutes
-  // a neutral 5 in the weighted sum, same as the pre-existing "no data"
-  // fallback; the composite math itself is unchanged.
+  // Composite score, user-weighted (plans/2026-07-20-configurable-scoring-weights.md,
+  // ADR-21) — the hardcoded weights object is replaced by the user's fetched
+  // category weights (falling back to DEFAULT_SCORING_WEIGHTS.composite while
+  // the query is loading/unset), normalized client-side via the shared
+  // lib/utils/scoring-weights.ts module. A `null` (errored) dimension still
+  // substitutes a neutral 5 in the weighted sum, same as before.
+  const compositeWeights = useMemo(
+    () => normalizeCompositeWeights(weightsQ.data?.composite ?? DEFAULT_SCORING_WEIGHTS.composite),
+    [weightsQ.data]
+  );
+
   const composite = useMemo(() => {
-    const weights = {
-      intrinsicValue: 0.25,
-      fundamental: 0.25,
-      technical: 0.20,
-      sentiment: 0.15,
-      analyst: 0.15,
-    };
-    const sum =
-      (intrinsicScore ?? 5) * weights.intrinsicValue +
-      (fundamentalScore ?? 5) * weights.fundamental +
-      (technicalScore ?? 5) * weights.technical +
-      (sentimentScore ?? 5) * weights.sentiment +
-      (analystScore ?? 5) * weights.analyst;
+    const sum = weightedCompositeTotal(
+      {
+        intrinsicValue: intrinsicScore,
+        fundamental: fundamentalScore,
+        technical: technicalScore,
+        sentiment: sentimentScore,
+        analyst: analystScore,
+      },
+      compositeWeights
+    );
     const rounded = round1(sum);
     const action = verdictLabel(rounded, context);
     return { score: rounded, action };
-  }, [intrinsicScore, fundamentalScore, technicalScore, sentimentScore, analystScore, context]);
+  }, [intrinsicScore, fundamentalScore, technicalScore, sentimentScore, analystScore, compositeWeights, context]);
 
-  // The composite HeadlineScoreCard is assembled from all five queries
-  // below — gate its loading state on all five, not just chart/technical
-  // (plans/2026-07-20-small-visual-fixes.md, Issues 2/3). `isLoading` (React
-  // Query v5: isPending && isFetching) is true only during a query's first
-  // fetch with no cached data yet — exactly "still pending", distinct from
-  // "resolved with no usable data" (which the subscore useMemos above already
-  // handle via a neutral-5 fallback, unchanged). Holding the composite card
-  // back until every query has resolved at least once prevents it from ever
-  // rendering a composite/SubscoreBand figure built from a still-loading
-  // dimension's fallback value — the score must appear once, with its final
-  // value, not jump as each of the five queries resolves in turn.
+  const hasCustomWeights = useMemo(
+    () => !weightsEqualDefaults(weightsQ.data?.composite, DEFAULT_SCORING_WEIGHTS.composite),
+    [weightsQ.data]
+  );
+
+  // The composite HeadlineScoreCard is assembled from all five dimension
+  // queries plus the weights query — gate its loading state on all six, not
+  // just chart/technical (plans/2026-07-20-small-visual-fixes.md, Issues 2/3;
+  // extended for the weights query per plans/2026-07-20-configurable-scoring-weights.md
+  // so the card never jumps from default-weighted -> custom-weighted).
+  // `isLoading` (React Query v5: isPending && isFetching) is true only during
+  // a query's first fetch with no cached data yet — exactly "still pending",
+  // distinct from "resolved with no usable data" (which the subscore
+  // useMemos above already handle via a neutral-5 fallback, unchanged).
+  // Holding the composite card back until every query has resolved at least
+  // once prevents it from ever rendering a composite/SubscoreBand figure
+  // built from a still-loading dimension's (or still-default) fallback value.
   const isLoading =
     chartQ.isLoading ||
     fundamentalsQ.isLoading ||
     analystQ.isLoading ||
     intrinsicQ.isLoading ||
-    newsQ.isLoading;
+    newsQ.isLoading ||
+    weightsQ.isLoading;
 
   const insights: string[] = [];
   if (chartQ.data?.indicators?.signal) {
@@ -211,7 +244,7 @@ export function Overview({ symbol, name, currentPrice, context = "portfolio", cu
       ) : (
         <HeadlineScoreCard
           kicker="Overview & composite score"
-          metaKicker="Meridian rating · updated daily"
+          metaKicker={hasCustomWeights ? "Your weighting · updated daily" : "Meridian rating · updated daily"}
           score={composite.score}
           verdictStamp={verdictStamp}
           leftExtra={
