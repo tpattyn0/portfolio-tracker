@@ -1,6 +1,6 @@
 # Review: perf-graph dip clipping fix — margined drawing domain
 Date: 2026-07-20
-Status:
+Status: IMPLEMENTED — 2026-07-20
 
 ## Summary
 Findings: [0 BLOCKERs, 0 ISSUEs, 1 SUGGESTION, 1 QUESTION]
