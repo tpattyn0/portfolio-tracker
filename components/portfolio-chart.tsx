@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { buildAreaPath, buildPath, gridlineYs } from "@/lib/utils/chart-path";
+import { buildAreaPath, buildPath, CHART_DOMAIN_MARGIN, gridlineYs, marginDomain } from "@/lib/utils/chart-path";
 import { niceYTicks } from "@/lib/utils/chart-ticks";
 import { formatCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
@@ -139,9 +139,6 @@ export function PortfolioChart({ positions, baseCurrency = "EUR", exchangeRatesU
     );
   }
 
-  const linePath = buildPath(animatedValues, CHART_WIDTH, CHART_HEIGHT, CHART_PADDING);
-  const areaPath = buildAreaPath(linePath, CHART_WIDTH, CHART_HEIGHT);
-
   // Y-axis ticks computed from the currently *displayed* (animating) series —
   // labels update live as the morph runs, matching how the value figure
   // animates elsewhere (DESIGN.md).
@@ -149,16 +146,31 @@ export function PortfolioChart({ positions, baseCurrency = "EUR", exchangeRatesU
   const yMin = finiteAnimated.length ? Math.min(...finiteAnimated) : 0;
   const yMax = finiteAnimated.length ? Math.max(...finiteAnimated) : 0;
   const yTicks = niceYTicks(yMin, yMax, 3);
-  const valueRange = yMax - yMin || 1;
-  // Gridline/label y-positions derived from the same padded domain buildPath
-  // uses to plot the line, so the series' max/min always land exactly on the
-  // top/bottom gridlines (plans/2026-07-20-small-visual-fixes.md, Issue 4).
-  const gridYs = gridlineYs(yMin, yMax, CHART_HEIGHT, CHART_PADDING, yTicks);
+  // The *drawing* domain buildPath/gridlineYs map into is slightly wider than
+  // the true [yMin, yMax] — a small symmetric margin that gives the
+  // Catmull-Rom spline's overshoot room to stay inside the plot instead of
+  // clipping below the floor / above the ceiling
+  // (plans/2026-07-20-perf-graph-dip-clipping-fix.md). `yTicks` above (the
+  // LABEL values) stay on the true min/max — only the pixel mapping changes.
+  const { domainMin, domainMax } = marginDomain(yMin, yMax, CHART_DOMAIN_MARGIN);
+
+  const linePath = buildPath(animatedValues, CHART_WIDTH, CHART_HEIGHT, CHART_PADDING, CHART_DOMAIN_MARGIN);
+  const areaPath = buildAreaPath(linePath, CHART_WIDTH, CHART_HEIGHT);
+
+  // Gridline/label y-positions derived from the same margined padded domain
+  // buildPath uses to plot the line, so the series' max/min always land
+  // exactly on the top/bottom gridlines (plans/2026-07-20-small-visual-fixes.md,
+  // Issue 4; margined domain per the dip-clipping fix above).
+  const gridYs = gridlineYs(domainMin, domainMax, CHART_HEIGHT, CHART_PADDING, yTicks);
 
   const hoverValue = hoverIndex !== null ? animatedValues[hoverIndex] : undefined;
   const hoverDate = hoverIndex !== null ? series[hoverIndex]?.date : undefined;
   const hoverXFrac = hoverIndex !== null && animatedValues.length > 1 ? hoverIndex / (animatedValues.length - 1) : 0;
-  const hoverYFrac = hoverValue !== undefined ? 1 - (hoverValue - yMin) / valueRange : 0;
+  // Same margined domain as the line/gridlines above, so the hover marker
+  // stays registered with the drawn curve (including inside the dip's new
+  // headroom) rather than the pre-margin [yMin, yMax] fraction.
+  const domainRange = domainMax - domainMin || 1;
+  const hoverYFrac = hoverValue !== undefined ? 1 - (hoverValue - domainMin) / domainRange : 0;
 
   return (
     <div>

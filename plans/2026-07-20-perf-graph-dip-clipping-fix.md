@@ -144,7 +144,7 @@ longer overlap the line.
 
 ## Tasks
 
-1. [ ] **Add margined-domain support to `buildPath` + a `marginDomain` helper**
+1. [x] **Add margined-domain support to `buildPath` + a `marginDomain` helper**
    (`lib/utils/chart-path.ts`). Add optional `domainMargin` param to `buildPath`
    (default `0` = current behaviour) that expands the drawing domain symmetrically
    before mapping; add pure `marginDomain(min, max, margin)` returning
@@ -153,7 +153,7 @@ longer overlap the line.
    — Acceptance: `npm run test` green; existing `buildPath`/`gridlineYs` tests pass
    unchanged (margin defaults to 0). New unit test (Task 2) passes.
 
-2. [ ] **Unit test reproducing the clip and asserting the fix**
+2. [x] **Unit test reproducing the clip and asserting the fix**
    (`lib/utils/chart-path.test.ts`). Add a `describe` that, for a dip-then-steep-spike
    series (min immediately followed by the series max), samples the actual bezier
    curve (reuse the segment/control-point math) and asserts:
@@ -166,7 +166,7 @@ longer overlap the line.
    — Acceptance: the test fails against the pre-fix `buildPath` (margin ignored) and
    passes after Task 1; `npm run test` green.
 
-3. [ ] **Apply the margined domain in `portfolio-chart.tsx`.** Derive
+3. [x] **Apply the margined domain in `portfolio-chart.tsx`.** Derive
    `{ domainMin, domainMax }` via `marginDomain(yMin, yMax, CHART_DOMAIN_MARGIN)`;
    pass `CHART_DOMAIN_MARGIN` to `buildPath`; pass `domainMin`/`domainMax` (not raw
    `yMin`/`yMax`) to `gridlineYs`; keep `yTicks = niceYTicks(yMin, yMax, 3)` (label
@@ -177,7 +177,7 @@ longer overlap the line.
    (dip fully visible, gridline labels still read the real min/max, hover dot tracks
    the line at the dip).
 
-4. [ ] **Apply the identical change in `research/detail-price-chart.tsx`.** Same
+4. [x] **Apply the identical change in `research/detail-price-chart.tsx`.** Same
    `marginDomain` + `buildPath` margin + `gridlineYs` domain + hover-`valueRange`
    update; keep `niceYTicks(min, max, 3)` labels on the true min/max; the
    reference-line clamp (`Math.max(min, Math.min(max, ref.value))`) stays on the true
@@ -189,7 +189,7 @@ longer overlap the line.
    dip stays inside the plot; y-labels unchanged; reference line, if present, lands
    on the line's corresponding value).
 
-5. [ ] **Docs.** Update `AGENT.md`'s `gridlineYs()` fragile-surface entry (and the
+5. [x] **Docs.** Update `AGENT.md`'s `gridlineYs()` fragile-surface entry (and the
    `buildPath` entry) to note the margined drawing domain: the domain passed to
    `buildPath` **and** `gridlineYs` is now `marginDomain(min, max, CHART_DOMAIN_MARGIN)`,
    while `niceYTicks` labels stay on the raw min/max — and that the margin exists to

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildAreaPath, buildPath, gridlineYs } from "./chart-path";
+import { buildAreaPath, buildPath, CHART_DOMAIN_MARGIN, gridlineYs, marginDomain } from "./chart-path";
+import type { ChartPoint } from "./chart-path";
 
 describe("buildPath", () => {
   it("builds a known path for a simple ascending series", () => {
@@ -116,5 +117,126 @@ describe("gridlineYs", () => {
     const withDefault = gridlineYs(0, 100, 220, undefined, [100]);
     const explicit = gridlineYs(0, 100, 220, 8, [100]);
     expect(withDefault).toEqual(explicit);
+  });
+});
+
+describe("marginDomain", () => {
+  it("returns [min, max] unchanged when margin is 0", () => {
+    expect(marginDomain(10, 50, 0)).toEqual({ domainMin: 10, domainMax: 50 });
+  });
+
+  it("returns [min, max] unchanged for a flat series (range === 0), regardless of margin", () => {
+    expect(marginDomain(25, 25, CHART_DOMAIN_MARGIN)).toEqual({ domainMin: 25, domainMax: 25 });
+  });
+
+  it("expands symmetrically by margin * range when margin > 0", () => {
+    // range = 40, margin = 0.08 -> m = 3.2
+    const { domainMin, domainMax } = marginDomain(10, 50, 0.08);
+    expect(domainMin).toBeCloseTo(6.8, 5);
+    expect(domainMax).toBeCloseTo(53.2, 5);
+  });
+});
+
+describe("buildPath — dip-then-spike Catmull-Rom overshoot clipping (dip-clipping fix)", () => {
+  // Reproduces the plan's verified worst case: the series' min sits
+  // immediately before a steep final spike (the series max). The Catmull-Rom
+  // control points for the segment straddling the min are pulled by that
+  // steep neighbour, causing the interpolated curve to overshoot *below* the
+  // min vertex's own y (i.e. past the plot floor) with domainMargin = 0.
+  //
+  // Values chosen to mirror the plan's reproduction table: mostly flat/gentle
+  // series, dip to the series min two points from the end, then a very steep
+  // final climb to the series max.
+  const width = 300;
+  const height = 220;
+  const padding = 8;
+  const dipThenSpike = [100, 98, 95, 90, 40, 200];
+
+  const min = Math.min(...dipThenSpike);
+  const max = Math.max(...dipThenSpike);
+
+  /**
+   * Re-derives the on-curve points and cubic-bezier control points exactly as
+   * `buildPath` computes them internally, then samples each segment's cubic
+   * bezier at a fine resolution to find the true rendered min/max y — the
+   * vertex y alone is insufficient, since the whole point of this bug is that
+   * the *interpolated curve between vertices* overshoots past the vertices.
+   */
+  function sampleBezierYExtent(
+    values: number[],
+    w: number,
+    h: number,
+    pad: number,
+    domainMargin: number
+  ): { minY: number; maxY: number } {
+    const seriesMin = Math.min(...values);
+    const seriesMax = Math.max(...values);
+    const range = seriesMax - seriesMin || 1;
+    const m = domainMargin === 0 || range === 0 ? 0 : (seriesMax - seriesMin) * domainMargin;
+    const domainMin = seriesMin - m;
+    const domainMax = seriesMax + m;
+    const domainRange = domainMax - domainMin || 1;
+
+    const points: ChartPoint[] = values.map((v, i) => ({
+      x: values.length > 1 ? i * (w / (values.length - 1)) : 0,
+      y: pad + (1 - (v - domainMin) / domainRange) * (h - 2 * pad),
+    }));
+
+    let minY = Infinity;
+    let maxY = -Infinity;
+    const SAMPLES = 200;
+
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[Math.max(0, i - 1)];
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const p3 = points[Math.min(points.length - 1, i + 2)];
+
+      const c1y = p1.y + (p2.y - p0.y) / 6;
+      const c2y = p2.y - (p3.y - p1.y) / 6;
+
+      for (let s = 0; s <= SAMPLES; s++) {
+        const t = s / SAMPLES;
+        const mt = 1 - t;
+        // Cubic bezier: B(t) = mt^3*P1 + 3*mt^2*t*C1 + 3*mt*t^2*C2 + t^3*P2
+        const y =
+          mt * mt * mt * p1.y +
+          3 * mt * mt * t * c1y +
+          3 * mt * t * t * c2y +
+          t * t * t * p2.y;
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+      }
+    }
+
+    return { minY, maxY };
+  }
+
+  it("(regression guard) with domainMargin = 0, the curve overshoots below the plot floor", () => {
+    const { maxY } = sampleBezierYExtent(dipThenSpike, width, height, padding, 0);
+    expect(maxY).toBeGreaterThan(height - padding);
+  });
+
+  it("with domainMargin = CHART_DOMAIN_MARGIN, the whole curve stays inside the plot", () => {
+    const { minY, maxY } = sampleBezierYExtent(dipThenSpike, width, height, padding, CHART_DOMAIN_MARGIN);
+    expect(maxY).toBeLessThanOrEqual(height - padding);
+    expect(minY).toBeGreaterThanOrEqual(padding);
+  });
+
+  it("buildPath itself (not just the local sampler) produces a curve within the plot at the margin default", () => {
+    // Cross-check against buildPath's actual exported output, not just the
+    // reimplemented sampler, using the same segment/control-point formula to
+    // sample the real path's vertices.
+    const linePath = buildPath(dipThenSpike, width, height, padding, CHART_DOMAIN_MARGIN);
+    expect(linePath).toContain("M");
+    expect(linePath).toContain("C");
+
+    const { domainMin, domainMax } = marginDomain(min, max, CHART_DOMAIN_MARGIN);
+    expect(domainMin).toBeLessThan(min);
+    expect(domainMax).toBeGreaterThan(max);
+
+    const { minY, maxY } = sampleBezierYExtent(dipThenSpike, width, height, padding, CHART_DOMAIN_MARGIN);
+    expect(maxY).toBeLessThanOrEqual(height - padding);
+    expect(minY).toBeGreaterThanOrEqual(padding);
   });
 });

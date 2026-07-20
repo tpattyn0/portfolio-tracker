@@ -13,6 +13,45 @@ export interface ChartPoint {
 }
 
 /**
+ * Default `domainMargin` for `buildPath`: how much extra vertical headroom
+ * (as a fraction of the series' own range) to add above the max and below
+ * the min before mapping. Exists to contain Catmull-Rom spline overshoot —
+ * see `buildPath`'s doc comment and
+ * `plans/2026-07-20-perf-graph-dip-clipping-fix.md`. Tuned so the plan's
+ * worst-case reproduction (a dip immediately followed by the series max)
+ * maps strictly inside `[padding, height - padding]` with a safety margin;
+ * do not lower this without re-running `chart-path.test.ts`'s clip
+ * reproduction, and do not set it to 0 in a chart component or the dip
+ * re-clips.
+ */
+export const CHART_DOMAIN_MARGIN = 0.08;
+
+/**
+ * Expands `[min, max]` symmetrically by `margin` (a fraction of the range)
+ * to produce the domain `buildPath` should draw into and `gridlineYs` should
+ * position gridlines against — the single source of truth shared by both, so
+ * the line and its gridlines never drift apart (see the `buildPath` and
+ * `gridlineYs` fragile-surface entries in `AGENT.md`).
+ *
+ * `margin = 0` returns `[min, max]` unchanged (today's behaviour). A flat
+ * series (`max === min`) also returns `[min, max]` unchanged — a zero range
+ * has nothing to proportionally expand, matching `buildPath`'s own flat-
+ * series handling (centered midline, no divide-by-zero).
+ */
+export function marginDomain(
+  min: number,
+  max: number,
+  margin: number
+): { domainMin: number; domainMax: number } {
+  const range = max - min;
+  if (margin === 0 || range === 0) {
+    return { domainMin: min, domainMax: max };
+  }
+  const m = range * margin;
+  return { domainMin: min - m, domainMax: max + m };
+}
+
+/**
  * Maps a series of numeric values onto an SVG path string, plotting each value
  * evenly spaced across `width` and vertically scaled (inverted — larger values
  * plot higher) within `height`, with `padding` px of vertical breathing room at
@@ -21,17 +60,33 @@ export interface ChartPoint {
  * that (unlike Recharts' monotone interpolation) can overshoot slightly between
  * points — this is the design's intended "hand-drawn" curve quality.
  *
+ * `domainMargin` (default `0`, fully backward compatible) expands the
+ * *drawing* domain symmetrically beyond the series' own `[min, max]` via
+ * `marginDomain` before mapping values to pixels — the data's own min/max
+ * vertices still exist and are still plotted, but the pixel positions they
+ * map to no longer sit flush on the plot floor/ceiling. This exists solely to
+ * give the Catmull-Rom spline's overshoot (see above) somewhere to go: with
+ * `domainMargin = 0`, a series' min vertex plots at exactly `height -
+ * padding`, and a steep segment on either side of it can make the
+ * interpolated curve dip *below* that vertex — past the plot floor and out of
+ * the (unclipped, `preserveAspectRatio="none"`) viewBox. A small headroom
+ * margin keeps the whole curve inside `[padding, height - padding]`. Callers
+ * that also draw gridlines (`gridlineYs`) must pass the *same* margined
+ * domain there, or the line and gridlines will visibly disagree.
+ *
  * Degenerate cases handled explicitly:
  * - Empty or all-NaN input -> "" (nothing to draw).
  * - Single point -> a zero-length path at that point (a single "M" command).
  * - Flat series (max === min) -> the `|| 1` range guard avoids a divide-by-zero;
- *   the line renders as a flat horizontal midline.
+ *   the line renders as a flat horizontal midline. `marginDomain` also leaves
+ *   a zero range unchanged, so this case is unaffected by `domainMargin`.
  */
 export function buildPath(
   values: number[],
   width: number,
   height: number,
-  padding = 8
+  padding = 8,
+  domainMargin = 0
 ): string {
   const finiteValues = values.filter((v) => Number.isFinite(v));
   if (finiteValues.length === 0 || finiteValues.length !== values.length) {
@@ -47,11 +102,12 @@ export function buildPath(
   // early return above (MDO-04).
   const min = Math.min(...finiteValues);
   const max = Math.max(...finiteValues);
-  const range = max - min || 1;
+  const { domainMin, domainMax } = marginDomain(min, max, domainMargin);
+  const range = domainMax - domainMin || 1;
 
   const points: ChartPoint[] = values.map((v, i) => ({
     x: values.length > 1 ? i * (width / (values.length - 1)) : 0,
-    y: padding + (1 - (v - min) / range) * (height - 2 * padding),
+    y: padding + (1 - (v - domainMin) / range) * (height - 2 * padding),
   }));
 
   if (points.length === 1) {

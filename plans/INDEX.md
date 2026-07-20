@@ -16,4 +16,4 @@
 | plans/2026-07-20-analyst-revisions-nvda-fix.md | 2026-07-20 | implemented (migration pending owner deploy) | reviews/2026-07-20-analyst-revisions-nvda-fix.md |
 | plans/2026-07-20-small-visual-fixes.md | 2026-07-20 | implemented | reviews/2026-07-20-small-visual-fixes.md |
 | plans/2026-07-20-perf-graph-spike-fix.md | 2026-07-20 | superseded (misread; spike is correct) | — |
-| plans/2026-07-20-perf-graph-dip-clipping-fix.md | 2026-07-20 | planned | — |
+| plans/2026-07-20-perf-graph-dip-clipping-fix.md | 2026-07-20 | in review | — |
