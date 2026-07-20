@@ -1,6 +1,6 @@
 # Review: configurable per-user scoring weights (PR #22)
 Date: 2026-07-20
-Status:
+Status: IMPLEMENTED — 2026-07-21 (code + review complete; migration created but NOT applied — owner `prisma migrate deploy` required before the feature is live)
 
 ## Summary
 Findings: 0 BLOCKERs, 0 ISSUEs, 1 SUGGESTION, 2 QUESTIONs

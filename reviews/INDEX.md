@@ -23,4 +23,4 @@
 | 2026-07-20-small-visual-fixes.md | 2026-07-20 | IMPLEMENTED — 2026-07-20 (0 BLOCKERs/ISSUEs; dividers + overview five-query gate + data-derived chart gridlines; SVF-Q1 visual + SVF-Q2 TD-36 Designer routing pending; SVF-S1/S2 optional; 135/135) |
 | 2026-07-20-perf-graph-dip-clipping-fix.md | 2026-07-20 | IMPLEMENTED — 2026-07-20 (0 BLOCKERs/ISSUEs; margined drawing domain — bezier-sampling test + domain-registration invariant + labels-on-true-min/max verified; DIP-Q1 owner visual acceptance pending; DIP-S1 optional; 141/141) |
 | 2026-07-20-gemini-model-update.md | 2026-07-20 | IMPLEMENTED — 2026-07-20 (0 BLOCKERs/ISSUEs/SUGGESTIONs; gemini-1.5-flash→2.5-flash live-verified + centralized constant; GMU-Q1 owner UI acceptance pending; 117/117) |
-| 2026-07-20-configurable-scoring-weights.md | 2026-07-20 |  |
+| 2026-07-20-configurable-scoring-weights.md | 2026-07-20 | IMPLEMENTED — 2026-07-21 (0 BLOCKERs/ISSUEs; per-user weights, single-source module, cache-safe fundamental reweight, IDOR-safe prefs write, backward-compat verified; SCW-Q1 owner migrate-deploy + SCW-Q2 live check pending; SCW-S1 optional; 193/193) |
