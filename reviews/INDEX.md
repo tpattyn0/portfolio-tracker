@@ -20,3 +20,4 @@
 | 2026-07-19-positions-band-restyle.md | 2026-07-19 | IMPLEMENTED — 2026-07-19 (0 BLOCKERs/ISSUEs/SUGGESTIONs; supersedes stat-distinction bg-fill panel with Intrinsic-style bare band; PBR-Q1 owner visual acceptance pending) |
 | 2026-07-19-research-tab-fixes.md | 2026-07-20 | IMPLEMENTED — 2026-07-20 (0 BLOCKERs/ISSUEs/SUGGESTIONs; 2 owner-acceptance QUESTIONs RTF-Q1/Q2 pending; verify green 122/122) |
 | 2026-07-20-analyst-revisions-nvda-fix.md | 2026-07-20 | IMPLEMENTED — 2026-07-20 (0 BLOCKERs/ISSUEs; 90-day filter + persist migration; ARV-Q1 owner migrate-deploy + ARV-Q2 live check pending; ARV-S1 optional) |
+| 2026-07-20-small-visual-fixes.md | 2026-07-20 |  |
