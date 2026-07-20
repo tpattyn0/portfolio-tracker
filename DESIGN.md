@@ -289,6 +289,28 @@ kicker (10.5px uppercase, 0.1em, `--mut`) — e.g. "Meridian rating · updated d
 analysts · last 90 days", "Discounted cash flow · 10-year model", "1,240 articles
 analysed · last 30 days".
 
+**Custom-weighting meta kicker (Overview + Fundamental only — see UX flows →
+"Settings — scoring weights").** When the signed-in user's fetched scoring weights
+differ from `DEFAULT_SCORING_WEIGHTS` for the group that card's score is built
+from, the meta kicker's copy swaps to signal the score is personalized, using the
+exact same slot and type treatment — no new chrome, no new color, no badge:
+- **Overview tab** (composite, driven by the 5-category weights): meta kicker reads
+  **"Your weighting · updated daily"** instead of "Meridian rating · updated
+  daily" when composite weights ≠ defaults.
+- **Fundamental tab** (driven by the 5-subcategory weights): meta kicker reads
+  **"Your weighting · trailing twelve months"** instead of "Trailing twelve
+  months · FY ends Sep" when fundamental weights ≠ defaults. (The FY-end clause is
+  dropped in the custom state rather than appended, to keep the kicker at its
+  normal length — both are muted secondary facts, not additive.)
+- Every other tab (Technical, Analysts, Intrinsic, News) is unaffected — those
+  scores are not weight-configurable at any sub-dimension level (per the plan's
+  Assumptions), so their meta kickers never change.
+- The comparison is a cheap deep-equal against the already-fetched
+  `["scoring-weights"]` query result vs. the imported `DEFAULT_SCORING_WEIGHTS`
+  constant — no extra request. Text-only, matching the "no fourth accent" rule;
+  this is the full extent of the affordance — no icon, no dot, no pill is added
+  to the header row for this signal.
+
 Body: `grid-template-columns: 280px 1fr`, `gap:56px`, `padding-top:28px`.
 - **Left column** — always in this order:
   1. `ScoreFigure` at 84px with the `/10` suffix at 30px `--mut`, banded per Score
@@ -569,6 +591,7 @@ none defines new one-off markup):**
 | `wishlist/loading.tsx` | Kicker block + H1-height block on the left, one pill block (add-to-watchlist) on the right; `SkeletonStatBand columns={3}`; `SkeletonTable rows={5}`. Replaces the inline `WishlistSkeleton` (same shape, now shared). |
 | `portfolio/closed-positions/loading.tsx` | Kicker block + H1-height block + a detail-line block (realized-to-date line) on the left, one pill block (Export CSV) on the right; a `SkeletonCard` in the 6-col summary shape (reuse `SkeletonStatBand columns={6}`, card-wrapped per the Ruled stat band card-wrapped variant); a filter row (one pill-shaped block for the ticker filter, three short label blocks for All/Winning/Losing); `SkeletonTable rows={6}`. |
 | `portfolio/[ticker]/loading.tsx` | Same header/quote-card/tab-bar composition as `research/[symbol]/loading.tsx` (TD-32: this page reuses the Research detail screen's chrome, see UX flows → "Position detail" — its skeleton reuses the *same* skeleton composition for the same reason). Per `plans/2026-07-19-positions-tab.md`, the quote card is now literal parity, not just geometric similarity — both pages render the identical general-market 4-col grid (Current price / Day range / 52-week range / Market cap), so the skeleton's 4 equal columns, card-wrapped, `border-line2` verticals need no per-page distinction at all (skeletons never render real cell labels regardless). |
+| `settings/loading.tsx` | Kicker block + H1-height block on the left (no right-side action in the header — Settings has no page-level pill action, unlike the other routes above). Below: two `SkeletonCard editorial` blocks in page order (Composite score, then Fundamental score), each containing a kicker-height block (section header) then a `SkeletonStatBand columns={5}` (the live normalized-% ruled band) then 5 paired blocks approximating the label+input weight-stepper rows (a `kicker`-variant block over a `h-10` block, per dimension), then a `pill`-variant block (Reset to defaults) at the card's end. See UX flows → "Settings — scoring weights" for the real layout this mirrors. |
 
 **Rule for the Coding agent:** every skeleton mirrors its real page's column
 count, card count, and block order — never a generic "3 boxes" placeholder. If a
@@ -609,6 +632,43 @@ above a `3px double var(--ink)` top rule with `12px` margin-top / `14px` padding
 rendered at Newsreader 22px in `--ink` (no muted styling — this is the number the
 screen exists to show). Used identically in Buy-more/Sell-position modals per the
 plan's Task 10 (shared form surface).
+
+### Weight stepper (numeric input, ledger form field)
+The control for entering a relative weight (Settings — scoring weights, see UX flows).
+**A numeric input, not a slider** — decided over `components/ui/slider.tsx` (Radix)
+per `plans/2026-07-20-configurable-scoring-weights.md`'s Designer note: the weights
+are relative numbers the user reasons about, and the live normalized-% readout (see
+below) is the actual feedback surface, not the control itself. A 20px round-thumb
+filled-track slider is a heavier, more "app-like" motif than Meridian's flat ruled
+surfaces and would be the first rounded/filled interactive control in the system;
+a precise numeric field is the existing Add-position form idiom applied to a new
+field, not a new primitive. No Slider component entry is added — `slider.tsx`
+remains unused by this feature and by the rest of the app today.
+
+This is exactly the Add-position form's label+input field pattern
+(`app/(dashboard)/portfolio/add/page.tsx`), reused verbatim, not reinvented:
+- **Label** — kicker-style, `text-[10.5px] uppercase tracking-[0.12em] text-mut
+  mb-2 block`, the dimension name ("Technical", "Valuation", etc.).
+- **Field** — `<input type="text" inputMode="decimal">`, class
+  `w-full h-10 box-border rounded-md border border-border bg-background px-3.5
+  text-sm text-foreground outline-none` (the exact `inputClass` constant from the
+  Add-position page — `--bg` cutout background, 1px `--line` border via
+  `border-border`, radius 6px via `rounded-md`, 40px height, no focus glow). Same
+  free-text-with-`inputMode="decimal"` parsing pattern as the Add-position
+  quantity/price/fees fields (a controlled string state, parsed with the page's
+  existing numeric-parse helper shape) — not a native `<input type="number">`
+  spinner, which would introduce a different, unprecedented micro-interaction
+  (browser spinner arrows) this system has never used.
+- **Range** — any non-negative real number the user types (0 upward, integers or
+  decimals both valid — a value of `0` is a legal "exclude this dimension"
+  input). The normalization math (`normalizeWeights`) treats input as arbitrary
+  relative weights, so no fixed max is enforced by the control; the API layer
+  rejects negative/non-finite values per the plan's validation, which is
+  sufficient guard — no client-side upper clamp is specced.
+- **Layout** — one label+field pair per dimension, arranged in the section Card's
+  own grid (`grid grid-cols-2 gap-6` on wide viewports, matching the Add-position
+  form's two-column field grid; single column below the form's existing
+  responsive breakpoint — no new breakpoint token introduced).
 
 ### Card
 Base surface for every non-table content block: `--card` background, 1px `--line`
@@ -793,6 +853,12 @@ unchanged. The 7 screens covered (per the plan) and their navigation:
    bundle; it inherits the Login screen's treatment by direct extrapolation (same
    420px column, masthead block, card, field/label/button patterns) — see the plan's
    `## Assumptions`. No new tokens or patterns are needed for it.
+8. **Settings** (`/settings`) — per-user scoring-weight controls (Composite score,
+   Fundamental score), a live normalized-% readout, reset-to-defaults, save. Reached
+   via the account-menu dropdown ("Settings", `components/navigation.tsx:110-112`,
+   which already links here and currently 404s). Added by
+   `plans/2026-07-20-configurable-scoring-weights.md`; full spec: see "Settings —
+   scoring weights" below.
 
 ### Research detail — tab-by-tab
 
@@ -1110,6 +1176,144 @@ No new tokens or components are defined for this page — the header is now a di
 reuse of an existing pattern, not a variant. Any lower section of
 `/portfolio/[ticker]` not covered by this header/quote-card/tab-bar scope remains
 tracked under TD-32 until reskinned in a later pass.
+
+### Settings — scoring weights
+
+Governing plan: `plans/2026-07-20-configurable-scoring-weights.md`. Route
+`app/(dashboard)/settings/page.tsx`, reached only via the account-menu dropdown
+(no top-nav entry — this is an account-level control surface, not a research/
+portfolio destination). Everything below reuses existing tokens/components named
+elsewhere in this file; no new color, spacing, or type-scale value is introduced.
+The one new named component is **Weight stepper** (see Components above);
+everything else is an existing pattern applied to new content.
+
+**Page chrome.** Standard authed-screen container: max-width 1400px, padding
+`56px 32px 96px` (Spacing/shape → Page container). H1 block:
+- **Kicker eyebrow** (Tone of voice: "every screen's H1 gets one"): **"House rules
+  · how your scores are weighed"** — sans, 10.5–11px uppercase, 0.12–0.14em,
+  `--mut`, matching every other screen's eyebrow (e.g. "Under observation ·
+  before you invest").
+- **H1**: **"Scoring weights"** — Newsreader, Screen H1 scale (52px/500, line-height
+  1.05, `--ink`).
+- **Italic subline** (optional pattern, used here): Research index H1 subline
+  treatment (16px italic Newsreader, `--mut`) — **"Set how much each dimension
+  counts toward your Composite and Fundamental scores. Unweighted dimensions fall
+  back to the house default."** Quiet, secondary, matching the "italic for asides,
+  not instructions" rule — the page still works without reading it.
+
+No page-level pill action sits beside the H1 (unlike Dashboard's "+ Add position"
+or Closed-positions' "Export CSV") — Save lives inside each section instead (see
+below), so there is nothing to put in the header's right slot.
+
+**Two sections, in fixed order: Composite score, then Fundamental score.** Each
+section is an **Editorial card** (Components → "Card" → Editorial card variant:
+`--card` background, 1px `--line` border, radius 8px, `border-top: 3px double
+var(--ink)`, padding `24px 28px 28px`) — the same top-rule treatment as the
+Headline score card and Morning Note, chosen because this page's settings are
+exactly as consequential as the scores they drive; a plain (non-editorial) Card
+would under-signal that. Each card's internal structure, top to bottom:
+
+1. **Header row** (`padding-bottom:16px`, `1px --line2` bottom border, matching
+   Headline score card's header-row idiom exactly): left = section kicker (11px/600
+   uppercase 0.14em `--ink`) — **"Composite score"** / **"Fundamental score"**;
+   right = a muted meta kicker (10.5px uppercase 0.1em `--mut`) stating what the
+   section governs — **"5 categories · drives every research Overview"** /
+   **"5 subcategories · drives the Fundamental tab"**.
+2. **Live normalized-% band** (`SubscoreBand`-style ruled band, Components →
+   "Subscore band": 5 equal columns, `1px --line2` verticals between, first/last
+   column flush padding). This is the section's real-time feedback loop — it
+   recomputes on every keystroke in any of the section's five Weight steppers via
+   `normalizeWeights`, client-side, no request. Cell content per column, top to
+   bottom: kicker label (10.5px uppercase `--mut`) = the dimension name; **the
+   normalized percentage in Newsreader serif, 28px/400** (the Subscore band's own
+   value size — "the serif for the value that matters" rule: the % is the number
+   this whole page exists to show, so it gets the serif treatment, not the sans
+   labels around it), formatted `"31%"` (integer, no decimal — relative-share
+   readouts read cleaner rounded, and the underlying weights already carry any
+   needed precision); no `--up`/`--dn`/`--amber` banding on this figure — a
+   normalized share is neither good nor bad, so it stays `--ink`, unlike a
+   Score figure. No 12px detail line under the percentage (the Subscore band
+   variant that omits the third line, same as the 5-col headline-card bands).
+   A bottom caption line below the band states the group sums to 100 — sans
+   10.5px uppercase `--mut`, `margin-top:8px`: **"Sums to 100% after
+   normalization."** (One caption per section, not per column.)
+3. **Five Weight stepper rows** (Components → "Weight stepper"), one per
+   dimension, in a `grid grid-cols-2 gap-6` (matching the Add-position form's
+   field grid; single column below its existing responsive breakpoint):
+   - **Composite section fields, in this order:** Technical · Fundamental ·
+     Analysts · Intrinsic value · News & sentiment (matching the Overview tab's
+     `SubscoreBand` column order exactly, so the settings page and the score
+     card it drives read as the same list in the same order).
+   - **Fundamental section fields, in this order:** Valuation · Profitability ·
+     Growth · Financial health · Dividend (matching the Fundamental tab's
+     `SubscoreBand` column order).
+   - The live % band above updates from these fields on every change — no
+     separate "recalculate" step.
+4. **Actions row** (`margin-top:24px`, flex, `gap:12px`, right-aligned — matching
+   the Add-position form's action-row alignment pattern, adapted from
+   full-width/50-50 to auto-width/right-aligned since this is an in-page section
+   action, not a full-form submit):
+   - **Reset to defaults** — secondary pill (Spacing/shape → Buttons secondary:
+     transparent background, `--ink` text, 1px `--line` border, 38px height,
+     radius = half height). Copy: **"Reset to house defaults"** (measured
+     register, not "Reset!"). **Per-section reset, not one global reset** — the
+     two groups are independent normalizations governing different scores, so
+     resetting one should not silently touch the other the user may have
+     already tuned; this also matches the section-scoped Header/live-%/fields
+     grouping above (everything else in this spec is already per-section).
+     Clicking it sets that section's five fields back to
+     `DEFAULT_SCORING_WEIGHTS`'s values for that group (client-side only — does
+     not itself save; the user still presses Save to persist, consistent with
+     explicit-save below).
+   - **Save weights** — primary pill (Spacing/shape → Buttons primary: `--btnbg`
+     background, `--btnfg` text, no border, 40px height). Disabled (existing
+     `disabled:opacity-50` idiom, per the Add-position submit button) until the
+     section's fields differ from the last-saved values (dirty-state gate) —
+     this is the "dirty-state indication," not a separate visual treatment: a
+     disabled Save pill is already how this system communicates "nothing to
+     do" (the Add-position submit button does the same while `!selectedStock`).
+     **Explicit save, not auto-save** — decided because auto-save would fire a
+     `PUT` on every keystroke across ten free-text fields, which is both wasteful
+     and removes the user's ability to compose a full set of relative weights
+     before committing (e.g. typing "20" then backspacing to "2" then to "25"
+     would each independently persist under auto-save). Explicit save also
+     matches every other mutating form in this app (Add position, Buy more,
+     Sell, wishlist add/remove) — none auto-saves on keystroke.
+   - On success: existing `useToast`/`Toaster` pattern (Components — reuse the
+     exact `toast({ title, description })` call shape from `buy-more-modal.tsx`),
+     title **"Weights saved"**, description **"Your Composite scores now use
+     this weighting."** / **"Your Fundamental scores now use this weighting."**
+     matching the section. On error: same toast, `variant: "destructive"`, title
+     **"Save failed"**, description = the error message (matching the existing
+     error-toast shape used throughout the app).
+   - Each section saves and resets independently — saving Composite does not
+     require the Fundamental section to also be valid/dirty, and vice versa (two
+     independent `PUT` payload groups, per the plan's API shape).
+
+**Custom-weighting affordance.** Handled entirely by the Headline score card's
+meta kicker (see Components → "Headline score card" → "Custom-weighting meta
+kicker" above) — no additional chrome is added on the Settings page itself beyond
+what's already specified in the sections above. This was judged sufficient rather
+than adding a second signal here: the Settings page is where the user is already
+looking at their own weights directly (the live % band already shows the
+resulting distribution), so a redundant "these differ from default" indicator on
+this page would be noise: the affordance's value is entirely in *other* screens
+(the score cards) reminding the user their number is personalized, not in
+reminding them here where they just set it.
+
+**Loading state.** `app/(dashboard)/settings/loading.tsx` — see Components →
+"Loading skeleton" → per-route composition table for the exact primitive
+composition (kicker+H1 block, two `SkeletonCard editorial` blocks each with a
+`SkeletonStatBand columns={5}` and five label+field row approximations, ending in
+a pill-shaped block for the reset action).
+
+**Data flow (reference only — Coding agent's concern, included here so the visual
+spec is legible against real state):** `GET /api/settings/scoring-weights` seeds
+both sections' fields (defaults-filled per the plan's service contract, so a
+user with no saved row sees the house defaults already populated, not blank
+fields); `PUT` persists one or both groups; on success the `["scoring-weights"]`
+query is invalidated so any open research tab's Headline score card picks up the
+new weighting (and its meta kicker) without a manual refresh.
 
 **Edge cases carried over unchanged:** empty/loading/error states on the dashboard
 chart, sorting on every Watchlist column, add/remove mutations, CSV export, currency
