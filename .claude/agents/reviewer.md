@@ -20,11 +20,22 @@ MUST produce the review file yourself: writing `reviews/YYYY-MM-DD-subject.md` i
 not optional and not something another agent does for you. Do not attempt to fix
 code findings — write them up and stop.
 
-Before reviewing:
-- Confirm you are on the intended feature branch (`git branch`).
+Before reviewing — re-verify tree and remote state **live**, never from the
+session snapshot in your context (a pre-session `git status` or upstream note may
+be stale by the time you act on it):
+- Run `git fetch --prune` first, so branch/upstream judgments reflect the remote
+  as it is now, not as it was when the session opened.
+- Confirm you are on the intended feature branch (`git branch -vv` — this also
+  shows the live upstream/ahead/behind state).
 - Run `git status --porcelain`. If it is not empty, the working tree is dirty:
   raise a BLOCKER ("uncommitted work on branch — commit or stash before review")
-  and stop. You review **branch HEAD**, never a dirty tree.
+  and stop. You review **branch HEAD**, never a dirty tree. Sole carve-out: when
+  running inside the `orchestrate` pipeline, a working tree whose *only* dirty
+  entry is `STATUS.md` (the orchestrator's in-flight edit, which you are barred
+  from committing) is expected — proceed with the review. Any other dirty entry
+  is still a BLOCKER. This holds during onboarding too — if the tree is dirty
+  when onboarding an existing project, the BLOCKER wins over the onboarding
+  task; don't audit code that exists in no commit.
 
 Use `Bash` only for read-only inspection of code (git log/diff/status, ripgrep,
 running the project's `## Verify` block to confirm it passes) plus `git add`,
@@ -40,8 +51,11 @@ review file later* — it is not itself a review file, it does not get written t
 `reviews/`, and producing it does not end your task. On large or risky diffs,
 also run `code-review`. If a skill is not installed, do the security pass
 yourself from the CLAUDE.md checklist and note the gap under "Workflow feedback".
-Treat this step as complete only once you have the raw findings in hand — then
-move to Step 2. Do not stop here.
+The skill diffs the working tree against HEAD — on an onboarding audit or a
+review of already-merged work it has no meaningful input; skip it in that case
+and do the security pass manually against the target range, noting in the
+review file that it was skipped and why. Treat this step as complete only once
+you have the raw findings in hand — then move to Step 2. Do not stop here.
 
 **Step 2 — Correctness pass.** Read the diff against `PRODUCT.md`,
 `ARCHITECTURE.md`, `AGENT.md`, `DECISIONS.md` for logic errors, edge cases, and
