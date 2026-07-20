@@ -22,3 +22,4 @@
 | 2026-07-20-analyst-revisions-nvda-fix.md | 2026-07-20 | IMPLEMENTED — 2026-07-20 (0 BLOCKERs/ISSUEs; 90-day filter + persist migration; ARV-Q1 owner migrate-deploy + ARV-Q2 live check pending; ARV-S1 optional) |
 | 2026-07-20-small-visual-fixes.md | 2026-07-20 | IMPLEMENTED — 2026-07-20 (0 BLOCKERs/ISSUEs; dividers + overview five-query gate + data-derived chart gridlines; SVF-Q1 visual + SVF-Q2 TD-36 Designer routing pending; SVF-S1/S2 optional; 135/135) |
 | 2026-07-20-perf-graph-dip-clipping-fix.md | 2026-07-20 | IMPLEMENTED — 2026-07-20 (0 BLOCKERs/ISSUEs; margined drawing domain — bezier-sampling test + domain-registration invariant + labels-on-true-min/max verified; DIP-Q1 owner visual acceptance pending; DIP-S1 optional; 141/141) |
+| 2026-07-20-gemini-model-update.md | 2026-07-20 | IMPLEMENTED — 2026-07-20 (0 BLOCKERs/ISSUEs/SUGGESTIONs; gemini-1.5-flash→2.5-flash live-verified + centralized constant; GMU-Q1 owner UI acceptance pending; 117/117) |

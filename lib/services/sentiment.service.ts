@@ -1,6 +1,7 @@
 // lib/services/sentiment.service.ts
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { prisma } from '@/lib/prisma';
+import { GEMINI_MODEL } from '@/lib/services/gemini';
 
 interface SentimentResult {
   sentiment: number;        // -1 to 1
@@ -27,7 +28,7 @@ export class SentimentAnalysisService {
     symbol?: string
   ): Promise<SentimentResult> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = this.genAI.getGenerativeModel({ model: GEMINI_MODEL });
       
       const prompt = `
         Analyze the sentiment of this financial news article for stock market impact:
