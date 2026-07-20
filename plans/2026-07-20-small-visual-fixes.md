@@ -277,6 +277,12 @@ lint, tests, secret-scan. Beyond it, manual/visual checks:
 
 ## Open decisions
 
+**RESOLVED 2026-07-20 by owner:**
+- **OD-1 → "0.0 is correct, no change."** The intrinsic 0.0/10 is a genuine deeply-overvalued score; owner is content it displays as-is. No code change (Issue 3b confirmed not-a-bug).
+- **OD-2 → "just fix the axis."** The scaling fix (Task 4-6) proceeds; the Jul-20 spike is treated as real data, no bad-point clamping/exclusion. Bad-data investigation is out of scope.
+
+Original text retained below.
+
 - **OD-1 — Intrinsic "0.0/10" (Issue 3b): confirm it reads as intended.** It is a
   genuine "significantly overvalued" score (fair value far below current price),
   not a placeholder — no code change proposed. Owner: confirm you are content that
