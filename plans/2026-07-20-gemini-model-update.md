@@ -116,27 +116,27 @@ not something this outage fix should expand into. Left as a note.
 
 ## Tasks
 
-1. [ ] Add `lib/services/gemini.ts` exporting `GEMINI_MODEL = 'gemini-2.5-flash'`.
+1. [x] Add `lib/services/gemini.ts` exporting `GEMINI_MODEL = 'gemini-2.5-flash'`.
    — Acceptance: `node -e "import('./lib/services/gemini.ts')"` not needed;
    `npm run typecheck` passes and `grep GEMINI_MODEL lib/services/gemini.ts`
    shows the constant with value `gemini-2.5-flash`.
-2. [ ] Point `lib/services/sentiment.service.ts` at the constant — import
+2. [x] Point `lib/services/sentiment.service.ts` at the constant — import
    `GEMINI_MODEL`, replace the literal at line 30 with `{ model: GEMINI_MODEL }`.
    — Acceptance: `grep -n "gemini-1.5-flash" lib/services/sentiment.service.ts`
    returns nothing; the `getGenerativeModel` call references `GEMINI_MODEL`.
-3. [ ] Point `app/api/insights/portfolio/route.ts` at the constant — import
+3. [x] Point `app/api/insights/portfolio/route.ts` at the constant — import
    `GEMINI_MODEL`, replace the literal at line 73, and correct the stale comment
    (lines 67–72) so it no longer claims the model is `gemini-1.5-flash`.
    — Acceptance: `grep -rn "gemini-1.5" app/ lib/` returns **zero** occurrences
    (string *and* comments); the call references `GEMINI_MODEL`.
-4. [ ] Add a unit test asserting both call sites request the current model.
+4. [x] Add a unit test asserting both call sites request the current model.
    Mock `@google/generative-ai` (`getGenerativeModel` as a spy) and assert it is
    called with `{ model: 'gemini-2.5-flash' }` — for sentiment.service via
    `analyzeSentiment`, and (if practical to invoke in isolation) for the insights
    route; at minimum test the constant's value and the sentiment path.
    — Acceptance: `npm run test` includes a test that fails if the model string
    reverts to `gemini-1.5-flash` or the constant changes unexpectedly.
-5. [ ] Live-probe confirmation (documented, re-runnable by the Coding agent).
+5. [x] Live-probe confirmation (documented, re-runnable by the Coding agent).
    Re-run the throwaway `scratch/` probe (or the two `curl` one-liners in
    Verification) with the real key to confirm `gemini-2.5-flash` returns 200
    through the installed SDK before opening the PR. Do **not** commit `scratch/`.
@@ -144,7 +144,7 @@ not something this outage fix should expand into. Left as a note.
    the PR body. (Planner already ran this 2026-07-20 — see Verification. The
    Coding agent re-confirms after wiring the constant, since network/quota state
    can change.)
-6. [ ] Update `AGENT.md` (Two-Gemini-clients fragile surface) and `TECH_DEBT.md`
+6. [x] Update `AGENT.md` (Two-Gemini-clients fragile surface) and `TECH_DEBT.md`
    TD-12 to reference the shared `GEMINI_MODEL` constant and note 1.5's retirement.
    — Acceptance: `grep -n "GEMINI_MODEL" AGENT.md TECH_DEBT.md` returns matches;
    neither file still instructs "change the model in both places" as two edits.

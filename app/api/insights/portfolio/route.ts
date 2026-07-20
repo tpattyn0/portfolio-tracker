@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/utils/auth';
 import { prisma } from '@/lib/prisma';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GEMINI_MODEL } from '@/lib/services/gemini';
 
 export async function GET() {
   try {
@@ -68,9 +69,10 @@ export async function GET() {
       // try/catch. `getGenerativeModel` never throws on an unrecognized model
       // name (it only fails at `generateContent` time), so the fallback
       // branches were dead code — removed. Both Gemini call sites in this repo
-      // (here and sentiment.service.ts) now use gemini-1.5-flash as their only
-      // model.
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      // (here and sentiment.service.ts) now share the model name via the
+      // `GEMINI_MODEL` constant (`lib/services/gemini.ts`) — change it once,
+      // in one place, to update both.
+      const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
 
       const prompt = `
         You are a financial analyst. Analyze this portfolio and provide brief insights.
