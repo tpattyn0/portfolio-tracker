@@ -151,10 +151,23 @@ export function Overview({ symbol, name, currentPrice, context = "portfolio", cu
     return { score: rounded, action };
   }, [intrinsicScore, fundamentalScore, technicalScore, sentimentScore, analystScore, context]);
 
-  // Only the chart query (which also drives the price chart) gates the
-  // initial full-tab loading state — do not gate the whole card on the
-  // slowest of five independent queries (plan Task 4).
-  const isLoading = chartQ.isLoading;
+  // The composite HeadlineScoreCard is assembled from all five queries
+  // below — gate its loading state on all five, not just chart/technical
+  // (plans/2026-07-20-small-visual-fixes.md, Issues 2/3). `isLoading` (React
+  // Query v5: isPending && isFetching) is true only during a query's first
+  // fetch with no cached data yet — exactly "still pending", distinct from
+  // "resolved with no usable data" (which the subscore useMemos above already
+  // handle via a neutral-5 fallback, unchanged). Holding the composite card
+  // back until every query has resolved at least once prevents it from ever
+  // rendering a composite/SubscoreBand figure built from a still-loading
+  // dimension's fallback value — the score must appear once, with its final
+  // value, not jump as each of the five queries resolves in turn.
+  const isLoading =
+    chartQ.isLoading ||
+    fundamentalsQ.isLoading ||
+    analystQ.isLoading ||
+    intrinsicQ.isLoading ||
+    newsQ.isLoading;
 
   const insights: string[] = [];
   if (chartQ.data?.indicators?.signal) {

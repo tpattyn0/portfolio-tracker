@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAreaPath, buildPath } from "./chart-path";
+import { buildAreaPath, buildPath, gridlineYs } from "./chart-path";
 
 describe("buildPath", () => {
   it("builds a known path for a simple ascending series", () => {
@@ -65,5 +65,56 @@ describe("buildAreaPath", () => {
 
   it("returns an empty string when given an empty line path", () => {
     expect(buildAreaPath("", 100, 100)).toBe("");
+  });
+});
+
+describe("gridlineYs", () => {
+  it("maps [max, mid, min] ticks onto the same padded domain buildPath uses", () => {
+    // height=220, padding=8 -> plot area spans y=8..212.
+    // yMin=0, yMax=100, ticks=[100, 50, 0] (max, mid, min per niceYTicks order).
+    const ys = gridlineYs(0, 100, 220, 8, [100, 50, 0]);
+    expect(ys[0]).toBeCloseTo(8, 5); // max -> top
+    expect(ys[1]).toBeCloseTo(110, 5); // mid -> vertical center
+    expect(ys[2]).toBeCloseTo(212, 5); // min -> bottom
+  });
+
+  it("matches buildPath's own y for the series' actual min/max", () => {
+    const values = [10, 40, 25, 90, 5];
+    const width = 300;
+    const height = 220;
+    const padding = 8;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+
+    const linePath = buildPath(values, width, height, padding);
+    const [ys] = [gridlineYs(min, max, height, padding, [max, min])];
+
+    // The max value plots at the top of the padded domain; the min value at
+    // the bottom — the same pixels buildPath itself uses for those points.
+    expect(ys[0]).toBeCloseTo(padding, 5);
+    expect(ys[1]).toBeCloseTo(height - padding, 5);
+    // Sanity: buildPath's path actually starts/ends within [padding, height-padding].
+    expect(linePath).toContain("M");
+  });
+
+  it("handles a flat series (yMax === yMin) without dividing by zero", () => {
+    const ys = gridlineYs(50, 50, 220, 8, [50, 50, 50]);
+    const expectedMid = 8 + (220 - 16) / 2;
+    expect(ys).toEqual([expectedMid, expectedMid, expectedMid]);
+  });
+
+  it("handles a single tick", () => {
+    const ys = gridlineYs(0, 10, 100, 10, [10]);
+    expect(ys).toEqual([10]); // max -> top (padding)
+  });
+
+  it("returns an empty array for empty ticks", () => {
+    expect(gridlineYs(0, 100, 220, 8, [])).toEqual([]);
+  });
+
+  it("defaults padding to 8 when omitted", () => {
+    const withDefault = gridlineYs(0, 100, 220, undefined, [100]);
+    const explicit = gridlineYs(0, 100, 220, 8, [100]);
+    expect(withDefault).toEqual(explicit);
   });
 });

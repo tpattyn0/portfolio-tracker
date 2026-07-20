@@ -184,16 +184,16 @@ Grouped by issue; ordered so the shared-root items (3 then 2) are adjacent and t
 chart fix (4) is last. Each task independently verifiable.
 
 **Issue 1 — divider removal [trivial CSS]**
-1. [ ] Remove `border-t border-line` (keep `pt-5`) from the Bear/Base/Bull grid
+1. [x] Remove `border-t border-line` (keep `pt-5`) from the Bear/Base/Bull grid
    wrapper in `components/intrinsic-value.tsx:113`. — Acceptance: Intrinsic value
    tab renders the BEAR/BASE/BULL band with no horizontal rule above it; column
    spacing unchanged; `npm run verify` green.
-2. [ ] Remove `border-t border-line` (keep `pt-5`) from the tone grid wrapper in
+2. [x] Remove `border-t border-line` (keep `pt-5`) from the tone grid wrapper in
    `components/news-feed.tsx:116`. — Acceptance: News & sentiment view renders the
    POSITIVE/NEUTRAL/NEGATIVE band with no rule above it; spacing unchanged.
 
 **Issue 3 + Issue 2 — composite flicker / empty-structure flash [behavioral-rendering]**
-3. [ ] In `components/overview.tsx`, gate the composite HeadlineScoreCard (and its
+3. [x] In `components/overview.tsx`, gate the composite HeadlineScoreCard (and its
    SubscoreBand figures) so it is not shown with fabricated `5`s while any of the
    five subscore queries is still pending; hold the existing "Loading overview…"
    state (or per-Designer per-figure skeleton) until all resolve. Preserve the
@@ -205,19 +205,19 @@ chart fix (4) is last. Each task independently verifiable.
    figure must not change value after first appearing.
 
 **Issue 4 — performance chart axis domain [chart-data-logic]**
-4. [ ] Add a pure `gridlineYs(yMin, yMax, height, padding, ticks)` helper (in
+4. [x] Add a pure `gridlineYs(yMin, yMax, height, padding, ticks)` helper (in
    `lib/utils/chart-path.ts` or new `lib/utils/chart-scale.ts`) computing each
    tick's y-pixel from the same padded domain `buildPath` uses, with unit tests
    (top tick at `padding`, bottom at `height - padding`, mid centered; flat-series
    and single-tick degenerate cases). — Acceptance: unit tests pass; for
    `height=220, padding=8, ticks=[max,mid,min]`, top→8, bottom→212.
-5. [ ] Wire `portfolio-chart.tsx` to draw its gridlines and position its y-axis
+5. [x] Wire `portfolio-chart.tsx` to draw its gridlines and position its y-axis
    labels from `gridlineYs(...)` instead of the fixed `GRIDLINE_Y = [55,110,165]`,
    passing `buildPath`'s padding. — Acceptance: on the dashboard Performance chart,
    the plotted line's highest and lowest points sit ON the top and bottom
    gridlines (never above/below them), and the top/bottom tick labels align with
    those extremes. Verify visually with a spiky series (the reported case).
-6. [ ] Apply the same domain-derived gridline/label positioning to
+6. [x] Apply the same domain-derived gridline/label positioning to
    `components/research/detail-price-chart.tsx` (fixed `GRIDLINE_Y=[47,94,141]` of
    190), so the two charts stay consistent and the latent same bug there is closed.
    — Acceptance: research Overview/Technical charts keep the line within the

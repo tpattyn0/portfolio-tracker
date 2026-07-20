@@ -85,3 +85,40 @@ export function buildAreaPath(linePath: string, width: number, height: number): 
   if (!linePath) return "";
   return `${linePath}L${width},${height}L0,${height}Z`;
 }
+
+/**
+ * Maps each tick value onto the y-pixel it would occupy if plotted by
+ * `buildPath`'s own padded domain — i.e. `y(v) = padding + (1 - (v - yMin) /
+ * (yMax - yMin)) * (height - 2 * padding)`. Used to position gridlines and
+ * their labels so they land exactly where the plotted series' own values
+ * fall, instead of at a fixed fraction of the viewBox
+ * (`plans/2026-07-20-small-visual-fixes.md`, Issue 4 — closes the bug where a
+ * spiky series' max/min rendered outside the labelled gridline band).
+ *
+ * `yMin`/`yMax` must be the same domain bounds passed to `buildPath` for the
+ * same series (typically the series' own min/max) — passing a different
+ * domain here would reintroduce the same class of mismatch this helper
+ * fixes.
+ *
+ * Degenerate cases handled explicitly:
+ * - `yMax === yMin` (flat series) -> every tick maps to the vertical
+ *   midpoint (`padding + (height - 2*padding) / 2`), matching `buildPath`'s
+ *   own flat-series behavior (all points collapse to one y).
+ * - Empty `ticks` -> `[]`.
+ */
+export function gridlineYs(
+  yMin: number,
+  yMax: number,
+  height: number,
+  padding = 8,
+  ticks: number[] = []
+): number[] {
+  const range = yMax - yMin;
+  const mid = padding + (height - 2 * padding) / 2;
+
+  if (range === 0) {
+    return ticks.map(() => mid);
+  }
+
+  return ticks.map((v) => padding + (1 - (v - yMin) / range) * (height - 2 * padding));
+}

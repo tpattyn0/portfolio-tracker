@@ -110,7 +110,7 @@ export function IntrinsicValue({ symbol, currentPrice, currency }: IntrinsicValu
             : "No fundamental data available for this symbol."
         }
       >
-        <div className="grid grid-cols-3 border-t border-line pt-5">
+        <div className="grid grid-cols-3 pt-5">
           <div>
             <div className="text-[10.5px] uppercase tracking-[0.12em] text-dn">Bear</div>
             <div className={cn("mt-1.5 font-serif text-[26px]", data.scenarioLow === null && "text-mut")}>

@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { buildAreaPath, buildPath } from "@/lib/utils/chart-path";
+import { buildAreaPath, buildPath, gridlineYs } from "@/lib/utils/chart-path";
 import { niceYTicks } from "@/lib/utils/chart-ticks";
 import { formatCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
@@ -33,9 +33,9 @@ interface ChartDataPoint {
 }
 
 // Overview uses viewBox 0 0 1300 190; Technical uses 0 0 1000 190 (DESIGN.md
-// "Detail price chart"). Both share the same 190-tall gridline fractions.
+// "Detail price chart"). Both share the same 190-tall height.
 const CHART_HEIGHT = 190;
-const GRIDLINE_Y = [47, 94, 141];
+const CHART_PADDING = 8; // must match buildPath's default padding — kept in sync explicitly.
 
 /**
  * Research-detail Overview/Technical chart (ADR-11): reuses buildPath/
@@ -62,13 +62,19 @@ export function DetailPriceChart({ symbol, period, currency, referenceLines, cla
   const points: ChartDataPoint[] = useMemo(() => data?.chart ?? [], [data]);
   const values = useMemo(() => points.map((p) => p.value), [points]);
 
-  const linePath = useMemo(() => buildPath(values, width, CHART_HEIGHT), [values, width]);
+  const linePath = useMemo(() => buildPath(values, width, CHART_HEIGHT, CHART_PADDING), [values, width]);
   const areaPath = useMemo(() => buildAreaPath(linePath, width, CHART_HEIGHT), [linePath, width]);
 
   const finiteValues = values.filter((v) => Number.isFinite(v));
   const min = finiteValues.length ? Math.min(...finiteValues) : 0;
   const max = finiteValues.length ? Math.max(...finiteValues) : 0;
   const yTicks = useMemo(() => niceYTicks(min, max, 3), [min, max]);
+  // Gridline/label y-positions derived from the same padded domain buildPath
+  // uses to plot the line (plans/2026-07-20-small-visual-fixes.md, Issue 4).
+  const gridYs = useMemo(
+    () => gridlineYs(min, max, CHART_HEIGHT, CHART_PADDING, yTicks),
+    [min, max, yTicks]
+  );
 
   const dateLabels = useMemo(() => {
     if (points.length === 0) return [];
@@ -121,7 +127,7 @@ export function DetailPriceChart({ symbol, period, currency, referenceLines, cla
             <div
               key={tick}
               className="absolute right-0 -translate-y-1/2 text-[10.5px] text-mut"
-              style={{ top: `${(GRIDLINE_Y[i] ?? GRIDLINE_Y[GRIDLINE_Y.length - 1]) / CHART_HEIGHT * 100}%` }}
+              style={{ top: `${(gridYs[i] ?? gridYs[gridYs.length - 1]) / CHART_HEIGHT * 100}%` }}
             >
               {formatCurrency(tick, currency)}
             </div>
@@ -135,8 +141,8 @@ export function DetailPriceChart({ symbol, period, currency, referenceLines, cla
           onMouseLeave={handleMouseLeave}
         >
           <svg viewBox={`0 0 ${width} ${CHART_HEIGHT}`} preserveAspectRatio="none" className="block h-full w-full">
-            {GRIDLINE_Y.map((y) => (
-              <line key={y} x1="0" y1={y} x2={width} y2={y} className="stroke-line2" />
+            {gridYs.map((y, i) => (
+              <line key={yTicks[i] ?? i} x1="0" y1={y} x2={width} y2={y} className="stroke-line2" />
             ))}
             {referenceLines?.map((ref) => {
               // Clamp to [min, max] so a level outside the plotted range
