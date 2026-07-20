@@ -2,6 +2,14 @@
 
 Date: 2026-07-20
 
+> **SUPERSEDED / NOT IMPLEMENTED (2026-07-20):** This plan misread the issue. The owner
+> clarified that the 2026-07-17 spike is CORRECT (new positions were bought — the portfolio
+> value genuinely rose), NOT a bad data point. The real issue is a RENDERING bug: the DIP
+> just before the spike clips below the bottom axis / plot floor and disappears. See the
+> replacement plan `plans/2026-07-20-perf-graph-dip-clipping-fix.md`. This plan is retained
+> as history only; its same-day-bucketing analysis may still be a separate latent concern
+> but is NOT what the owner reported and is not being implemented here.
+
 ## Problem
 
 The dashboard performance chart shows a single giant isolated spike on 2026-07-17: the

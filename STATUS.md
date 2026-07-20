@@ -1,11 +1,10 @@
 # STATUS.md
 
 ## In progress
-Orchestration: Dashboard performance graph — spurious spike in the series (axis scaling already fixed; this is the bad-data-point OD-2 case now visible)
-Plan: plans/2026-07-20-perf-graph-spike-fix.md
+Orchestration: Dashboard performance graph — the DIP before the (correct) spike clips below the bottom axis; keep the whole line inside the plot
 Since: 2026-07-20
 Branch: fix/research-tab-fixes
-Planner: running
+Planner: running (re-scoped; prior spike plan superseded)
 
 ## Blocked
 TD-01 — NEWS_API_KEY live + public in history; risk accepted per ADR-7, blocks production deploys only
