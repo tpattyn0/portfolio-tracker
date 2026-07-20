@@ -310,6 +310,26 @@ Body: `grid-template-columns: 280px 1fr`, `gap:56px`, `padding-top:28px`.
   the Intrinsic 3-col scenario band + Model-assumptions rows, or the News 3-col tone
   band. Each slot's internals are documented in their own tab entry under
   `## UX flows → Research detail`; the card itself never changes shape to fit them.
+  - **No top rule on the Intrinsic scenario band or the News tone band**
+    (`plans/2026-07-20-small-visual-fixes.md`, Issue 1). Both bands sit flush under
+    the card's internal content with `pt-5` spacing only — no `border-t` above
+    either grid. Their previous markup carried `border-t border-line`, but
+    `border-line` is a **dead/no-op class**: there is no `--line` CSS variable
+    (`app/globals.css` defines `--line2` and `--border`, never `--line`) and no
+    `line` entry in `tailwind.config.js`'s color map, so it emitted no
+    `border-color` — the rule that was visible came entirely from `border-t`'s
+    default border color, not from the token name. If a top rule is genuinely
+    wanted on a band like this in future, use **`border-t border-line2`** (the
+    real hairline token, per Ruled stat band / Subscore band) — never
+    `border-line`, which will silently draw nothing. The Analysts price-target
+    band (`analyst-ratings.tsx:151`) and Technical's table (`technical-analysis.tsx:198`)
+    still use the same dead `border-line` idiom today; they were out of scope for
+    this fix (owner named only Intrinsic + News) and keep their rule for now —
+    `border-line` also still appears in `fundamental-analysis.tsx` and
+    `research/transactions-tab.tsx`. The dead class itself is a code-hygiene
+    matter for `TECH_DEBT.md`, not a design decision; whether the *rule* on those
+    other bands should also go (system-wide convergence) is an open design
+    question for a future pass, not decided by this plan.
 
 ### Subscore band
 N-column ruled band of `ScoreFigure`s at 28px (not 84px), banded per the same
@@ -339,8 +359,17 @@ stays different).
 - **ViewBox** — `0 0 1300 190` on Overview (1-year, no range tabs, static); `0 0
   1000 190` on Technical (6-month). Both `preserveAspectRatio="none"`, `height:190px`
   container (Overview) / `170px` (Technical per the handoff's outer wrapper), 3
-  hairline `--line2` gridlines at fixed y-fractions (y=47/94/141 of 190), ink line
-  1.5px stroke, `--ink` 0.05 fill-opacity area (no stroke), `--line` baseline rule.
+  hairline `--line2` gridlines, ink line 1.5px stroke, `--ink` 0.05 fill-opacity
+  area (no stroke), `--line` baseline rule.
+  - **Gridline/label y-positions are data-derived, not fixed viewBox fractions**
+    (`plans/2026-07-20-small-visual-fixes.md`, Issue 4 — OD-2 resolved as
+    axis-only fix). Each gridline's y-pixel is computed from the same padded
+    domain `buildPath` uses to plot the line (`gridlineYs` helper in
+    `lib/utils/chart-path.ts`), so the top/bottom gridlines always land exactly
+    where the series' max/min actually plot. Do not re-pin these to fixed pixels
+    or fixed fractions of the viewBox (e.g. the prior hardcoded "y=47/94/141 of
+    190") — that is the bug this fix closes (the line could render outside the
+    labelled band).
 - **Y-axis price labels** — a few (3–4) `--mut` value labels, sans, positioned as
   HTML text absolutely against the chart container at the gridline y-fractions (not
   inside the SVG, which would distort under `preserveAspectRatio="none"`), formatted
@@ -447,6 +476,18 @@ blank frame, then swaps to the real content with no layout jump. This is a shimm
 skeleton, not a spinner — reserve the spinner idiom (`Loader2` centered in a
 `min-h-[400px]` box) for **secondary in-page loads only** (e.g. a tab's own data
 after the shell has already painted), never for the initial route boundary.
+
+**Multi-query cards hold on this same idiom until every constituent query
+resolves** (`plans/2026-07-20-small-visual-fixes.md`, Issues 2/3). The research
+Overview tab's composite `HeadlineScoreCard` is assembled from five independent
+queries (chart/technical, fundamentals, analyst, intrinsic, news); it uses this
+same centered "Loading overview…" secondary in-page state, gated on **all five**
+being resolved — not just the first to return — so the card never paints a
+composite score or `SubscoreBand` figure computed from a still-pending
+dimension's fallback value. This is the existing idiom applied to a
+multi-source card, not a new loading pattern: no per-figure skeleton, no new
+token. Every other research tab's `HeadlineScoreCard` (Technical, Fundamental,
+Analysts, Intrinsic, News) is single-query and already gates the same way.
 
 **Drift note (flag for the Coding agent, not a decision the Coding agent should
 re-litigate):** `app/(dashboard)/dashboard/loading.tsx` currently on disk is stale —
@@ -619,7 +660,7 @@ card each, per `## UX flows → Research detail`).
 Per ADR-10: a purpose-built inline SVG (not Recharts) on the dashboard hero only —
 `lib/utils/chart-path.ts` exports the pure `buildPath()` Catmull-Rom→cubic-bezier
 function ported from the prototype's `buildPath(vals, w, h)`. Rendering spec: viewBox
-`0 0 1300 220`, 3 hairline `--line2` gridlines at fixed y-positions, ink line at
+`0 0 1300 220`, 3 hairline `--line2` gridlines, ink line at
 1.5px stroke width, no fill on the line, a separate fill-only area path
 (`chartLine + 'L{w},{h}L0,{h}Z'`) at `fill:var(--ink)` `fill-opacity:0.05` and
 `stroke:none`, and a `--line` (not `--line2`)
@@ -628,14 +669,25 @@ baseline rule at the bottom. Range-change morph: 500ms, ease-in-out
 point in the 20-point series from its previous value to its new value — not a snap
 re-render.
 
+**Gridline/label y-positions are data-derived, not fixed viewBox fractions**
+(`plans/2026-07-20-small-visual-fixes.md`, Issue 4 — OD-2 resolved as axis-only
+fix; same helper and rationale as `DetailPriceChart`, see that entry above). The
+hero previously pinned its gridlines to a fixed fraction of the 220-tall viewBox
+(y=55/110/165) which did not match where `buildPath` actually plots the series'
+min/max, so a spiky series could render its extremes above/below the labelled
+band. Both charts now share the same `gridlineYs` helper (`lib/utils/chart-path.ts`)
+so each gridline lands exactly where its corresponding data value plots — do not
+re-pin either chart's gridlines to a fixed pixel or fraction again.
+
 **Y-axis price labels (added per `plans/2026-07-18-meridian-dashboard-detail-fixes.md`):**
 same treatment as `DetailPriceChart`'s y-axis (3 `--mut` labels via `niceYTicks`,
 `formatCurrency`-formatted, positioned as HTML text absolutely against a `relative
 pl-14` container — not inside the SVG, which would distort under
-`preserveAspectRatio="none"`) but at the hero's own gridline y-fractions: y=55/110/165
-of 220 (NOT the detail chart's 47/94/141 of 190 — the two charts have different
-viewBoxes, so the fractions differ). Labels are computed from the currently
-*displayed* (animating) series and update live as the range-morph runs.
+`preserveAspectRatio="none"`) at the hero's own (now data-derived) gridline
+y-positions — NOT the detail chart's, since the two charts have different
+viewBoxes (220-tall vs. 190-tall) and series domains, so the pixel positions
+differ even though both are computed the same way. Labels are computed from the
+currently *displayed* (animating) series and update live as the range-morph runs.
 
 **Hover crosshair + tooltip (added per `plans/2026-07-18-meridian-dashboard-detail-fixes.md`):**
 same three overlay elements as `DetailPriceChart`'s hover — a thin vertical `--line`
@@ -797,7 +849,8 @@ figure).
    above/below fair value" line (13px/500, banded), then an italic summary — all on
    the left. Right: a 3-col scenario band (Bear `--dn` kicker / Base `--mut` kicker
    / Bull `--up` kicker, each a 26px serif value + a 12px `--mut` caption — geometry
-   unchanged since the prior spec), then "Model assumptions" label/value rows.
+   unchanged since the prior spec, **no top rule** — see Components → "Headline
+   score card" → right column note), then "Model assumptions" label/value rows.
 
    **OD-1 resolved (2026-07-20, `plans/2026-07-19-research-tab-fixes.md`) — honest
    relabel, no new DCF model.** The two rows that used to read "Revenue growth" and
@@ -982,7 +1035,8 @@ figure).
 7. **News & sentiment** — Headline score card: 84px sentiment score + trend kicker
    (banded, e.g. "Warming" in `--up`) + italic summary on the left; 3-col tone band
    on the right (Positive/Neutral/Negative %, each with a colored MoM-delta caption
-   line — omitted when history is too thin to compute, data gap). Below: the
+   line — omitted when history is too thin to compute, data gap), **no top rule** —
+   see Components → "Headline score card" → right column note. Below: the
    Editorial coverage list ("Latest coverage").
 
    **Portfolio-route lead-in (`plans/2026-07-19-research-tab-fixes.md` item 9).** On
