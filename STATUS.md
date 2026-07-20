@@ -1,8 +1,10 @@
 # STATUS.md
 
 ## In progress
-_Nothing in flight._
+Orchestration: Small visual fixes — drop divider line above bear/base/bull + positive/neutral/negative; empty-structure flash; score flicker on load; perf graph exceeds axis range
+Since: 2026-07-20
+Branch: fix/research-tab-fixes
+Planner: running
 
 ## Blocked
-ARV-Q1 — analyst-revisions migration created but NOT applied; owner must run `npx prisma migrate deploy` (PR #19) before the NVDA revisions fix is live
 TD-01 — NEWS_API_KEY live + public in history; risk accepted per ADR-7, blocks production deploys only
