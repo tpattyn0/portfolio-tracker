@@ -1,7 +1,10 @@
 # STATUS.md
 
 ## In progress
-_Nothing in flight._
+Orchestration: Configurable scoring weights — per-user weights for the 5 composite categories + 5 fundamental subcategories (settings page, auto-normalize, composite client-side / fundamental server-side)
+Since: 2026-07-20
+Branch: feature/configurable-scoring-weights
+Planner: running
 
 ## Blocked
 TD-01 — NEWS_API_KEY live + public in history; risk accepted per ADR-7, blocks production deploys only
