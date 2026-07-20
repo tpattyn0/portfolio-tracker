@@ -1,6 +1,6 @@
 # Review: Gemini model update — restore AI features (fix gemini-1.5-flash 404)
 Date: 2026-07-20
-Status:
+Status: IMPLEMENTED — 2026-07-20
 
 ## Summary
 Findings: 0 BLOCKERs, 0 ISSUEs, 0 SUGGESTIONs, 1 QUESTION
