@@ -14,4 +14,4 @@
 | plans/2026-07-19-positions-band-restyle.md | 2026-07-19 | implemented | reviews/2026-07-19-positions-band-restyle.md |
 | plans/2026-07-19-research-tab-fixes.md | 2026-07-19 | implemented | reviews/2026-07-19-research-tab-fixes.md |
 | plans/2026-07-20-analyst-revisions-nvda-fix.md | 2026-07-20 | implemented (migration pending owner deploy) | reviews/2026-07-20-analyst-revisions-nvda-fix.md |
-| plans/2026-07-20-small-visual-fixes.md | 2026-07-20 | planned (approved; OD-1 no-change, OD-2 axis-only) | — |
+| plans/2026-07-20-small-visual-fixes.md | 2026-07-20 | implemented | reviews/2026-07-20-small-visual-fixes.md |

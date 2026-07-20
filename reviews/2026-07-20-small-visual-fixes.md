@@ -1,6 +1,6 @@
 # Review: small-visual-fixes
 Date: 2026-07-20
-Status:
+Status: IMPLEMENTED — 2026-07-20
 
 ## Summary
 Findings: [0 BLOCKERs, 0 ISSUEs, 2 SUGGESTIONs, 2 QUESTIONs]
