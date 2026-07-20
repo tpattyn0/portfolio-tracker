@@ -6,8 +6,18 @@ import { HeadlineScoreCard } from "@/components/research/headline-score-card";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/format";
 
+export interface AnalystRevisionData {
+  firm: string;
+  action: string;
+  fromGrade: string | null;
+  toGrade: string | null;
+  date: string;
+}
+
 export interface AnalystRatingsData {
   targetPrice: number | null;
+  targetLowPrice: number | null;
+  targetHighPrice: number | null;
   strongBuy: number;
   buy: number;
   hold: number;
@@ -18,6 +28,24 @@ export interface AnalystRatingsData {
   lastUpdated: string;
   score: number;
   scoreInterpretation: string;
+  revisions: AnalystRevisionData[];
+}
+
+/**
+ * Maps Yahoo's `upgradeDowngradeHistory` action vocabulary (up/down/main/
+ * init/reit) to the DESIGN.md RAISED/HELD/LOWERED tag vocabulary. "main"
+ * (reiterated at the same grade) and "init" (new coverage) both read as
+ * "HELD" — neither raised nor lowered an existing rating.
+ */
+function revisionTag(action: string): { label: string; className: string } {
+  switch (action.toLowerCase()) {
+    case "up":
+      return { label: "RAISED", className: "text-up" };
+    case "down":
+      return { label: "LOWERED", className: "text-dn" };
+    default:
+      return { label: "HELD", className: "text-mut" };
+  }
 }
 
 interface AnalystRatingsProps {
@@ -29,9 +57,9 @@ interface AnalystRatingsProps {
 
 const DISTRIBUTION_ROWS = [
   { key: "strongBuy", label: "Strong buy", color: "bg-up" },
-  { key: "buy", label: "Buy", color: "bg-up/70" },
+  { key: "buy", label: "Buy", color: "bg-up" },
   { key: "hold", label: "Hold", color: "bg-amber" },
-  { key: "sell", label: "Sell", color: "bg-dn/70" },
+  { key: "sell", label: "Sell", color: "bg-dn" },
   { key: "strongSell", label: "Strong sell", color: "bg-dn" },
 ] as const;
 
@@ -123,7 +151,9 @@ export function AnalystRatings({ symbol, currentPrice, initialData, currency }: 
         <div className="mt-6 grid grid-cols-3 border-t border-line pt-5">
           <div>
             <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Low</div>
-            <div className="mt-1.5 font-serif text-[26px] text-dn">—</div>
+            <div className="mt-1.5 font-serif text-[26px] text-dn">
+              {ratings.targetLowPrice ? formatCurrency(ratings.targetLowPrice, currency) : "—"}
+            </div>
           </div>
           <div className="border-l border-line2 pl-5">
             <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Median</div>
@@ -138,17 +168,45 @@ export function AnalystRatings({ symbol, currentPrice, initialData, currency }: 
           </div>
           <div className="border-l border-line2 pl-5">
             <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">High</div>
-            <div className="mt-1.5 font-serif text-[26px] text-up">—</div>
+            <div className="mt-1.5 font-serif text-[26px] text-up">
+              {ratings.targetHighPrice ? formatCurrency(ratings.targetHighPrice, currency) : "—"}
+            </div>
           </div>
         </div>
       </HeadlineScoreCard>
 
       <div className="rounded-lg border border-border bg-card px-7 pb-7 pt-6">
         <div className="text-[11px] font-semibold uppercase tracking-[0.14em]">Recent revisions</div>
-        <p className="mt-5 font-serif text-[14.5px] italic text-mut">
-          No recent revisions on file. {/* TD-DTL-REV — upgradeDowngradeHistory is fetched by the
-          service but not returned in the analyst-ratings API response. */}
-        </p>
+        {ratings.revisions.length === 0 ? (
+          <p className="mt-5 font-serif text-[14.5px] italic text-mut">
+            No analyst revisions in the last 90 days.
+          </p>
+        ) : (
+          <table className="mt-5 w-full border-collapse text-[13.5px]">
+            <tbody>
+              {ratings.revisions.map((rev, i) => {
+                const tag = revisionTag(rev.action);
+                return (
+                  <tr
+                    key={`${rev.firm}-${rev.date}-${i}`}
+                    className={cn(i < ratings.revisions.length - 1 && "border-b border-line2")}
+                  >
+                    <td className="py-[15px] font-serif">{rev.firm}</td>
+                    <td className="py-[15px] text-sub">
+                      {rev.fromGrade && rev.toGrade ? `${rev.fromGrade} → ${rev.toGrade}` : rev.toGrade || "—"}
+                    </td>
+                    <td className={cn("py-[15px] text-right text-[10.5px] font-semibold uppercase tracking-[0.14em]", tag.className)}>
+                      {tag.label}
+                    </td>
+                    <td className="py-[15px] text-right text-mut">
+                      {new Date(rev.date).toLocaleDateString()}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

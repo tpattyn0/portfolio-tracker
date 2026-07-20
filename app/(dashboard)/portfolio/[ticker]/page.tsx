@@ -12,7 +12,6 @@ import { FundamentalAnalysis } from "@/components/fundamental-analysis";
 import { IntrinsicValue } from "@/components/intrinsic-value";
 import { AnalystRatings } from "@/components/analyst-ratings";
 import { NewsFeed } from "@/components/news-feed";
-import { SentimentScore } from "@/components/sentiment-score";
 import { SellPositionModal } from "@/components/sell-position-modal";
 import { BuyMoreModal } from "@/components/buy-more-modal";
 import { ComponentErrorBoundary } from "@/components/error-boundary";
@@ -26,8 +25,8 @@ const ALL_TABS = [
   { value: "fundamental", label: "Fundamental" },
   { value: "analyst", label: "Analysts" },
   { value: "intrinsic", label: "Intrinsic value" },
-  { value: "transactions", label: "Positions" },
   { value: "news", label: "News & sentiment" },
+  { value: "transactions", label: "Positions" },
 ] as const;
 
 type TabValue = (typeof ALL_TABS)[number]["value"];
@@ -336,10 +335,6 @@ export default function PositionDetailPage() {
       {effectiveTab === "news" && (
         <ComponentErrorBoundary name="News & Sentiment">
           <div className="space-y-5">
-            {newsArticles && newsArticles.length > 0 && (
-              <SentimentScore articles={newsArticles} symbol={position.ticker} />
-            )}
-
             <div className="flex justify-end">
               <button
                 type="button"

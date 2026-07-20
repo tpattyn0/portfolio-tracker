@@ -23,6 +23,9 @@ interface IntrinsicValueData {
   methods: ValuationMethod[];
   confidence: "high" | "medium" | "low";
   lastUpdated: string;
+  scenarioLow: number | null;
+  scenarioHigh: number | null;
+  validMethodCount: number;
 }
 
 interface IntrinsicValueProps {
@@ -70,7 +73,14 @@ export function IntrinsicValue({ symbol, currentPrice, currency }: IntrinsicValu
 
   const score = upsideToScore(data.upsidePercent);
   const dcfLite = data.methods.find((m) => m.name === "DCF Lite");
-  const revenueGrowth = dcfLite?.inputs?.growthRate;
+  // OD-1 resolved (honest relabel, plans/2026-07-19-research-tab-fixes.md):
+  // these are the three real DCF Lite inputs — "growthRate" is EARNINGS
+  // growth (capped at +15%, uncapped downside), not revenue growth as the
+  // row used to claim. "FCF margin"/"Terminal growth" are dropped, not
+  // em-dashed — the DCF Lite method (an EPS-multiple model) never computes
+  // them, so a permanent hardcoded "—" for a non-existent model was the bug.
+  const earningsGrowth = dcfLite?.inputs?.growthRate;
+  const terminalPE = dcfLite?.inputs?.terminalPE;
   const discountRate = dcfLite?.inputs?.discountRate;
 
   const upsideColor = data.upsidePercent === null ? "text-mut" : data.upsidePercent >= 0 ? "text-up" : "text-dn";
@@ -100,11 +110,15 @@ export function IntrinsicValue({ symbol, currentPrice, currency }: IntrinsicValu
             : "No fundamental data available for this symbol."
         }
       >
-        <div className="grid grid-cols-3 border-t border-line pt-5">
+        <div className="grid grid-cols-3 pt-5">
           <div>
             <div className="text-[10.5px] uppercase tracking-[0.12em] text-dn">Bear</div>
-            <div className="mt-1.5 font-serif text-[26px] text-mut">—</div>
-            <div className="mt-0.5 text-[12px] text-mut">Single-point estimate</div>
+            <div className={cn("mt-1.5 font-serif text-[26px]", data.scenarioLow === null && "text-mut")}>
+              {data.scenarioLow !== null ? formatCurrency(data.scenarioLow, currency) : "—"}
+            </div>
+            <div className="mt-0.5 text-[12px] text-mut">
+              {data.scenarioLow !== null ? `Lowest of ${data.validMethodCount} methods` : "Insufficient methods"}
+            </div>
           </div>
           <div className="border-l border-line2 pl-5">
             <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Base</div>
@@ -115,23 +129,29 @@ export function IntrinsicValue({ symbol, currentPrice, currency }: IntrinsicValu
           </div>
           <div className="border-l border-line2 pl-5">
             <div className="text-[10.5px] uppercase tracking-[0.12em] text-up">Bull</div>
-            <div className="mt-1.5 font-serif text-[26px] text-mut">—</div>
-            <div className="mt-0.5 text-[12px] text-mut">Single-point estimate</div>
+            <div className={cn("mt-1.5 font-serif text-[26px]", data.scenarioHigh === null && "text-mut")}>
+              {data.scenarioHigh !== null ? formatCurrency(data.scenarioHigh, currency) : "—"}
+            </div>
+            <div className="mt-0.5 text-[12px] text-mut">
+              {data.scenarioHigh !== null ? `Highest of ${data.validMethodCount} methods` : "Insufficient methods"}
+            </div>
           </div>
         </div>
 
         <div className="mt-6 border-t border-line2 pt-5">
           <div className="mb-3 text-[10.5px] uppercase tracking-[0.14em] text-mut">Model assumptions</div>
           <AssumptionRow
-            label="Revenue growth"
-            value={typeof revenueGrowth === "number" ? `${(revenueGrowth * 100).toFixed(1)}%` : null}
+            label="Earnings growth (capped)"
+            value={typeof earningsGrowth === "number" ? `${(earningsGrowth * 100).toFixed(1)}%` : null}
+          />
+          <AssumptionRow
+            label="Terminal P/E"
+            value={typeof terminalPE === "number" ? terminalPE.toFixed(1) : null}
           />
           <AssumptionRow
             label="Discount rate (WACC)"
             value={typeof discountRate === "number" ? `${(discountRate * 100).toFixed(1)}%` : null}
           />
-          <AssumptionRow label="FCF margin" value={null} />
-          <AssumptionRow label="Terminal growth" value={null} />
         </div>
       </HeadlineScoreCard>
     </div>

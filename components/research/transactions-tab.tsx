@@ -94,57 +94,62 @@ export function TransactionsTab({ symbol, currency }: TransactionsTabProps) {
         </div>
       )}
 
-      {panelState === "closed" && (
-        <div>
-          <div className="mb-4 text-[11px] font-semibold uppercase tracking-[0.14em]">Your position</div>
-          <div className="space-y-1 border-t border-line pt-5">
-            <p className="font-serif text-[14.5px] italic text-mut">Position closed.</p>
-            {showRealizedPL && position && (
-              <p className="text-[13px]">
-                <span className="text-mut">Realized P/L: </span>
-                <span className={cn("font-medium", position.realizedPL >= 0 ? "text-up" : "text-dn")}>
-                  {formatCurrency(position.realizedPL, currency)}
-                </span>
-              </p>
-            )}
+      {(panelState === "closed" || panelState === "held") && (
+        <div
+          className="rounded-lg border border-border bg-card px-7 pb-7 pt-6"
+          style={{ borderTop: "3px double var(--foreground)" }}
+        >
+          <div className="flex items-center justify-between border-b border-line2 pb-4">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em]">Position</span>
           </div>
-        </div>
-      )}
 
-      {panelState === "held" && position && (
-        <div>
-          <div className="mb-4 text-[11px] font-semibold uppercase tracking-[0.14em]">Your position</div>
-          <div className={cn("grid border-t border-line pt-5", showRealizedPL ? "grid-cols-5" : "grid-cols-4")}>
-            <div>
-              <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Shares held</div>
-              <div className="mt-1.5 font-serif text-[26px]">{formatNumber(position.quantity, 4)}</div>
+          {panelState === "closed" && (
+            <div className="space-y-1 pt-7">
+              <p className="font-serif text-[14.5px] italic text-mut">Position closed.</p>
+              {showRealizedPL && position && (
+                <p className="text-[13px]">
+                  <span className="text-mut">Realized P/L: </span>
+                  <span className={cn("font-medium", position.realizedPL >= 0 ? "text-up" : "text-dn")}>
+                    {formatCurrency(position.realizedPL, currency)}
+                  </span>
+                </p>
+              )}
             </div>
-            <div className="border-l border-line2 pl-5">
-              <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Average cost</div>
-              <div className="mt-1.5 font-serif text-[26px]">{formatCurrency(position.avgCostBasis, currency)}</div>
-            </div>
-            <div className="border-l border-line2 pl-5">
-              <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Market value</div>
-              <div className="mt-1.5 font-serif text-[26px]">{formatCurrency(position.marketValue, currency)}</div>
-            </div>
-            <div className="border-l border-line2 pl-5">
-              <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Unrealised P/L</div>
-              <div className={cn("mt-1.5 font-serif text-[26px]", position.unrealizedPL >= 0 ? "text-up" : "text-dn")}>
-                {formatCurrency(position.unrealizedPL, currency)}
+          )}
+
+          {panelState === "held" && position && (
+            <div className={cn("grid pt-7", showRealizedPL ? "grid-cols-5" : "grid-cols-4")}>
+              <div>
+                <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Shares held</div>
+                <div className="mt-1.5 font-serif text-[26px]">{formatNumber(position.quantity, 4)}</div>
               </div>
-              <div className={cn("mt-0.5 text-[12px]", position.unrealizedPL >= 0 ? "text-up" : "text-dn")}>
-                {formatPercent(position.unrealizedPLPercent)}
-              </div>
-            </div>
-            {showRealizedPL && (
               <div className="border-l border-line2 pl-5">
-                <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Realized P/L</div>
-                <div className={cn("mt-1.5 font-serif text-[26px]", position.realizedPL >= 0 ? "text-up" : "text-dn")}>
-                  {formatCurrency(position.realizedPL, currency)}
+                <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Average cost</div>
+                <div className="mt-1.5 font-serif text-[26px]">{formatCurrency(position.avgCostBasis, currency)}</div>
+              </div>
+              <div className="border-l border-line2 pl-5">
+                <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Market value</div>
+                <div className="mt-1.5 font-serif text-[26px]">{formatCurrency(position.marketValue, currency)}</div>
+              </div>
+              <div className="border-l border-line2 pl-5">
+                <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Unrealised P/L</div>
+                <div className={cn("mt-1.5 font-serif text-[26px]", position.unrealizedPL >= 0 ? "text-up" : "text-dn")}>
+                  {formatCurrency(position.unrealizedPL, currency)}
+                </div>
+                <div className={cn("mt-0.5 text-[12px]", position.unrealizedPL >= 0 ? "text-up" : "text-dn")}>
+                  {formatPercent(position.unrealizedPLPercent)}
                 </div>
               </div>
-            )}
-          </div>
+              {showRealizedPL && (
+                <div className="border-l border-line2 pl-5">
+                  <div className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Realized P/L</div>
+                  <div className={cn("mt-1.5 font-serif text-[26px]", position.realizedPL >= 0 ? "text-up" : "text-dn")}>
+                    {formatCurrency(position.realizedPL, currency)}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

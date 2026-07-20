@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { buildAreaPath, buildPath } from "@/lib/utils/chart-path";
+import { buildAreaPath, buildPath, CHART_DOMAIN_MARGIN, gridlineYs, marginDomain } from "@/lib/utils/chart-path";
 import { niceYTicks } from "@/lib/utils/chart-ticks";
 import { formatCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
@@ -33,9 +33,9 @@ interface ChartDataPoint {
 }
 
 // Overview uses viewBox 0 0 1300 190; Technical uses 0 0 1000 190 (DESIGN.md
-// "Detail price chart"). Both share the same 190-tall gridline fractions.
+// "Detail price chart"). Both share the same 190-tall height.
 const CHART_HEIGHT = 190;
-const GRIDLINE_Y = [47, 94, 141];
+const CHART_PADDING = 8; // must match buildPath's default padding — kept in sync explicitly.
 
 /**
  * Research-detail Overview/Technical chart (ADR-11): reuses buildPath/
@@ -62,13 +62,31 @@ export function DetailPriceChart({ symbol, period, currency, referenceLines, cla
   const points: ChartDataPoint[] = useMemo(() => data?.chart ?? [], [data]);
   const values = useMemo(() => points.map((p) => p.value), [points]);
 
-  const linePath = useMemo(() => buildPath(values, width, CHART_HEIGHT), [values, width]);
-  const areaPath = useMemo(() => buildAreaPath(linePath, width, CHART_HEIGHT), [linePath, width]);
-
   const finiteValues = values.filter((v) => Number.isFinite(v));
   const min = finiteValues.length ? Math.min(...finiteValues) : 0;
   const max = finiteValues.length ? Math.max(...finiteValues) : 0;
   const yTicks = useMemo(() => niceYTicks(min, max, 3), [min, max]);
+  // The *drawing* domain buildPath/gridlineYs map into is slightly wider than
+  // the true [min, max] — a small symmetric margin that gives the
+  // Catmull-Rom spline's overshoot room to stay inside the plot instead of
+  // clipping below the floor / above the ceiling
+  // (plans/2026-07-20-perf-graph-dip-clipping-fix.md). `yTicks` above (the
+  // LABEL values) stay on the true min/max — only the pixel mapping changes.
+  const { domainMin, domainMax } = useMemo(() => marginDomain(min, max, CHART_DOMAIN_MARGIN), [min, max]);
+
+  const linePath = useMemo(
+    () => buildPath(values, width, CHART_HEIGHT, CHART_PADDING, CHART_DOMAIN_MARGIN),
+    [values, width]
+  );
+  const areaPath = useMemo(() => buildAreaPath(linePath, width, CHART_HEIGHT), [linePath, width]);
+
+  // Gridline/label y-positions derived from the same margined padded domain
+  // buildPath uses to plot the line (plans/2026-07-20-small-visual-fixes.md,
+  // Issue 4; margined domain per the dip-clipping fix above).
+  const gridYs = useMemo(
+    () => gridlineYs(domainMin, domainMax, CHART_HEIGHT, CHART_PADDING, yTicks),
+    [domainMin, domainMax, yTicks]
+  );
 
   const dateLabels = useMemo(() => {
     if (points.length === 0) return [];
@@ -106,10 +124,13 @@ export function DetailPriceChart({ symbol, period, currency, referenceLines, cla
   const hoverPoint = hoverIndex !== null ? points[hoverIndex] : null;
   // Shared y-domain denominator for both the hover marker and reference lines
   // (MRD-S2) — named for what it represents (the plotted value range), not
-  // which feature reads it first.
-  const valueRange = max - min || 1;
+  // which feature reads it first. Uses the same margined domain as
+  // buildPath/gridlineYs (plans/2026-07-20-perf-graph-dip-clipping-fix.md) so
+  // the hover marker and any reference line stay registered with the drawn
+  // curve, including inside the dip's new headroom.
+  const valueRange = domainMax - domainMin || 1;
   const hoverXFrac = hoverIndex !== null && points.length > 1 ? hoverIndex / (points.length - 1) : 0;
-  const hoverYFrac = hoverPoint ? 1 - (hoverPoint.value - min) / valueRange : 0;
+  const hoverYFrac = hoverPoint ? 1 - (hoverPoint.value - domainMin) / valueRange : 0;
 
   return (
     <div className={className}>
@@ -121,7 +142,7 @@ export function DetailPriceChart({ symbol, period, currency, referenceLines, cla
             <div
               key={tick}
               className="absolute right-0 -translate-y-1/2 text-[10.5px] text-mut"
-              style={{ top: `${(GRIDLINE_Y[i] ?? GRIDLINE_Y[GRIDLINE_Y.length - 1]) / CHART_HEIGHT * 100}%` }}
+              style={{ top: `${(gridYs[i] ?? gridYs[gridYs.length - 1]) / CHART_HEIGHT * 100}%` }}
             >
               {formatCurrency(tick, currency)}
             </div>
@@ -135,16 +156,21 @@ export function DetailPriceChart({ symbol, period, currency, referenceLines, cla
           onMouseLeave={handleMouseLeave}
         >
           <svg viewBox={`0 0 ${width} ${CHART_HEIGHT}`} preserveAspectRatio="none" className="block h-full w-full">
-            {GRIDLINE_Y.map((y) => (
-              <line key={y} x1="0" y1={y} x2={width} y2={y} className="stroke-line2" />
+            {gridYs.map((y, i) => (
+              <line key={yTicks[i] ?? i} x1="0" y1={y} x2={width} y2={y} className="stroke-line2" />
             ))}
             {referenceLines?.map((ref) => {
-              // Clamp to [min, max] so a level outside the plotted range
-              // (e.g. a support/resistance level from a wider lookback than
-              // the visible series) still renders at the plot's edge instead
-              // of being clipped off the visible SVG area (MRD-S2).
+              // Clamp to the TRUE [min, max] (not the margined drawing domain)
+              // so a level outside the plotted range (e.g. a support/
+              // resistance level from a wider lookback than the visible
+              // series) still renders at the plot's true data edge instead of
+              // being clipped off the visible SVG area (MRD-S2) — a level at
+              // the true min should land exactly on the line's min vertex,
+              // not out in the margin headroom. The denominator (`valueRange`)
+              // is the margined domain, matching how buildPath positions that
+              // same min vertex, so the two stay registered.
               const clampedValue = Math.max(min, Math.min(max, ref.value));
-              const yFrac = 1 - (clampedValue - min) / valueRange;
+              const yFrac = 1 - (clampedValue - domainMin) / valueRange;
               const y = yFrac * CHART_HEIGHT;
               return (
                 <line

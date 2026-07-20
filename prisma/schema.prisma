@@ -168,6 +168,8 @@ model AnalystRating {
   id                 String    @id @default(cuid())
   symbol             String    @unique
   targetPrice        Decimal?  @db.Decimal(10, 2)
+  targetLowPrice     Decimal?  @db.Decimal(10, 2)
+  targetHighPrice    Decimal?  @db.Decimal(10, 2)
   strongBuy          Int       @default(0)
   buy                Int       @default(0)
   hold               Int       @default(0)
@@ -177,6 +179,7 @@ model AnalystRating {
   averageRating      Decimal?  @db.Decimal(3, 2)
   score              Float     @default(5.0)
   scoreInterpretation String   @default("No analyst data available")
+  revisions          Json?
   lastUpdated        DateTime  @default(now())
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt

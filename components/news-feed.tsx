@@ -113,7 +113,7 @@ export function NewsFeed({ symbol, companyName, articles: propArticles }: NewsFe
             : `Sentiment reflects ${news.length} analysed articles, weighted by relevance and market impact.`
         }
       >
-        <div className="grid grid-cols-3 border-t border-line pt-5">
+        <div className="grid grid-cols-3 pt-5">
           <ToneCell label="Positive" pct={positivePct} color="text-up" />
           <ToneCell label="Neutral" pct={neutralPct} color="text-mut" />
           <ToneCell label="Negative" pct={negativePct} color="text-dn" />

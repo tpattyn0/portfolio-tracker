@@ -54,6 +54,9 @@ export async function GET(
         methods: [],
         confidence: "low",
         lastUpdated: new Date().toISOString(),
+        scenarioLow: null,
+        scenarioHigh: null,
+        validMethodCount: 0,
       });
     }
 

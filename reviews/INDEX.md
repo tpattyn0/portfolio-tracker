@@ -18,4 +18,8 @@
 | 2026-07-19-positions-tab.md | 2026-07-19 | IMPLEMENTED — 2026-07-19 (0 BLOCKERs; PT-I1 Realized P/L re-surfaced + PT-I2 test/ADR fixed over 3 iters; PT-Q2 owner click-through pending; PT-S2 skipped) |
 | 2026-07-19-positions-stat-distinction.md | 2026-07-19 | IMPLEMENTED — 2026-07-19 (0 BLOCKERs/ISSUEs/SUGGESTIONs; PSD-Q1 owner visual acceptance pending) |
 | 2026-07-19-positions-band-restyle.md | 2026-07-19 | IMPLEMENTED — 2026-07-19 (0 BLOCKERs/ISSUEs/SUGGESTIONs; supersedes stat-distinction bg-fill panel with Intrinsic-style bare band; PBR-Q1 owner visual acceptance pending) |
+| 2026-07-19-research-tab-fixes.md | 2026-07-20 | IMPLEMENTED — 2026-07-20 (0 BLOCKERs/ISSUEs/SUGGESTIONs; 2 owner-acceptance QUESTIONs RTF-Q1/Q2 pending; verify green 122/122) |
+| 2026-07-20-analyst-revisions-nvda-fix.md | 2026-07-20 | IMPLEMENTED — 2026-07-20 (0 BLOCKERs/ISSUEs; 90-day filter + persist migration; ARV-Q1 owner migrate-deploy + ARV-Q2 live check pending; ARV-S1 optional) |
+| 2026-07-20-small-visual-fixes.md | 2026-07-20 | IMPLEMENTED — 2026-07-20 (0 BLOCKERs/ISSUEs; dividers + overview five-query gate + data-derived chart gridlines; SVF-Q1 visual + SVF-Q2 TD-36 Designer routing pending; SVF-S1/S2 optional; 135/135) |
+| 2026-07-20-perf-graph-dip-clipping-fix.md | 2026-07-20 | IMPLEMENTED — 2026-07-20 (0 BLOCKERs/ISSUEs; margined drawing domain — bezier-sampling test + domain-registration invariant + labels-on-true-min/max verified; DIP-Q1 owner visual acceptance pending; DIP-S1 optional; 141/141) |
 | 2026-07-20-gemini-model-update.md | 2026-07-20 | IMPLEMENTED — 2026-07-20 (0 BLOCKERs/ISSUEs/SUGGESTIONs; gemini-1.5-flash→2.5-flash live-verified + centralized constant; GMU-Q1 owner UI acceptance pending; 117/117) |

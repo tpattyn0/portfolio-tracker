@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { buildAreaPath, buildPath } from "@/lib/utils/chart-path";
+import { buildAreaPath, buildPath, CHART_DOMAIN_MARGIN, gridlineYs, marginDomain } from "@/lib/utils/chart-path";
 import { niceYTicks } from "@/lib/utils/chart-ticks";
 import { formatCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
@@ -33,10 +33,8 @@ const ranges: { label: string; value: Range }[] = [
 
 const CHART_WIDTH = 1300;
 const CHART_HEIGHT = 220;
+const CHART_PADDING = 8; // must match buildPath's default padding — kept in sync explicitly.
 const MORPH_DURATION_MS = 500;
-// Hero's existing gridlines (y-fractions of 220) — distinct from DetailPriceChart's
-// 47/94/141-of-190 (different viewBox), per DESIGN.md "Dashboard SVG performance chart".
-const GRIDLINE_Y = [55, 110, 165];
 
 // Ease-in-out, matching the prototype's morph curve exactly.
 function easeInOut(k: number): number {
@@ -141,9 +139,6 @@ export function PortfolioChart({ positions, baseCurrency = "EUR", exchangeRatesU
     );
   }
 
-  const linePath = buildPath(animatedValues, CHART_WIDTH, CHART_HEIGHT);
-  const areaPath = buildAreaPath(linePath, CHART_WIDTH, CHART_HEIGHT);
-
   // Y-axis ticks computed from the currently *displayed* (animating) series —
   // labels update live as the morph runs, matching how the value figure
   // animates elsewhere (DESIGN.md).
@@ -151,12 +146,31 @@ export function PortfolioChart({ positions, baseCurrency = "EUR", exchangeRatesU
   const yMin = finiteAnimated.length ? Math.min(...finiteAnimated) : 0;
   const yMax = finiteAnimated.length ? Math.max(...finiteAnimated) : 0;
   const yTicks = niceYTicks(yMin, yMax, 3);
-  const valueRange = yMax - yMin || 1;
+  // The *drawing* domain buildPath/gridlineYs map into is slightly wider than
+  // the true [yMin, yMax] — a small symmetric margin that gives the
+  // Catmull-Rom spline's overshoot room to stay inside the plot instead of
+  // clipping below the floor / above the ceiling
+  // (plans/2026-07-20-perf-graph-dip-clipping-fix.md). `yTicks` above (the
+  // LABEL values) stay on the true min/max — only the pixel mapping changes.
+  const { domainMin, domainMax } = marginDomain(yMin, yMax, CHART_DOMAIN_MARGIN);
+
+  const linePath = buildPath(animatedValues, CHART_WIDTH, CHART_HEIGHT, CHART_PADDING, CHART_DOMAIN_MARGIN);
+  const areaPath = buildAreaPath(linePath, CHART_WIDTH, CHART_HEIGHT);
+
+  // Gridline/label y-positions derived from the same margined padded domain
+  // buildPath uses to plot the line, so the series' max/min always land
+  // exactly on the top/bottom gridlines (plans/2026-07-20-small-visual-fixes.md,
+  // Issue 4; margined domain per the dip-clipping fix above).
+  const gridYs = gridlineYs(domainMin, domainMax, CHART_HEIGHT, CHART_PADDING, yTicks);
 
   const hoverValue = hoverIndex !== null ? animatedValues[hoverIndex] : undefined;
   const hoverDate = hoverIndex !== null ? series[hoverIndex]?.date : undefined;
   const hoverXFrac = hoverIndex !== null && animatedValues.length > 1 ? hoverIndex / (animatedValues.length - 1) : 0;
-  const hoverYFrac = hoverValue !== undefined ? 1 - (hoverValue - yMin) / valueRange : 0;
+  // Same margined domain as the line/gridlines above, so the hover marker
+  // stays registered with the drawn curve (including inside the dip's new
+  // headroom) rather than the pre-margin [yMin, yMax] fraction.
+  const domainRange = domainMax - domainMin || 1;
+  const hoverYFrac = hoverValue !== undefined ? 1 - (hoverValue - domainMin) / domainRange : 0;
 
   return (
     <div>
@@ -200,7 +214,7 @@ export function PortfolioChart({ positions, baseCurrency = "EUR", exchangeRatesU
             <div
               key={tick}
               className="absolute right-0 -translate-y-1/2 text-[10.5px] text-mut"
-              style={{ top: `${(GRIDLINE_Y[i] ?? GRIDLINE_Y[GRIDLINE_Y.length - 1]) / CHART_HEIGHT * 100}%` }}
+              style={{ top: `${(gridYs[i] ?? gridYs[gridYs.length - 1]) / CHART_HEIGHT * 100}%` }}
             >
               {formatCurrency(tick, baseCurrency)}
             </div>
@@ -218,9 +232,9 @@ export function PortfolioChart({ positions, baseCurrency = "EUR", exchangeRatesU
             preserveAspectRatio="none"
             className="block h-full w-full"
           >
-            <line x1="0" y1="55" x2={CHART_WIDTH} y2="55" className="stroke-line2" />
-            <line x1="0" y1="110" x2={CHART_WIDTH} y2="110" className="stroke-line2" />
-            <line x1="0" y1="165" x2={CHART_WIDTH} y2="165" className="stroke-line2" />
+            {gridYs.map((y, i) => (
+              <line key={yTicks[i] ?? i} x1="0" y1={y} x2={CHART_WIDTH} y2={y} className="stroke-line2" />
+            ))}
             <path d={areaPath} className="fill-foreground" fillOpacity={0.05} stroke="none" />
             <path d={linePath} fill="none" className="stroke-foreground" strokeWidth={1.5} />
             <line x1="0" y1={CHART_HEIGHT - 1} x2={CHART_WIDTH} y2={CHART_HEIGHT - 1} className="stroke-border" />
