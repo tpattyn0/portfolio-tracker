@@ -2,6 +2,7 @@
 
 ## In progress
 Orchestration: Dashboard performance graph — spurious spike in the series (axis scaling already fixed; this is the bad-data-point OD-2 case now visible)
+Plan: plans/2026-07-20-perf-graph-spike-fix.md
 Since: 2026-07-20
 Branch: fix/research-tab-fixes
 Planner: running
