@@ -5,7 +5,8 @@ Orchestration: Configurable scoring weights — per-user weights for the 5 compo
 Plan: plans/2026-07-20-configurable-scoring-weights.md
 Since: 2026-07-20
 Branch: feature/configurable-scoring-weights
-Coding agent: running (migration owner-gated — do not apply)
+Reviewer: running (iteration 1)
+Note: migration created but NOT applied — owner prisma migrate deploy pending
 
 ## Blocked
 TD-01 — NEWS_API_KEY live + public in history; risk accepted per ADR-7, blocks production deploys only
