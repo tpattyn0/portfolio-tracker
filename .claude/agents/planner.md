@@ -29,7 +29,10 @@ go in the plan's `## Assumptions` section.
 
 Session close: commit the plan and any doc updates on a branch and push (plans
 are code). End with the plan summary from `CLAUDE.md`, including
-`Git: clean · pushed [branch]`.
+`Git: clean · pushed [branch]`. Exception: on a brand-new project with no
+GitHub remote yet (`git remote -v` empty — repo creation is the Coding agent's
+job in a later session), commit locally and write
+`Git: clean · local only (no remote yet)` instead.
 
 Skills: for architecture-level plans, run the `engineering:architecture` or
 `engineering:system-design` checklists via the Skill tool when installed —

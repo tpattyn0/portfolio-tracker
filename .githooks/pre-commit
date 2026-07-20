@@ -3,9 +3,15 @@
 # Blocks: (1) committing secrets, (2) direct commits to main.
 set -euo pipefail
 
-# 1. Block direct commits to main
-branch="$(git rev-parse --abbrev-ref HEAD)"
-if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
+# 1. Block direct commits to main — except the repo's very first commit ever
+# (unborn HEAD). A brand-new project's bootstrap commit legitimately lands on
+# main because no branch protection exists yet to bypass; blocking it here
+# just breaks new-project setup for no safety benefit.
+# Use symbolic-ref, not `rev-parse --abbrev-ref HEAD` — the latter needs a
+# resolvable commit and errors out under `set -e` on an unborn HEAD, before
+# the unborn check below ever runs.
+branch="$(git symbolic-ref --short HEAD 2>/dev/null || echo "")"
+if { [ "$branch" = "main" ] || [ "$branch" = "master" ]; } && git rev-parse --verify -q HEAD >/dev/null 2>&1; then
   echo "✗ Direct commits to $branch are blocked. Use a feature branch." >&2
   exit 1
 fi
