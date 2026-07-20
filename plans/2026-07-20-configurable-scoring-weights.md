@@ -290,15 +290,29 @@ in this file: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
    ten controls seeded from GET, the live % updates as weights change, reset restores
    defaults, save persists (reload shows saved values). `npm run verify` green.
 
-8. [ ] **Wishlist composite + fundamental use the user's weights (extension).** In
-   `wishlist.service.ts`, load the user's weights once per `getWishlistWithScores(userId, …)`
-   call, pass `weights.fundamental` to the `fetchFundamentals(item.ticker, …)` call
-   (line 199), and replace the hardcoded composite weights (lines 274-280) with
-   `weightedCompositeTotal(scores, normalizeWeights(weights.composite))` from the shared
-   module (preserving the existing `?? 5` missing-dimension fallback).
+8. [ ] **Wishlist uses the SAME single scoring definition (owner requirement — not optional).**
+   Owner decision (2026-07-20): **there must be exactly ONE definition of the scores — no
+   two parallel implementations.** The wishlist currently DUPLICATES the composite math
+   (`wishlist.service.ts:274-280` hardcodes the same weights + formula that `overview.tsx`
+   does) and calls `fetchFundamentals(item.ticker)` on defaults. This task eliminates that
+   duplication: the wishlist must consume the shared `weightedCompositeTotal` /
+   `weightedFundamentalTotal` / `normalizeWeights` from `lib/utils/scoring-weights.ts` (the
+   single source of truth created in Task 1) — it must NOT keep its own copy of the weights
+   or the summation formula. In `wishlist.service.ts`, load the user's weights once per
+   `getWishlistWithScores(userId, …)` call, pass `weights.fundamental` to the
+   `fetchFundamentals(item.ticker, weights.fundamental)` call (line 199), and replace the
+   hardcoded composite weights + inline formula (lines 274-280) with
+   `weightedCompositeTotal(scores, normalizeWeights(weights.composite))` (preserving the
+   existing `?? 5` missing-dimension fallback). After this task, `grep` for a hardcoded
+   composite/fundamental weights object should find it ONLY in
+   `DEFAULT_SCORING_WEIGHTS` (lib/utils/scoring-weights.ts) — nowhere else. This task is
+   REQUIRED (still sequenced last so Tasks 1-7 land first, but it is not droppable).
    — **Acceptance:** wishlist composite for a user with no prefs row is unchanged vs.
-   today; with custom weights it matches `weightedCompositeTotal`. Existing wishlist
-   tests still pass; a new test covers the custom-weights path. `npm run verify` green.
+   today; with custom weights it matches `weightedCompositeTotal`; the wishlist and the
+   research Overview tab produce the IDENTICAL composite for the same stock + same user
+   (proving one definition). `grep -rn` finds no hardcoded scoring-weights object outside
+   `lib/utils/scoring-weights.ts`. Existing wishlist tests still pass; a new test covers
+   the custom-weights path and the wishlist-equals-overview invariant. `npm run verify` green.
 
 ## Files to create or modify
 
@@ -343,12 +357,12 @@ runs after every task and must pass. Beyond it:
 
 ## Assumptions
 
-- **Wishlist is in scope (Task 8), sequenced last.** The owner's task named the
-  research composite and the fundamental score; the wishlist mirrors both with
-  identical hardcoded weights and already has `userId` in hand. Applying the user's
-  weights there too is the only way "set once, applies everywhere" holds. If the owner
-  wants the wishlist left on default weights, drop Task 8 — nothing in Tasks 1-7
-  depends on it.
+- **Wishlist is in scope (Task 8), REQUIRED — owner decision 2026-07-20.** The owner
+  ruled there must be exactly one definition of the scores, no two parallel
+  implementations. The wishlist currently duplicates the composite math; Task 8 makes it
+  consume the shared `scoring-weights.ts` module (single source of truth) and the user's
+  weights. Sequenced last (so Tasks 1-7 land first) but NOT droppable — leaving the
+  wishlist on a duplicate hardcoded definition is exactly what the owner forbade.
 - **Store raw weights, normalize at read/scoring time** (ADR-20). The settings UI
   shows back exactly what the user typed; scoring always uses the normalized form.
 - **All-zero group falls back to defaults, not equal weights** (ADR-20) — a curated

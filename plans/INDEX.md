@@ -18,4 +18,4 @@
 | plans/2026-07-20-small-visual-fixes.md | 2026-07-20 | implemented | reviews/2026-07-20-small-visual-fixes.md |
 | plans/2026-07-20-perf-graph-spike-fix.md | 2026-07-20 | superseded (misread; spike is correct) | — |
 | plans/2026-07-20-perf-graph-dip-clipping-fix.md | 2026-07-20 | implemented | reviews/2026-07-20-perf-graph-dip-clipping-fix.md |
-| plans/2026-07-20-configurable-scoring-weights.md | 2026-07-20 | planned | — |
+| plans/2026-07-20-configurable-scoring-weights.md | 2026-07-20 | planned (approved; wishlist = single source of truth, required) | — |
