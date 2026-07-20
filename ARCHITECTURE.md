@@ -26,6 +26,7 @@
 - `Wishlist` 1:many `WishlistItem`.
 - Symbol-keyed, user-independent shared market-data cache tables: `FundamentalData`, `AnalystRating`, `IndustryComparison`, `NewsArticle`, `SentimentHistory`.
 - No `ClosedPosition` model — closed positions are computed on every request via FIFO matching of `Transaction` rows (`app/api/portfolio/closed-positions/route.ts`).
+- **Planned (`plans/2026-07-20-configurable-scoring-weights.md`, ADR-20/21 — not yet implemented):** a `User` 1:1 `UserScoringPreferences` table storing per-user composite category weights and fundamental subcategory weights (ten discrete `Float?` columns, raw values normalized at scoring time). The composite score is reweighted client-side in `components/overview.tsx`; the fundamental score is reweighted server-side by passing the user's weights into `fetchFundamentals(symbol, weights?)` — the on-read reweight is never written back, so `FundamentalData` stays user-independent (ADR-4/ADR-21). Migration is additive and owner-gated (`--create-only`).
 
 ## Key files
 
@@ -51,6 +52,8 @@
 | `lib/utils/chart-ticks.ts` | Pure `niceYTicks()` helper for `DetailPriceChart`'s minimal y-axis labels |
 | `lib/utils/research-scores.ts` | Pure `upsideToScore`/`sentimentToScore`/`round1` derivations shared by Overview, Intrinsic value, and News & sentiment tabs; `verdictLabel(score, context)` selects the composite-verdict label set (portfolio vs wishlist wording) — used by `overview.tsx`, whose own `context` prop is now driven by an ownership lookup in `research/[symbol]/page.tsx` rather than hardcoded (MRD-Q1) |
 | `lib/utils/positions-tab.ts` | Pure `shouldShowPositionsTab(transactions)` (has-or-had-a-position tab-visibility gate), `getPositionsPanelState(position)` (`"held"`/`"closed"`/`"none"` — gates the Positions tab's live stat band on `quantity > 0` specifically, not on position-record presence), and `hasRealizedPL(realizedPL)` (hide-when-exactly-zero-or-absent gate for the Realized P/L cell/caption, both states) shared by `research/[symbol]/page.tsx`, `portfolio/[ticker]/page.tsx`, and `transactions-tab.tsx` (ADR-18) |
+| `lib/utils/scoring-weights.ts` | **Planned (`plans/2026-07-20-configurable-scoring-weights.md`)** — pure `DEFAULT_SCORING_WEIGHTS` + `normalizeWeights`/`weightedCompositeTotal`/`weightedFundamentalTotal`; the single source of truth for scoring-weight math, imported by both the client composite (`overview.tsx`) and the server fundamental path |
+| `lib/services/scoring-preferences.service.ts` | **Planned (same plan)** — reads/writes `UserScoringPreferences`, coalescing null columns to defaults; consumed by `app/api/settings/scoring-weights/route.ts` (GET/PUT) and the fundamentals + wishlist routes/services |
 | `lib/services/realized-pl.service.ts` | FIFO lot-matching + realized-P/L math shared by the sell route and the closed-positions route (AUD-03/AUD-FIX-01/03); as of ADR-18 also exports `computePositionRealizedPL(transactions, avgCostBasis)`, which sums realized P/L across one position's SELL transactions for `GET /api/portfolio/positions/[ticker]` — `Position` has no persisted per-position `realizedPL` column, only `Portfolio.realizedPL` (a portfolio-wide accumulator), so this is computed on read, not stored |
 
 ## API surface
