@@ -3,9 +3,59 @@ Date: 2026-07-21
 Status:
 
 ## Summary
-Findings: 0 BLOCKERs, 1 ISSUE, 1 SUGGESTION, 1 QUESTION
-Requires owner decision: DP-Q1 (doc-drift on migration-applied status — confirm live state)
-Ready for Coding agent: DP-I1 (meta-kicker scale-mismatch bug), DP-S1 (optional over-100 rounding test)
+Findings: 0 BLOCKERs, 1 ISSUE (RESOLVED iter 2), 1 SUGGESTION (addressed iter 2), 1 QUESTION (RESOLVED iter 2)
+Requires owner decision: none — all iteration-1 findings resolved this iteration; no new findings
+Ready for Coding agent: none outstanding
+
+## Iteration 2 (2026-07-21) — fix verification
+All three iteration-1 findings were acted on by the fix subagent (commits `ca77e8a4`,
+`3feb37e2`) and are verified resolved below. No new BLOCKERs/ISSUEs/QUESTIONs surfaced this
+iteration; the iteration-1 clean verifications (A)–(G) were spot-checked against the fix delta
+(`git diff 180371ac..HEAD`) and remain intact — the fix touched only `weightsEqualDefaults` (the
+affordance helper), its tests, and docs; no scoring math, schema, migration, or consumer wiring
+was disturbed.
+
+- **DP-I1 — RESOLVED (iteration 2).** Fixed in the single shared helper `weightsEqualDefaults`
+  (`lib/utils/scoring-weights.ts:184-204`) — **not** duplicated into `overview.tsx:181` /
+  `fundamental-analysis.tsx:81` (both still call the one shared helper unchanged; `git diff
+  180371ac..HEAD` shows neither component file was edited). The helper now normalizes **both**
+  sides to fractions (each divided by its own group sum, non-finite → 0) and compares with an
+  `epsilon = 1e-9` tolerance (`Math.abs(a - b) <= epsilon`), not `===` on the normalized floats.
+  Correctness verified in both directions: a default-percent group `{25,25,20,15,15}` normalizes
+  to `{0.25,…}` and compares **equal** to the fraction defaults → `hasCustomWeights = false` →
+  kicker hidden for default users; a genuinely-custom percent split `{40,20,20,10,10}` →
+  `{0.4,0.2,…}` compares **not-equal** → `hasCustomWeights = true` → kicker shown. The fix does
+  **not** collapse everything to equal (the opposite bug) — the custom-set tests assert `false`.
+  The `!weights` early-return `true` (null/unresolved query → kicker hidden) is preserved. Six
+  new tests were added (`scoring-weights.test.ts:186-226`) asserting **both** directions in the
+  percent scale the GET now returns: default-percent composite → equal, default-percent
+  fundamental → equal, custom-percent composite → not-equal, custom-percent fundamental →
+  not-equal, plus a float-dust tolerance case. The default-percent equal tests feed exactly the
+  `{25,25,20,15,15}` input that reproduced the original bug and expect equal — so this regression
+  cannot recur silently. `normalizeWeights`/`weightedCompositeTotal`/`weightedFundamentalTotal`/
+  `DEFAULT_SCORING_WEIGHTS` are untouched (diff shows only doc-comment additions in the region);
+  no scoring result changed — `weightsEqualDefaults` powers only the affordance.
+  Note (not a finding): the fix broadens `weightsEqualDefaults` from raw deep-equal to
+  scale-invariant proportional-equal. This is the intended semantics for the proportion-based
+  meta-kicker (its only consumers), and is safe.
+- **DP-Q1 — RESOLVED (iteration 2).** The migration is genuinely applied — `prisma migrate
+  status` (run live this iteration) reports "Database schema is up to date! — 13 migrations found,
+  no pending migrations." The docs are now accurate and internally consistent: ADR-20/21/22 in
+  `DECISIONS.md` (Status + Evidence + Tradeoffs lines), `ARCHITECTURE.md` (the
+  `UserScoringPreferences` entry), the `AGENT.md` fragile-surface note, and both `plans/INDEX.md`
+  and `reviews/INDEX.md` rows all now state "applied 2026-07-21" with the confirming `migrate
+  status` string — no lingering "pending owner deploy"/"unapplied"/"will fail" language for
+  `UserScoringPreferences` remains. The prior review `reviews/2026-07-20-configurable-scoring-weights.md`
+  had its SCW-Q1 marked RESOLVED and its `Status:` line updated to "migration applied 2026-07-21 —
+  the feature is live"; this is accurate and not overreaching — SCW-Q2 (owner live/visual
+  click-through) was correctly left pending.
+- **DP-S1 — ADDRESSED (iteration 2).** A direct test for `fractionsToPercents`' negative-leftover
+  (over-100) trim branch was added (`scoring-weights.test.ts:279-301`): a hand-constructed group
+  `{0.209,0.209,0.209,0.209,0.219}` whose ×100 floors sum to 101, asserting the result sums to
+  exactly 100 and lands on the deterministic even split `{20,20,20,20,20}`. The test first asserts
+  the pre-repair floors sum to 101 (locking the setup) and includes a clarifying comment that the
+  branch is defensive-only for the real caller. Correct and scoped — does not over-reach into the
+  scoring path.
 
 Scope: this reviews ONLY the direct-percent delta (commit `4d7828cd` plus the plan/design/chore
 commits after the prior review `4af018e5`) on branch `feature/configurable-scoring-weights` / PR #22.
@@ -75,7 +125,11 @@ shows for every user — including default users. Scoring itself is unaffected.
 
 ## Findings
 
-### DP-I1 — ISSUE
+### DP-I1 — ISSUE — RESOLVED 2026-07-21 (iteration 2)
+**Resolution:** Fixed in the shared `weightsEqualDefaults` helper (normalize both sides to
+fractions + `epsilon = 1e-9` tolerance), not in the two consumers, which still call it unchanged.
+Both directions tested (default-percent → equal → kicker hidden; custom-percent → not-equal →
+kicker shown). See the Iteration 2 section above for the full verification.
 **File:** `components/overview.tsx:181`, `components/fundamental-analysis.tsx:81`
 **Problem:** The "Your weighting" custom-weighting meta-kicker is derived by comparing the
 `["scoring-weights"]` GET response against the fraction-scaled `DEFAULT_SCORING_WEIGHTS` with
@@ -101,7 +155,10 @@ robust (immune to any future scale change). Add a test asserting a default-perce
 (`{25,25,20,15,15}`) yields `hasCustomWeights === false` and a genuinely-custom split yields `true`,
 so this specific regression cannot recur silently.
 
-### DP-S1 — SUGGESTION
+### DP-S1 — SUGGESTION — ADDRESSED 2026-07-21 (iteration 2)
+**Resolution:** A direct test for the over-100 (negative-leftover) trim branch was added
+(`scoring-weights.test.ts:279-301`), driving a group whose ×100 floors sum to 101 and asserting
+the repaired result sums to exactly 100. See the Iteration 2 section above.
 **File:** `lib/utils/scoring-weights.test.ts:198-242`
 **Problem:** `fractionsToPercents`'s under-100 (round-down) drift repair is well covered (equal-thirds
 → `[33,33,34]`). The symmetric over-100 (round-up) case — where `sum(floors)` could in principle
@@ -112,7 +169,11 @@ to ~1.0, so `sum(floors) ≤ 100`), which is why this is a SUGGESTION, not an IS
 hand-constructed group whose ×100 floors sum to 101) to lock in the defensive branch's behavior, or
 add a one-line comment noting the branch is defensive-only and unreachable for normalized inputs.
 
-### DP-Q1 — QUESTION
+### DP-Q1 — QUESTION — RESOLVED 2026-07-21 (iteration 2)
+**Resolution:** Migration confirmed applied live (`prisma migrate status` → "Database schema is up
+to date!"). All docs (ADR-20/21/22, ARCHITECTURE.md, AGENT.md, both INDEX files, and the prior
+2026-07-20 review's SCW-Q1) reconciled to the applied state — no stale "pending deploy" language
+remains. See the Iteration 2 section above.
 **File:** `STATUS.md`, `DECISIONS.md` ADR-22 (`:165`), `ARCHITECTURE.md` (`:29`), commit `4d7828cd` message
 **Problem:** The commit message for the feature states "Live-verified against the **applied**
 UserScoringPreferences migration," and the review task states the owner-gated migration was applied
