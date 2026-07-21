@@ -12,12 +12,14 @@ today means the user typing all five percentages per group from scratch and
 making each group sum to 100 by hand. There is no starting point other than the
 house default ("Reset to house defaults", which is the Balanced allocation).
 
-Add named investment-style presets (Value, Quality/GARP, Growth, Momentum,
-Dividend/Income, Balanced) that populate a section's five weights in one click,
-so a user picks a style rather than deriving numbers. The concrete preset values
-are already decided (see `## Approach` → data). The composite group has all six
-styles; the fundamental group has five (Momentum has no meaningful fundamental
-sub-tilt and is deliberately omitted there).
+Add named investment-style presets (Value, Deep Value/Contrarian, Quality/GARP,
+Growth, Momentum, Sentiment/News-driven, Analyst Consensus, Dividend/Income,
+Balanced) that populate a section's five weights in one click, so a user picks a
+style rather than deriving numbers. The concrete preset values are already decided
+(see `## Approach` → data). The composite group has all eight named styles (nine
+entries including Balanced); the fundamental group has six (Momentum, Sentiment,
+and Analyst Consensus are momentum-/flow-/consensus-driven with no meaningful
+fundamental sub-tilt, so they define no fundamental group and are omitted there).
 
 ## Approach
 
@@ -60,20 +62,25 @@ ignores presets that do not define its group.
 
 **Data** (whole percents; every group sums to exactly 100 — verified):
 
-Composite (`intrinsicValue / fundamental / technical / sentiment / analyst`):
+Composite (`intrinsicValue / fundamental / technical / sentiment / analyst`) — eight styles:
 | id | label | int | fund | tech | sent | anal |
 |----|-------|-----|------|------|------|------|
 | `value` | Value | 40 | 35 | 5 | 5 | 15 |
+| `deep-value` | Deep Value / Contrarian | 45 | 30 | 5 | 15 | 5 |
 | `quality` | Quality (GARP) | 25 | 40 | 10 | 10 | 15 |
 | `growth` | Growth | 10 | 30 | 20 | 20 | 20 |
 | `momentum` | Momentum | 5 | 10 | 45 | 25 | 15 |
+| `sentiment` | Sentiment / News-driven | 5 | 15 | 25 | 40 | 15 |
+| `analyst` | Analyst Consensus | 15 | 20 | 10 | 15 | 40 |
 | `income` | Dividend / Income | 20 | 30 | 5 | 10 | 35 |
 | `balanced` | Balanced | 25 | 25 | 20 | 15 | 15 |
 
-Fundamental (`valuation / profitability / growth / financial / dividend`):
+Fundamental (`valuation / profitability / growth / financial / dividend`) — six styles
+(`momentum`, `sentiment`, `analyst` are composite-only and define no fundamental group):
 | id | label | val | prof | grow | fin | div |
 |----|-------|-----|------|------|-----|-----|
 | `value` | Value | 45 | 25 | 5 | 20 | 5 |
+| `deep-value` | Deep Value / Contrarian | 50 | 20 | 5 | 20 | 5 |
 | `quality` | Quality (GARP) | 15 | 45 | 20 | 15 | 5 |
 | `growth` | Growth | 5 | 20 | 55 | 15 | 5 |
 | `income` | Dividend / Income | 20 | 25 | 5 | 20 | 30 |
@@ -91,7 +98,7 @@ A unit test asserts `balanced.composite` deep-equals
 `fractionsToPercents(DEFAULT_SCORING_WEIGHTS.composite)` (and the fundamental
 counterpart) to lock this.
 
-The other five presets are static whole-percent literals (they are curated style
+The other seven presets are static whole-percent literals (they are curated style
 allocations with no relationship to the default).
 
 ### 2. Applying a preset is purely client-side — populate the form, do not save
@@ -160,22 +167,25 @@ pills, or a `select`) and its exact chrome:
 
 ## Tasks
 
-1. [ ] Add `ScoringStylePreset` type + `SCORING_STYLE_PRESETS` (whole-percent, six
-   composite / five fundamental entries; Balanced derived from
+1. [ ] Add `ScoringStylePreset` type + `SCORING_STYLE_PRESETS` (whole-percent, nine
+   composite / six fundamental entries; Balanced derived from
    `fractionsToPercents(DEFAULT_SCORING_WEIGHTS.*)`, not literal) to
    `lib/utils/scoring-weights.ts`. — Acceptance: `npm run verify` typecheck passes;
    a new `scoring-weights.test.ts` block asserts (a) every preset group sums to
-   exactly 100, (b) each group has exactly the five expected keys, (c)
-   `value`/`quality`/`growth`/`income`/`balanced` define `composite`, `momentum`
-   defines `composite` and NOT `fundamental`, and `value`/`quality`/`growth`/
-   `income`/`balanced` define `fundamental`, (d) `balanced.composite` deep-equals
+   exactly 100, (b) each group has exactly the five expected keys, (c) all nine
+   presets (`value`, `deep-value`, `quality`, `growth`, `momentum`, `sentiment`,
+   `analyst`, `income`, `balanced`) define `composite`; `momentum`/`sentiment`/
+   `analyst` define `composite` and NOT `fundamental`; the other six
+   (`value`/`deep-value`/`quality`/`growth`/`income`/`balanced`) define
+   `fundamental`, (d) `balanced.composite` deep-equals
    `fractionsToPercents(DEFAULT_SCORING_WEIGHTS.composite)` and
    `balanced.fundamental` deep-equals `fractionsToPercents(DEFAULT_SCORING_WEIGHTS.fundamental)`.
 2. [ ] Add a pure helper (co-located in `scoring-weights.ts` or the settings-gate
    module) `presetsForGroup(group: "composite" | "fundamental"): ScoringStylePreset[]`
    returning only presets that define that group, preserving array order. —
-   Acceptance: unit test — `presetsForGroup("fundamental")` excludes `momentum`
-   and returns five in listed order; `presetsForGroup("composite")` returns six.
+   Acceptance: unit test — `presetsForGroup("fundamental")` excludes `momentum`,
+   `sentiment`, `analyst` and returns six in listed order; `presetsForGroup("composite")`
+   returns all nine.
 3. [ ] Wire the per-section preset picker into `app/(dashboard)/settings/page.tsx`'s
    `ScoringWeightsSection` per the Designer's spec: render `presetsForGroup(group)`,
    and on select call `setInputs(toInputs(preset[group]!))`. Reuse existing
@@ -219,8 +229,9 @@ unit tests + secret scan. Beyond it, manual/Playwright UI checks (Task 3):
    network panel.
 3. Press Save → `PUT` returns 200, "Weights saved" toast, values persist across a
    reload (GET returns them).
-4. Fundamental card shows five presets (no Momentum); applying "Growth" reads
-   5 / 20 / 55 / 15 / 5.
+4. Fundamental card shows six presets (no Momentum, Sentiment, or Analyst
+   Consensus); applying "Growth" reads 5 / 20 / 55 / 15 / 5. Composite card shows
+   all nine.
 5. Applying a preset then editing one field back below 100 flips the status line
    to `--dn` "must equal 100%" and disables Save — i.e. presets do not bypass the
    existing gate.
@@ -241,8 +252,11 @@ unit tests + secret scan. Beyond it, manual/Playwright UI checks (Task 3):
 - **Presets replace, not blend.** Applying a preset overwrites all five of the
   section's fields; it does not merge with current values. This is the only
   sensible semantic for a named allocation and matches Reset's behaviour.
-- **Momentum has no fundamental preset** (per the provided data — only five
-  fundamental presets were specified). The Fundamental section simply omits it.
+- **Momentum, Sentiment, and Analyst Consensus have no fundamental preset.** These
+  three are momentum-/flow-/consensus-driven styles with no coherent fundamental
+  sub-tilt, so they define `composite` only and the Fundamental section omits them
+  (six fundamental presets vs. nine composite). The `deep-value` fundamental tilt
+  (50/20/5/20/5) is a deeper-value variant of the `value` tilt.
 - **Picker exact chrome is the Designer's decision** within the token/pattern
   constraints in §3 — this plan does not fix it to pills-vs-select. Not material
   to the data model or the client-side-populate approach, which are what the plan
