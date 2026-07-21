@@ -1,6 +1,6 @@
 # Review: scoring-style descriptions + signal-diagnostic weight retune
 Date: 2026-07-21
-Status:
+Status: IMPLEMENTED — 2026-07-21
 
 ## Summary
 Findings: [0 BLOCKERs, 1 ISSUE (RTN-I1 — RESOLVED in iteration 2), 0 SUGGESTIONs, 0 QUESTIONs]
