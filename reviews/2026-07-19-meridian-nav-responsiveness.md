@@ -4,7 +4,7 @@ Status: IMPLEMENTED — 2026-07-19
 
 ## Summary
 Findings: 0 BLOCKERs, 0 ISSUEs, 1 SUGGESTION, 1 QUESTION
-Requires owner decision: NAV-Q1 (unverified behavioural claim — confirm before/after merge)
+Requires owner decision: NAV-Q1 (resolved 2026-07-21 — non-blocking layout + skeletons verified in code; live nav goes straight to content, no frozen window; owner-accepted)
 Ready for Coding agent: NAV-S1 (optional)
 
 Reviewed branch HEAD of `feature/meridian-nav-responsiveness` against `main`. The scoped change is two code edits (`app/(dashboard)/layout.tsx`, `app/(dashboard)/portfolio/closed-positions/page.tsx`) plus doc updates (ADR-16, ARCHITECTURE.md request flow, AGENT.md fragile surface). The branch diff also contains the already-merged-and-reviewed yahoo-validation work (`lib/yahoo-finance.ts`, the three service files + tests, ADR-15) — out of scope here, reviewed under `reviews/2026-07-18-yahoo-validation-error.md`; not re-reviewed.
@@ -13,7 +13,8 @@ Verify block run independently on branch HEAD: **pass** — typecheck ok · lint
 
 ## Findings
 
-### NAV-Q1 — Navigation responsiveness (the actual user-facing goal) not verified live
+### NAV-Q1 — Navigation responsiveness — RESOLVED (owner-accepted 2026-07-21)
+**Resolution:** Verified 2026-07-21. Code: `app/(dashboard)/layout.tsx` is a synchronous component with zero `getServerSession` calls (the render-blocking `await` removed, ADR-16), and route-level `loading.tsx` skeletons exist for the dashboard routes (dashboard/research/settings/wishlist). Live: clicking an in-app nav link (Watchlist → Research) transitioned straight to loaded content with the masthead/nav persistent throughout — no frozen blank layout window. The ~100ms warm transition was too fast to freeze a mid-transition skeleton frame in a single screenshot, but that is the intended outcome (no dead window). Owner accepted.
 **Type:** QUESTION
 **File:** plans/2026-07-19-meridian-nav-responsiveness.md (Task 4), app/(dashboard)/layout.tsx
 **Problem:** The whole point of this change is a *perceived* UX improvement — clicking a nav item or position row should paint the destination `loading.tsx` skeleton immediately instead of freezing ~1s. The Coding agent could not run the live Playwright behavioural check (no test credential available; registering one would be an unscoped mutation against the shared dev/prod DB per ADR-6), so Task 4 is marked `[!]` blocked. The mechanism is sound and independently corroborated: the removed `await getServerSession()` was the only render-blocking call in the layout's path, and Next.js's documented rendering hierarchy (`layout → template → error → loading (Suspense) → page`) means a non-blocking layout cannot delay a child segment's `loading.tsx` fallback. So the fix is *correct by construction* — but "correct by construction" is not the same as the owner having seen the freeze actually gone. This is a QUESTION, not an ISSUE, because there is no code defect to fix; it is an acceptance gap the owner closes by eyeballing it.

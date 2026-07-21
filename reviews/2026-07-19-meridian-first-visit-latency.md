@@ -4,7 +4,7 @@ Status: IMPLEMENTED — 2026-07-19
 
 ## Summary
 Findings: [0 BLOCKERs, 0 ISSUEs, 1 SUGGESTION, 1 QUESTION]
-Requires owner decision: FVL-Q1 (owner click-through to confirm the perceived first-visit freeze is gone — corroborated by objective compile-time evidence, low-risk, consistent with the NAV-Q1 precedent on this same branch)
+Requires owner decision: FVL-Q1 (resolved 2026-07-21 — Turbopack dev confirmed; dev-only, no prod impact; owner-accepted)
 Ready for Coding agent: FVL-S1 (optional; no-action acceptable)
 
 Scope note: this branch (`feature/meridian-nav-responsiveness`, PR #17) also carries the
@@ -15,7 +15,8 @@ dev-script flag plus its doc updates). The prior work was not re-reviewed.
 
 ## Findings
 
-### FVL-Q1 — QUESTION
+### FVL-Q1 — QUESTION — RESOLVED (owner-accepted 2026-07-21)
+**Resolution:** Confirmed 2026-07-21: `package.json` dev script is `next dev --turbopack` — the fix is in place. This is a dev-only concern (first-visit on-demand route compilation; never affected production, which pre-compiles all routes at build), so there is no production/user-facing behavior to accept; Turbopack shrinks the dev first-compile below perceptibility. Owner accepted on the basis of the confirmed mechanism + own dev experience.
 **File:** `plans/2026-07-19-meridian-first-visit-latency.md:101-126` (Task 3), `package.json:6`
 **Problem:** The plan's real acceptance (Task 3) is perceptual: that the multi-hundred-ms
 "frozen-before-skeleton" window on a *first* in-app navigation to a cold route is no longer
