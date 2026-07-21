@@ -4,7 +4,7 @@ Status: IMPLEMENTED — 2026-07-19
 
 ## Summary
 Findings: 0 BLOCKERs, 0 ISSUEs, 0 SUGGESTIONs, 1 QUESTION
-Requires owner decision: PBR-Q1 (owner visual acceptance only — manual, non-blocking; does not gate the Coding agent)
+Requires owner decision: PBR-Q1 (resolved 2026-07-21 — card+header treatment verified live+DOM on NVDA, owner-accepted)
 Ready for Coding agent: none
 
 Clean, tightly-scoped presentational change. The in-tab "Your position" band (held
@@ -23,7 +23,8 @@ the only source/spec changes since are the three in-scope files.
 
 ## Findings
 
-### PBR-Q1 — QUESTION
+### PBR-Q1 — QUESTION — RESOLVED (owner-accepted 2026-07-21)
+**Resolution:** Verified live + DOM on NVDA's Positions tab (2026-07-21). The position stat block renders as a card matching the other research tabs' idiom: DOM confirms `border-top: 3px double` (the editorial rule), wrapper class `rounded-lg border border-border bg-card px-7 pb-7 pt-6`, a "POSITION" card header, and the standalone "Your position" kicker absent (title moved into the card header). Stat labels present (Shares held / Average cost / Market value / Unrealised P/L). This is the final intended treatment (this plan superseded the stat-distinction bg-fill panel, PSD-Q1). Owner accepted.
 **File:** `components/research/transactions-tab.tsx:97-149` (both routes, both themes)
 **Problem:** Whether the bare, top-ruled band now *visually* reads as matching the
 Intrinsic value tab's BEAR/BASE/BULL band — across both themes (light/dark), both
