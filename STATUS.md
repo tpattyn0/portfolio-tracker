@@ -5,7 +5,7 @@ Orchestration: Scoring weights — replace auto-normalize with direct % inputs t
 Plan: plans/2026-07-21-scoring-weights-direct-percent.md
 Since: 2026-07-21
 Branch: feature/configurable-scoring-weights
-Coding agent: running
+Reviewer: running (iteration 1)
 
 ## Blocked
 TD-01 — NEWS_API_KEY live + public in history; risk accepted per ADR-7, blocks production deploys only
