@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DEFAULT_SCORING_WEIGHTS,
   fractionsToPercents,
@@ -222,22 +223,25 @@ function ScoringWeightsSection<K extends string>({
       </div>
 
       <div className="mb-5">
-        <label className="mb-2 block text-[10.5px] uppercase tracking-[0.12em] text-mut">
-          Start from a style
-        </label>
-        <div className="flex flex-wrap gap-2">
-          {presetsForGroup(group).map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              title={preset.blurb}
-              onClick={() => setInputs(toInputs(preset[group]! as Record<K, number>))}
-              className="h-8 rounded-full border border-line bg-transparent px-3.5 text-[12px] font-medium text-foreground hover:bg-fill focus-visible:border-foreground focus-visible:outline-none"
-            >
-              {preset.label}
-            </button>
-          ))}
-        </div>
+        <span className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Start from a style</span>
+        <TooltipProvider delayDuration={200}>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {presetsForGroup(group).map((preset) => (
+              <Tooltip key={preset.id}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setInputs(toInputs(preset[group]! as Record<K, number>))}
+                    className="h-8 rounded-full border border-line bg-transparent px-3.5 text-[12px] font-medium text-foreground hover:bg-fill focus-visible:outline-none focus-visible:border-foreground"
+                  >
+                    {preset.label}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[240px]">{preset.blurb}</TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+        </TooltipProvider>
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">

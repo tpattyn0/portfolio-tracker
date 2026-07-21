@@ -2,6 +2,8 @@
 
 | Review | Date | Status |
 |--------|------|--------|
+| 2026-07-21-scoring-picker-chips.md | 2026-07-21 | IMPLEMENTED — 2026-07-21 (0 BLOCKERs; inline name-chip picker + accessible Radix hover/focus tooltip, ADR-26; a11y contract verified (no title attr, asChild wraps button, aria-describedby/Escape native, section-local TooltipProvider, providers.tsx untouched); disclosure/ChevronDown removed clean; populate-only no-active-state + scoring/API/gate untouched; skeleton parity; popover tokens both themes; PCH-I1 plan-INDEX advanced, PCH-S1 optional; 254/254) |
+| 2026-07-21-scoring-picker-collapsible-ux.md | 2026-07-21 | IMPLEMENTED — 2026-07-21 (0 BLOCKERs/ISSUEs; collapsible <details> style picker closed-by-default, weight inputs above the fold, populate-only + ADR-23/24 no-active-state preserved, skeleton parity; SUG-1 chevron aria-hidden applied; input order/status-line unchanged per OD-1/Designer; 254/254) |
 | 2026-07-16-onboarding.md | 2026-07-16 | PARTIALLY IMPLEMENTED (ONB-01 partial — 3 of 4 keys rotated 2026-07-17; NEWS_API_KEY accepted per ADR-7) |
 | 2026-07-16-onboarding-docs.md | 2026-07-16 | PARTIALLY IMPLEMENTED (DOC-01 resolved 2026-07-17 via PRs #3/#4; DOC-06 deferred — deployment target unconfirmed) |
 | 2026-07-17-setup-audit.md | 2026-07-17 | IMPLEMENTED — 2026-07-17 (PR #7 merged; SA-08 closed post-merge — REST-503 root cause, no action needed; only SA-10 plugin hygiene open) |
@@ -26,3 +28,4 @@
 | 2026-07-20-configurable-scoring-weights.md | 2026-07-20 | IMPLEMENTED — 2026-07-21 (0 BLOCKERs/ISSUEs; per-user weights, single-source module, cache-safe fundamental reweight, IDOR-safe prefs write, backward-compat verified; SCW-Q1 resolved — migration applied 2026-07-21; SCW-Q2 owner-accepted 2026-07-21 (settings validation verified live); SCW-S1 optional; 193/193) |
 | 2026-07-21-scoring-weights-direct-percent.md | 2026-07-21 | IMPLEMENTED — 2026-07-21 (0 BLOCKERs; DP-I1 scale-agnostic meta-kicker fix + tests, DP-Q1 migration applied + docs reconciled, DP-S1 trim test — all resolved over 2 iters; scale-invariance + largest-remainder verified; migration applied/live; 230/230) |
 | 2026-07-21-scoring-style-presets.md | 2026-07-21 | IMPLEMENTED — 2026-07-21 (0 BLOCKERs/ISSUEs; 9 composite / 6 fundamental style presets, balanced derived from defaults, client-side populate-only picker; SP-I1 loading-skeleton fixed iter 2, SP-S1 dispositioned to TD-36; 240/240) |
+| 2026-07-21-scoring-style-descriptions-retune.md | 2026-07-21 | IMPLEMENTED — 2026-07-21 (0 BLOCKERs; signal-diagnostic retune (zeros allowed, IV=0 for growth) + visible label+description picker + 9 rewritten blurbs; RTN-I1 doc drift resolved iter 2; weights sum-100 & match ADR-24 tables, zeros clean, Balanced derived; 254/254) |
