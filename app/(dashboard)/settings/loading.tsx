@@ -9,14 +9,13 @@ import { SkeletonBlock, SkeletonCard, SkeletonText } from "@/components/ui/loadi
  * kicker-variant block approximating the live group-total/validity status
  * line (revised, plans/2026-07-21-scoring-weights-direct-percent.md — no
  * longer a 5-col SkeletonStatBand, since the real band it stood in for was
- * removed), then a single compact trigger-row block (revised per
- * plans/2026-07-21-scoring-picker-collapsible-ux.md, ADR-25 — supersedes the
- * 3-representative-row expanded-list skeleton the descriptions-retune plan
- * originally specified here: the real disclosure is closed by default, so
- * its skeleton must also render as a closed disclosure, not a preview of its
- * open contents) approximating the collapsed "Start from a style" trigger —
- * one kicker-variant block plus a small square chevron-footprint block, no
- * bordered option list beneath it — then five label+field row
+ * removed), then an inline chip-row block (revised per
+ * plans/2026-07-21-scoring-picker-chips.md, ADR-26 — supersedes the
+ * collapsed-trigger-row skeleton ADR-25 specified here: the real picker is
+ * now an always-visible inline row of name chips, not a disclosure, so its
+ * skeleton must match that shape) approximating the "Start from a style"
+ * chip row — a kicker-variant block plus a wrapping row of small
+ * pill-shaped blocks, no chevron/disclosure — then five label+field row
  * approximations, and a pill-shaped block for the reset action.
  */
 export default function SettingsLoading() {
@@ -38,9 +37,13 @@ export default function SettingsLoading() {
 
             <SkeletonText variant="kicker" className="mt-2 w-56" />
 
-            <div className="mb-5 mt-5 flex items-center justify-between gap-2 py-1">
-              <SkeletonText variant="kicker" className="w-56" />
-              <SkeletonBlock className="h-4 w-4 shrink-0" />
+            <div className="mb-5 mt-5">
+              <SkeletonText variant="kicker" className="w-40" />
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <SkeletonBlock key={i} className="h-8 w-20 rounded-full" />
+                ))}
+              </div>
             </div>
 
             <div className="mt-7 grid grid-cols-1 gap-6 sm:grid-cols-2">

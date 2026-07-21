@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DEFAULT_SCORING_WEIGHTS,
   fractionsToPercents,
@@ -222,29 +222,27 @@ function ScoringWeightsSection<K extends string>({
         {isValid ? "Total: 100% · valid" : `Total: ${total}% · must equal 100%`}
       </div>
 
-      <details className="group mb-5">
-        <summary
-          className="flex list-none items-center justify-between gap-2 py-1 [&::-webkit-details-marker]:hidden hover:bg-fill focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground"
-        >
-          <span className="text-[10.5px] uppercase tracking-[0.12em] text-mut">
-            Start from a style — prefill weights from a named investing style
-          </span>
-          <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0 text-mut transition-transform duration-200 group-open:rotate-180" />
-        </summary>
-        <div className="mt-2 rounded-md border border-line divide-y divide-line2">
-          {presetsForGroup(group).map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              onClick={() => setInputs(toInputs(preset[group]! as Record<K, number>))}
-              className="flex w-full flex-col items-start gap-1 bg-transparent px-4 py-3 text-left hover:bg-fill focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground"
-            >
-              <span className="text-[13.5px] font-medium text-foreground">{preset.label}</span>
-              <span className="text-[12px] text-mut">{preset.blurb}</span>
-            </button>
-          ))}
-        </div>
-      </details>
+      <div className="mb-5">
+        <span className="text-[10.5px] uppercase tracking-[0.12em] text-mut">Start from a style</span>
+        <TooltipProvider delayDuration={200}>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {presetsForGroup(group).map((preset) => (
+              <Tooltip key={preset.id}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setInputs(toInputs(preset[group]! as Record<K, number>))}
+                    className="h-8 rounded-full border border-line bg-transparent px-3.5 text-[12px] font-medium text-foreground hover:bg-fill focus-visible:outline-none focus-visible:border-foreground"
+                  >
+                    {preset.label}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[240px]">{preset.blurb}</TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+        </TooltipProvider>
+      </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         {fields.map((f) => (

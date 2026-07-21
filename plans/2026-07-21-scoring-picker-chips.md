@@ -194,12 +194,15 @@ Coding agent implements against the finalized spec.)
 
 ## Tasks
 
-1. [ ] Mount a `TooltipProvider` scoped to the settings picker (section-local
+1. [x] Mount a `TooltipProvider` scoped to the settings picker (section-local
    in `ScoringWeightsSection`, NOT in `components/providers.tsx`) — Acceptance:
    a Radix `Tooltip` inside `ScoringWeightsSection` renders without the
    "Tooltip must be used within TooltipProvider" console error; hovering or
-   focusing a chip opens its tooltip.
-2. [ ] Replace the `<details>/<summary>` disclosure + full-width row list with
+   focusing a chip opens its tooltip. **Done** — `app/(dashboard)/settings/page.tsx`
+   mounts `<TooltipProvider delayDuration={200}>` wrapping the chip row inside
+   `ScoringWeightsSection`; live-verified no console error, hover and
+   keyboard-focus both open the tooltip (`scratch/verify-picker-chips.mjs`).
+2. [x] Replace the `<details>/<summary>` disclosure + full-width row list with
    an inline, always-visible wrapping row of name-only chips
    (`preset.label` text, one `<button type="button">` per preset from
    `presetsForGroup(group)`), removing the `ChevronDown` import and its
@@ -207,38 +210,60 @@ Coding agent implements against the finalized spec.)
    Composite (9 chips) and Fundamental (6 chips) render an inline chip row with
    NO disclosure/chevron and NO scrolling to reach the Weight stepper fields;
    the DOM contains no `<details>`/`<summary>` in `ScoringWeightsSection`.
-3. [ ] Wire each chip's blurb into the existing `components/ui/tooltip.tsx`
+   **Done** — `ChevronDown` import removed; live-verified 9 Composite / 6
+   Fundamental chips, 0 `<details>` elements, first weight field visible
+   without scrolling (`scratch/shots/chip-row-default.png`).
+3. [x] Wire each chip's blurb into the existing `components/ui/tooltip.tsx`
    (`Tooltip`/`TooltipTrigger asChild`/`TooltipContent`), NOT a `title`
    attribute — Acceptance: hovering a chip shows its blurb; **Tab-focusing** a
    chip (keyboard, no mouse) shows its blurb; the focused chip carries an
    `aria-describedby` pointing at the tooltip content's id; pressing Escape
    while the chip is focused dismisses the tooltip; no chip has a `title`
-   attribute carrying the blurb.
-4. [ ] Preserve populate-only, no-active-state behaviour — Acceptance: clicking
+   attribute carrying the blurb. **Done** — live-verified: hover shows the
+   correct blurb (`scratch/shots/chip-tooltip-hover.png`); `.focus()` (no
+   mouse) shows the same tooltip with `aria-describedby` resolving to a real
+   element (`scratch/shots/chip-tooltip-focus.png`); Escape dismisses it;
+   `title` attribute confirmed `null` on the chip.
+4. [x] Preserve populate-only, no-active-state behaviour — Acceptance: clicking
    a chip calls `setInputs(toInputs(preset[group]!))` and populates the five
    fields (e.g. Composite → Deep Value / Contrarian populates 55/30/0/0/15);
    NO `PUT /api/settings/scoring-weights` fires on chip click (only on Save);
    no chip is painted as "selected/active" before or after clicking; the status
    line flips to "Total: 100% · valid" and Save enables via the existing dirty
-   gate.
-5. [ ] Update `app/(dashboard)/settings/loading.tsx` skeleton to an inline
+   gate. **Done** — `onClick` unchanged from the pre-existing mechanism;
+   live-verified Deep Value / Contrarian populates Intrinsic 55 / Fundamental
+   30 / Technical 0 / Sentiment 0 / Analysts 15, status line reads "Total: 100%
+   · valid", no `PUT` fired, chip class string unchanged after click (no
+   selected-state class) — `scratch/shots/chip-clicked-populated.png`.
+5. [x] Update `app/(dashboard)/settings/loading.tsx` skeleton to an inline
    chip-row shape (kicker + wrapping row of small chip `SkeletonBlock`s, no
    chevron/disclosure) — Acceptance: rendering `loading.tsx` shows a chip-row
    skeleton, not a collapsed-trigger row; first paint → resolved does not
-   reflow the picker's vertical footprint noticeably.
-6. [ ] Add ADR-26 to `DECISIONS.md`; annotate ADR-24 and ADR-25 as superseded
+   reflow the picker's vertical footprint noticeably. **Done** — collapsed
+   trigger-row block replaced with a kicker `SkeletonText` + 6
+   `h-8 w-20 rounded-full` `SkeletonBlock`s in a `flex flex-wrap` row; verified
+   by direct source read (this route is a Client Component with no
+   server-fetch delay, so the Suspense boundary resolves before a
+   network-throttled Playwright screenshot can reliably capture it — same
+   limitation as every prior revision's `loading.tsx` check in this branch
+   chain; confirmed by structural comparison against the live chip row
+   instead).
+6. [x] Add ADR-26 to `DECISIONS.md`; annotate ADR-24 and ADR-25 as superseded
    by ADR-26 (Status lines only — do not delete either) — Acceptance:
    `DECISIONS.md` contains ADR-26; ADR-24's and ADR-25's Status lines carry a
    `Superseded-by: ADR-26` note; ADR-24's blurb copy and weight values are
    unchanged (only its always-visible-presentation choice is marked
-   superseded).
-7. [ ] DESIGN.md "Style preset picker" + "Settings — scoring weights" UX flow
+   superseded). **Done** (Planner wrote the stub + annotations; Coding agent
+   verified and flipped ADR-26's Status to `accepted` with implementation
+   evidence).
+7. [x] DESIGN.md "Style preset picker" + "Settings — scoring weights" UX flow
    updated to the inline-chips + accessible-tooltip revision (Designer stage) —
    Acceptance: DESIGN.md's latest picker revision describes name chips + a
    hover/focus tooltip on `--popover`, references only existing tokens, and its
    a11y note matches the contract in this plan (hover+focus, `aria-describedby`,
    Escape, touch note); no residual "collapsed disclosure" as the current
-   shape.
+   shape. **Done** (Designer stage; verified accurate against the implemented
+   chip chrome and tooltip spec — no discrepancies found).
 
 Task status markers ([ ] todo · [~] in progress · [x] done · [!] blocked) are
 maintained by the Coding agent in this file as it works.
