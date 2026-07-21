@@ -140,8 +140,14 @@ persisted key mapping (see Open decisions for why that is safe).
    state coloring are byte-identical to today; Save still enables only on
    `sumsTo100 && dirty`. `npm run verify` green.
 
-3. [ ] **Composite input field order (SECONDARY, GATED — see Open decisions).**
-   Only if the owner/Designer decides to reorder: change the order of
+3. [x] **Composite input field order (SECONDARY, GATED — see Open decisions).**
+   **RESOLVED 2026-07-21 — owner chose Option A: keep the current order, close
+   this task as deferred with no code change.** The order is a deliberate
+   DESIGN.md invariant matching the Overview `SubscoreBand`; the collapsible
+   picker (Task 1) already solves the "inputs buried" problem, so no reorder is
+   made. Any future reorder would be Option B (a separate plan reordering both
+   settings + SubscoreBand). No code change in this plan.
+   ~~Only if the owner/Designer decides to reorder: change the order of
    `COMPOSITE_FIELDS` (`page.tsx:38-44`) — a presentational array reorder only.
    The `key` values (`technical`/`fundamental`/`analyst`/`intrinsicValue`/
    `sentiment`) and their binding to `inputs[f.key]` / `toNumbers` are unchanged,
@@ -155,7 +161,7 @@ persisted key mapping (see Open decisions for why that is safe).
    labeled "Intrinsic value" still updates the `intrinsicValue` weight — verify by
    saving and reloading), and `computeGroupTotalState` still sums the same five
    keys. `npm run verify` green. If deferred, no code change and the decision is
-   recorded here.
+   recorded here.~~
 
 [Task status markers — the Coding agent maintains these in this file as it works:]
 [ ] todo · [~] in progress · [x] done (acceptance check passed) · [!] blocked
@@ -230,8 +236,9 @@ be verified live):
 
 ## Open decisions
 
-**OD-1 — Composite input field order (blocks Task 3 only; does NOT block Task 1
-or the plan overall).** The owner's secondary note asked to investigate the
+**OD-1 — Composite input field order — RESOLVED 2026-07-21: owner chose Option A
+(keep current order, close Task 3, no code change).** Recorded below for the
+rationale. The owner's secondary note asked to investigate the
 composite input order, suggesting Intrinsic value (often the largest weight) is
 buried bottom-right. **Investigation result:** the current order — Technical,
 Fundamental, Analysts, Intrinsic value, News & sentiment (`page.tsx:38-44`,
