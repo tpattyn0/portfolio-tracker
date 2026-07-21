@@ -264,14 +264,14 @@ Proposed replacement blurbs (Designer/GTM may refine wording; keep them one line
 each, diagnostic not persona). **Growth's blurb now emphasizes business
 compounding, not price momentum**, matching the business-led retune:
 
-- **value** — "Optimizes for stocks trading below DCF fair value with a safe balance sheet; ignores price and news."
-- **deep-value** — "Maximizes cheapness vs. intrinsic value and balance-sheet survivability for distressed or contrarian names."
-- **quality** — "Optimizes for durable profitability and steady growth at a still-reasonable price."
-- **growth** — "Optimizes for accelerating revenue and earnings — the compounding business — with analyst coverage and a light price/news confirm; ignores DCF cheapness."
-- **momentum** — "Optimizes for price trend and volume strength; fundamentals and valuation barely count."
+- **value** — "Optimizes for stocks trading below DCF fair value with solid, safe fundamentals."
+- **deep-value** — "Maximizes cheapness vs. intrinsic value for distressed or contrarian turnarounds."
+- **quality** — "Optimizes for durable profitability and growth at a still-reasonable price."
+- **growth** — "Optimizes for accelerating revenue and earnings — the business compounding, not the price chart."
+- **momentum** — "Optimizes for price trend and volume strength; fundamentals barely count."
 - **sentiment** — "Optimizes for positive news-sentiment flow above all other signals."
 - **analyst** — "Optimizes for Wall-Street consensus buy ratings, corroborated by news flow."
-- **income** — "Optimizes for dividend strength and payout safety, backed by stable fundamentals and analyst coverage."
+- **income** — "Optimizes for dividend strength and payout safety over price appreciation."
 - **balanced** — "The house-default weighting — an even, all-signals starting point."
 
 ### UI consequence of zeros — no gate change needed (note for Coding agent + Reviewer)
