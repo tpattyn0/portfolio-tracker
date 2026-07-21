@@ -4,7 +4,7 @@ Status: IMPLEMENTED — 2026-07-20
 
 ## Summary
 Findings: 0 BLOCKERs, 0 ISSUEs, 0 SUGGESTIONs, 2 QUESTIONs
-Requires owner decision: RTF-Q1, RTF-Q2 (both owner-acceptance only — no code change gated on them)
+Requires owner decision: RTF-Q1 (resolved 2026-07-21 — verified live on NVDA, owner-accepted), RTF-Q2 (non-persisted-on-cache tradeoff — since closed by the analyst-revisions persistence work, ADR/TD-DTL-REV2; low/high + revisions now persist)
 Ready for Coding agent: none
 
 Reviewed branch HEAD of `fix/research-tab-fixes` against `origin/main...HEAD` (whole 9-item batch, branch cut fresh off main — no unrelated work in the delta). Working tree clean. `npm run verify` green: typecheck ok · lint ok (pre-existing warnings only, none new) · 122/122 tests · secret-scan clean. Owner resolutions OD-1 (honest relabel), OD-2 (method-spread Bear/Bull), OD-3 (plumb revisions non-persisted, no DB migration) are all reflected faithfully in the implementation.
@@ -17,7 +17,8 @@ This is a clean batch. No code findings. The only open items are owner-acceptanc
 
 ## Findings
 
-### RTF-Q1 — QUESTION
+### RTF-Q1 — QUESTION — RESOLVED (owner-accepted 2026-07-21)
+**Resolution:** Verified live on NVDA (2026-07-21). Analysts tab: the BUY distribution bar renders as a solid green bar (48) — no longer washed out; LOW/HIGH target prices show real figures ($180.00 / $500.00, median $302.31 · +48.7% upside) instead of em-dashes; the Recent revisions table populates with real firm/rating-change/HELD/date rows all within the 90-day window (Keybanc 14-7-2026 back to ~21-5-2026). Positions confirmed as the last tab (PT-Q2). Owner accepted. (The Intrinsic Bear/Base/Bull figures and the News single-card lead-in were part of the same batch; the Analysts fixes — the ones the owner most doubted — are confirmed, and the owner accepts the tab set.)
 **File:** `components/analyst-ratings.tsx:151-175`, `components/intrinsic-value.tsx:113-155`, `components/research/transactions-tab.tsx`, `app/(dashboard)/portfolio/[ticker]/page.tsx` (News tab)
 **Problem:** The static + unit-level verification confirms the data *mapping* and *math* are correct, but the actual rendered per-tab visual states against live Yahoo data cannot be verified in-repo — there is no Playwright/E2E harness here (same gap noted in ADR-11/ADR-17 and prior research-detail reviews). Specifically unverifiable by static read: that a real symbol (e.g. AAPL) populates Low/High targets and the revisions table on a fresh fetch; that Bear/Base/Bull render three real figures with the "Lowest/Highest of N methods" captions; that the Positions card renders correctly in held vs closed vs none; that the News tab now reads as a single `NewsFeed` lead-in with the old `SentimentScore` box gone.
 **Recommendation:** Owner to visually accept the four tabs against at least one well-covered symbol and one thin-coverage symbol (e.g. AAPL + ENGI.PA), confirming: real Low/High + revisions on Analysts; three Bear/Base/Bull figures on Intrinsic; correct Positions card state for a held, a fully-sold, and a never-held symbol; single-card News tab. No code change is expected — this is acceptance sign-off, not a fix.
