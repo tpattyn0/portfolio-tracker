@@ -229,7 +229,7 @@ function ScoringWeightsSection<K extends string>({
           <span className="text-[10.5px] uppercase tracking-[0.12em] text-mut">
             Start from a style — prefill weights from a named investing style
           </span>
-          <ChevronDown className="h-4 w-4 shrink-0 text-mut transition-transform duration-200 group-open:rotate-180" />
+          <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0 text-mut transition-transform duration-200 group-open:rotate-180" />
         </summary>
         <div className="mt-2 rounded-md border border-line divide-y divide-line2">
           {presetsForGroup(group).map((preset) => (
