@@ -1,6 +1,6 @@
 # Review: named investment-style scoring-weight presets (ADR-23)
 Date: 2026-07-21
-Status:
+Status: IMPLEMENTED — 2026-07-21
 
 ## Summary
 Findings: 0 BLOCKERs, 0 open ISSUEs, 0 open SUGGESTIONs, 0 QUESTIONs
