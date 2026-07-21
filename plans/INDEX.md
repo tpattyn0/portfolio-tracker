@@ -20,3 +20,4 @@
 | plans/2026-07-20-perf-graph-dip-clipping-fix.md | 2026-07-20 | implemented | reviews/2026-07-20-perf-graph-dip-clipping-fix.md |
 | plans/2026-07-20-configurable-scoring-weights.md | 2026-07-20 | implemented (migration applied 2026-07-21) | reviews/2026-07-20-configurable-scoring-weights.md |
 | plans/2026-07-21-scoring-weights-direct-percent.md | 2026-07-21 | implemented (migration applied 2026-07-21; supersedes OD-4 auto-normalize) | reviews/2026-07-21-scoring-weights-direct-percent.md |
+| plans/2026-07-21-scoring-style-presets.md | 2026-07-21 | implemented | reviews/2026-07-21-scoring-style-presets.md |

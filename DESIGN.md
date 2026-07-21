@@ -591,7 +591,7 @@ none defines new one-off markup):**
 | `wishlist/loading.tsx` | Kicker block + H1-height block on the left, one pill block (add-to-watchlist) on the right; `SkeletonStatBand columns={3}`; `SkeletonTable rows={5}`. Replaces the inline `WishlistSkeleton` (same shape, now shared). |
 | `portfolio/closed-positions/loading.tsx` | Kicker block + H1-height block + a detail-line block (realized-to-date line) on the left, one pill block (Export CSV) on the right; a `SkeletonCard` in the 6-col summary shape (reuse `SkeletonStatBand columns={6}`, card-wrapped per the Ruled stat band card-wrapped variant); a filter row (one pill-shaped block for the ticker filter, three short label blocks for All/Winning/Losing); `SkeletonTable rows={6}`. |
 | `portfolio/[ticker]/loading.tsx` | Same header/quote-card/tab-bar composition as `research/[symbol]/loading.tsx` (TD-32: this page reuses the Research detail screen's chrome, see UX flows → "Position detail" — its skeleton reuses the *same* skeleton composition for the same reason). Per `plans/2026-07-19-positions-tab.md`, the quote card is now literal parity, not just geometric similarity — both pages render the identical general-market 4-col grid (Current price / Day range / 52-week range / Market cap), so the skeleton's 4 equal columns, card-wrapped, `border-line2` verticals need no per-page distinction at all (skeletons never render real cell labels regardless). |
-| `settings/loading.tsx` | Kicker block + H1-height block on the left (no right-side action in the header — Settings has no page-level pill action, unlike the other routes above). Below: two `SkeletonCard editorial` blocks in page order (Composite score, then Fundamental score), each containing a kicker-height block (section header) then a single short `kicker`-variant block (approximating the live group-total/validity status line — **revised, `plans/2026-07-21-scoring-weights-direct-percent.md`**: no longer a `SkeletonStatBand columns={5}`, since the real band it stood in for was removed) then 5 paired blocks approximating the label+input weight-stepper rows (a `kicker`-variant block over a `h-10` block, per dimension), then a `pill`-variant block (Reset to defaults) at the card's end. See UX flows → "Settings — scoring weights" for the real layout this mirrors. |
+| `settings/loading.tsx` | Kicker block + H1-height block on the left (no right-side action in the header — Settings has no page-level pill action, unlike the other routes above). Below: two `SkeletonCard editorial` blocks in page order (Composite score, then Fundamental score), each containing a kicker-height block (section header) then a single short `kicker`-variant block (approximating the live group-total/validity status line — **revised, `plans/2026-07-21-scoring-weights-direct-percent.md`**: no longer a `SkeletonStatBand columns={5}`, since the real band it stood in for was removed) then, **added per `plans/2026-07-21-scoring-style-presets.md`**, another short `kicker`-variant block (the preset picker's label) followed by a small wrapped row of 3–4 `pill`-variant blocks of varied width (the preset picker itself — a representative sample, not the real per-section count of 9/6), then 5 paired blocks approximating the label+input weight-stepper rows (a `kicker`-variant block over a `h-10` block, per dimension), then a `pill`-variant block (Reset to defaults) at the card's end. See UX flows → "Settings — scoring weights" for the real layout this mirrors. |
 
 **Rule for the Coding agent:** every skeleton mirrors its real page's column
 count, card count, and block order — never a generic "3 boxes" placeholder. If a
@@ -704,6 +704,136 @@ percent appeared. Superseded by the direct-percent model above: the owner asked
 for the typed number to be the actual percent, so the range tightens to 0–100 and
 the label gains the "%" affordance described above.
 </details>
+
+### Style preset picker (Settings — scoring weights)
+A per-section, one-click way to populate a Weight stepper group with a named,
+curated allocation instead of typing five percentages from scratch
+(`plans/2026-07-21-scoring-style-presets.md`). **New named component** — added
+here because neither existing pill idiom fits its semantics: **Pill sub-nav**
+(Components above) is a persistent view-switcher with a lasting active state,
+and this is a momentary, fire-and-forget action with **no persisted "selected"
+state** (per the plan's Assumptions — nothing records "you are on Value," so
+there is never an active pill to paint); **Segmented tabs** is likewise a
+lasting-selection idiom. This component reuses the existing **Secondary
+button** token set byte-for-byte (Spacing/shape → Buttons → Secondary:
+transparent background, `--ink` text, `1px --line` border, radius = half
+height) — it is N more instances of the button already sitting in this same
+card as "Reset to house defaults," at a smaller height tier, not a new visual
+language.
+
+- **Placement** — inside each `ScoringWeightsSection` Editorial card, directly
+  below the live group-total/validity status line (item 2 in "Settings —
+  scoring weights") and directly above the five Weight stepper rows (item 4
+  there, immediately after this picker's own item 3), matching the plan's
+  required order: a starting point for tuning belongs
+  before the fields it fills, and after the status line so both live in the
+  same visual block before the field grid begins. `margin-top:4px` from the
+  status line's own bottom margin, `margin-bottom:20px` above the first
+  stepper row (reuses the status line's existing `margin-bottom:20px` slot —
+  no new spacing token; the picker sits inside that existing gap rather than
+  adding a second one).
+- **Structure** — a kicker label above a wrapping row of pills, matching the
+  Weight stepper field label's own idiom so the picker reads as "one more
+  labelled row in this card," not a foreign insert:
+  - **Label** — kicker-style, `text-[10.5px] uppercase tracking-[0.12em]
+    text-mut mb-2 block` (byte-identical to the Weight stepper field label
+    class), copy **"Start from a style"**.
+  - **Pill row** — `flex flex-wrap gap-2` (matching Pill sub-nav's
+    `flex-wrap:wrap` density rule so N pills reflow across lines rather than
+    overflowing or scrolling).
+  - **Each pill** — the existing Secondary button token set at its smaller
+    height tier (Spacing/shape → Buttons: "Secondary: transparent background,
+    `--ink` text, 1px `--line` border" at the 38px-and-under sizing this
+    system already uses for compact secondary actions), rendered compact for
+    this denser context: `h-8 rounded-full border border-line bg-transparent
+    px-3.5 text-[12px] font-medium text-foreground` — 32px height (below the
+    system's existing 38px secondary-button floor, justified because up to
+    nine of these sit in one row and the button height scale has no smaller
+    named rung; treat 32px as a documented compact instance of the Secondary
+    button, not a new token — it changes no color, border, or radius, only
+    height/padding, mirroring how the Circular row-action button already runs
+    the same border+icon idiom at two sizes, 28px and 34px, without being
+    called two components). Label text is the preset's `label` only (e.g.
+    "Value", "Growth", "Deep Value / Contrarian") — no visible blurb line;
+    the preset's `blurb` is exposed only via a native `title` attribute
+    (browser tooltip on hover/focus, zero-cost progressive enhancement, no
+    new tooltip component). This keeps the composite section's nine pills
+    scannable as a dense, wrapping two-to-three-line block instead of a tall
+    stack with a secondary text line under each entry.
+  - **Order** — presets render in `presetsForGroup(group)`'s array order
+    (`lib/utils/scoring-weights.ts`), which is authorship order, not
+    alphabetical: Value · Deep Value / Contrarian · Quality (GARP) · Growth ·
+    Momentum · Sentiment / News-driven · Analyst Consensus · Dividend /
+    Income · Balanced for Composite (nine); the same list minus Momentum,
+    Sentiment / News-driven, and Analyst Consensus for Fundamental (six).
+    Balanced sits last in both rows — it mirrors "Reset to house defaults"
+    immediately below it, so ending the row on the house-default entry keeps
+    the picker's reading order and the actions row's own default-affordance
+    in visual agreement.
+- **States** (color values only — no new tokens, same rule as Weight
+  stepper):
+  - **Default** — `--line` border, `--ink` text, transparent fill (identical
+    to Secondary button's resting state).
+  - **Hover** — background `var(--fill)` (the system's one hover-fill rule,
+    Spacing/shape → Row hover, reused here rather than inventing a
+    pill-specific hover; border and text color unchanged).
+  - **Active (mouse-down/pressed)** — no distinct pressed-state token exists
+    elsewhere in the system for buttons; omit a separate `:active` visual
+    beyond the browser default, matching every other button in this app
+    (Reset/Save/etc. specify no `:active` treatment either).
+  - **Focus-visible** — `outline: none` plus the system's existing focus
+    treatment for interactive controls, "rely on border" (Spacing/shape →
+    Inputs: "no focus ring glow — outline none, rely on border"): on
+    focus-visible the pill's border color steps up to `--ink` (same border,
+    darker/lighter per theme, no glow) so keyboard users can see focus
+    without introducing a new ring/glow idiom the rest of the system doesn't
+    use.
+  - **No "selected"/active-preset visual state, ever** — per the plan's
+    Assumptions, applying a preset does not persist which preset (if any)
+    matches the section's current values, so no pill is ever painted as
+    "currently chosen." Every pill always renders in its Default/Hover/Focus
+    states only, regardless of what the fields currently hold. (This is a
+    deliberate absence, not an oversight the Coding agent should "fix" by
+    adding comparison logic — seeing that logic added is exactly the
+    speculative "show which preset is active" feature the plan defers.)
+- **Interaction** — clicking (or Enter/Space while focused) a pill calls
+  `setInputs(toInputs(preset[group]))` for that section only — the same
+  `setInputs` call `handleReset` already makes, just seeded from
+  `preset[group]` instead of `defaultPercents`. This is **populate-only**:
+  no `PUT` fires, Save is not invoked, and the section's existing dirty/valid
+  computation (`computeGroupTotalState`) reacts exactly as it would to manual
+  typing — because every preset group sums to 100 by construction, the
+  status line immediately reads its valid state and Save enables via the
+  existing dirty gate, with zero special-casing for "a preset was clicked."
+  The user still reviews the five populated fields and presses the
+  existing **Save weights** pill to persist, per the plan's explicit-save
+  requirement.
+- **Keyboard / a11y** — each pill is a native `<button type="button">`
+  (never a `<div onClick>`), so it is Tab-reachable in DOM order (label →
+  pill row → Weight stepper fields → actions row), activates on Enter and
+  Space with no extra wiring, and is announced by screen readers using its
+  own visible text (the preset label) as its accessible name — no
+  `aria-label` override needed since the visible label already is the full
+  name. The row's kicker label ("Start from a style") is a plain `<label>`-
+  style text node associated by DOM adjacency/visual proximity only (matching
+  how the Weight stepper's own field labels work — this system does not use
+  `<fieldset>`/`aria-labelledby` wiring for its grouped-control labels
+  elsewhere, so the picker does not introduce that pattern unilaterally). The
+  `title` attribute carrying the blurb is supplemental, not the a11y
+  affordance — the pill remains fully operable and its purpose fully legible
+  from its visible label alone with `title` absent (e.g. on touch, where
+  `title` never surfaces).
+- **Light/dark themes** — every value referenced above (`--line`, `--ink`,
+  `--fill`, `--mut`) is a themed CSS variable already carrying distinct
+  light/dark values per the Colors table; the picker requires no
+  theme-conditional styling of its own; the same class list produces the
+  correct look in both themes automatically, exactly like the "Reset to
+  house defaults" button beside it in the same card.
+- **Composite vs. Fundamental consistency** — both sections render the exact
+  same component (label copy, pill classes, spacing, states); the only
+  difference between the two cards' pickers is the list length (nine vs.
+  six) and which presets appear, both driven purely by `presetsForGroup`
+  data — never a chrome difference between the two sections.
 
 ### Card
 Base surface for every non-table content block: `--card` background, 1px `--line`
@@ -1221,9 +1351,11 @@ of the prior plan). Route `app/(dashboard)/settings/page.tsx`, reached only via
 the account-menu dropdown (no top-nav entry — this is an account-level control
 surface, not a research/portfolio destination). Everything below reuses existing
 tokens/components named elsewhere in this file; no new color, spacing, or
-type-scale value is introduced. The one new named component is **Weight stepper**
-(see Components above, revised meaning per the direct-percent plan); everything
-else is an existing pattern applied to new content.
+type-scale value is introduced. Two new named components exist: **Weight
+stepper** (see Components above, revised meaning per the direct-percent plan)
+and **Style preset picker** (see Components above,
+`plans/2026-07-21-scoring-style-presets.md`); everything else is an existing
+pattern applied to new content.
 
 **What changed in this revision, at a glance:** the five inputs per section are
 now direct whole percentages (0–100) that must sum to exactly 100, not arbitrary
@@ -1312,7 +1444,25 @@ would under-signal that. Each card's internal structure, top to bottom:
      gain is; it is binary valid/invalid, so only the neutral/`--dn` pair is
      used, consistent with the "only `--up`/`--dn`/`--amber` are chromatic, and
      only for their named meanings" rule.
-3. **Five Weight stepper rows** (Components → "Weight stepper", revised meaning:
+3. **Style preset picker** (Components → "Style preset picker (Settings —
+   scoring weights)", `plans/2026-07-21-scoring-style-presets.md`) — a
+   labelled row of compact secondary pills, one per preset that defines this
+   section's group (`presetsForGroup(group)`): nine pills on Composite (Value
+   · Deep Value / Contrarian · Quality (GARP) · Growth · Momentum · Sentiment
+   / News-driven · Analyst Consensus · Dividend / Income · Balanced), six on
+   Fundamental (the same list minus Momentum, Sentiment / News-driven, and
+   Analyst Consensus, which define no fundamental tilt). Sits directly below
+   this status line and directly above the five Weight stepper rows — a
+   starting point belongs before the fields it fills. Clicking a pill calls
+   `setInputs(toInputs(preset[group]))` for this section only: **populate-only,
+   client-side, no request** — identical mechanism to "Reset to house
+   defaults" below, just seeded from the clicked preset instead of the house
+   default. Because every preset sums to 100 by construction, the status line
+   above immediately reads its valid state and Save enables via the ordinary
+   dirty gate — applying a preset never bypasses the sum-to-100/dirty Save
+   gate this section already enforces. No preset is ever shown as "currently
+   active"; see the Components entry for the full state/a11y spec.
+4. **Five Weight stepper rows** (Components → "Weight stepper", revised meaning:
    the number typed IS the percent, 0–100 whole), one per dimension, in a
    `grid grid-cols-2 gap-6` (matching the Add-position form's field grid; single
    column below its existing responsive breakpoint):
@@ -1326,7 +1476,7 @@ would under-signal that. Each card's internal structure, top to bottom:
      tab's `SubscoreBand` column order).
    - The group-total/validity status line above updates from these fields on
      every change — no separate "recalculate" step.
-4. **Actions row** (`margin-top:24px`, flex, `gap:12px`, right-aligned — matching
+5. **Actions row** (`margin-top:24px`, flex, `gap:12px`, right-aligned — matching
    the Add-position form's action-row alignment pattern, adapted from
    full-width/50-50 to auto-width/right-aligned since this is an in-page section
    action, not a full-form submit):
@@ -1427,9 +1577,16 @@ composition. **Revised for this change:** the per-section skeleton drops the
 band and replaces it with a single short `kicker`-variant block (approximating
 the new one-line group-total status line) between the header block and the five
 label+field row approximations; the five paired label+input row blocks and the
-trailing pill-variant (Reset) block are unchanged. Coding agent updates
-`loading.tsx` in the same change per the "Rule for the Coding agent" above (a
-skeleton out of sync with its real page is a design regression).
+trailing pill-variant (Reset) block are unchanged. **Further revised,
+`plans/2026-07-21-scoring-style-presets.md`:** the per-section skeleton adds one
+more short `kicker`-variant block (approximating the preset picker's "Start from
+a style" label) followed by a short row of small `pill`-variant blocks (3–4 of
+varied width, approximating a wrapped preset row — skeletons never render the
+real count/labels, matching every other skeleton's "a few representative
+blocks" rule, e.g. `SkeletonTabBar`) between the group-total status block and
+the five label+field row approximations. Coding agent updates `loading.tsx` in
+the same change per the "Rule for the Coding agent" above (a skeleton out of
+sync with its real page is a design regression).
 
 **Data flow (reference only — Coding agent's concern, included here so the visual
 spec is legible against real state):** `GET /api/settings/scoring-weights` seeds

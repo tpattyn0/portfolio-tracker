@@ -10,6 +10,10 @@ import {
   fractionsToPercents,
   percentsToFractions,
   sumsTo100,
+  SCORING_STYLE_PRESETS,
+  presetsForGroup,
+  type CompositeWeights,
+  type FundamentalWeights,
 } from "./scoring-weights";
 
 describe("DEFAULT_SCORING_WEIGHTS", () => {
@@ -379,5 +383,126 @@ describe("scale-invariance regression (ADR-22 guard)", () => {
     const totalFromPresentedPercents = weightedCompositeTotal(scores, normalizeCompositeWeights(presentedPercents));
 
     expect(totalFromPresentedPercents).toBe(totalFromRaw);
+  });
+});
+
+// ADR-23 (plans/2026-07-21-scoring-style-presets.md): named investment-style
+// presets are whole-percent settings-layer data, not a second fractions
+// weights definition. Composite covers nine styles; Fundamental covers six
+// (Momentum/Sentiment/Analyst Consensus are composite-only).
+describe("SCORING_STYLE_PRESETS", () => {
+  const COMPOSITE_KEYS: (keyof CompositeWeights)[] = [
+    "intrinsicValue",
+    "fundamental",
+    "technical",
+    "sentiment",
+    "analyst",
+  ];
+  const FUNDAMENTAL_KEYS: (keyof FundamentalWeights)[] = [
+    "valuation",
+    "profitability",
+    "growth",
+    "financial",
+    "dividend",
+  ];
+  const COMPOSITE_ONLY_IDS = ["momentum", "sentiment", "analyst"];
+  const BOTH_GROUPS_IDS = ["value", "deep-value", "quality", "growth", "income", "balanced"];
+
+  it("every preset's composite group sums to exactly 100", () => {
+    for (const preset of SCORING_STYLE_PRESETS) {
+      expect(preset.composite, `${preset.id} is missing a composite group`).toBeDefined();
+      const sum = Object.values(preset.composite as Record<string, number>).reduce((a, b) => a + b, 0);
+      expect(sum, `${preset.id}.composite sums to ${sum}, not 100`).toBe(100);
+    }
+  });
+
+  it("every preset's composite group has exactly the five expected keys", () => {
+    for (const preset of SCORING_STYLE_PRESETS) {
+      expect(Object.keys(preset.composite!).sort()).toEqual([...COMPOSITE_KEYS].sort());
+    }
+  });
+
+  it("every preset that defines a fundamental group sums to exactly 100 with the five expected keys", () => {
+    for (const preset of SCORING_STYLE_PRESETS) {
+      if (preset.fundamental === undefined) continue;
+      const sum = Object.values(preset.fundamental as Record<string, number>).reduce((a, b) => a + b, 0);
+      expect(sum, `${preset.id}.fundamental sums to ${sum}, not 100`).toBe(100);
+      expect(Object.keys(preset.fundamental).sort()).toEqual([...FUNDAMENTAL_KEYS].sort());
+    }
+  });
+
+  it("defines all nine expected preset ids, each with a composite group", () => {
+    const ids = SCORING_STYLE_PRESETS.map((p) => p.id);
+    expect(ids).toEqual([
+      "value",
+      "deep-value",
+      "quality",
+      "growth",
+      "momentum",
+      "sentiment",
+      "analyst",
+      "income",
+      "balanced",
+    ]);
+  });
+
+  it("momentum, sentiment, and analyst define composite only (no fundamental group)", () => {
+    for (const id of COMPOSITE_ONLY_IDS) {
+      const preset = SCORING_STYLE_PRESETS.find((p) => p.id === id);
+      expect(preset, `preset ${id} not found`).toBeDefined();
+      expect(preset!.composite).toBeDefined();
+      expect(preset!.fundamental).toBeUndefined();
+    }
+  });
+
+  it("value, deep-value, quality, growth, income, and balanced define both groups", () => {
+    for (const id of BOTH_GROUPS_IDS) {
+      const preset = SCORING_STYLE_PRESETS.find((p) => p.id === id);
+      expect(preset, `preset ${id} not found`).toBeDefined();
+      expect(preset!.composite).toBeDefined();
+      expect(preset!.fundamental).toBeDefined();
+    }
+  });
+
+  it("balanced.composite deep-equals fractionsToPercents(DEFAULT_SCORING_WEIGHTS.composite), not a hand-typed literal", () => {
+    const balanced = SCORING_STYLE_PRESETS.find((p) => p.id === "balanced")!;
+    expect(balanced.composite).toEqual(fractionsToPercents(DEFAULT_SCORING_WEIGHTS.composite));
+  });
+
+  it("balanced.fundamental deep-equals fractionsToPercents(DEFAULT_SCORING_WEIGHTS.fundamental), not a hand-typed literal", () => {
+    const balanced = SCORING_STYLE_PRESETS.find((p) => p.id === "balanced")!;
+    expect(balanced.fundamental).toEqual(fractionsToPercents(DEFAULT_SCORING_WEIGHTS.fundamental));
+  });
+});
+
+describe("presetsForGroup", () => {
+  it("composite: returns all nine presets in authorship order", () => {
+    const result = presetsForGroup("composite");
+    expect(result.map((p) => p.id)).toEqual([
+      "value",
+      "deep-value",
+      "quality",
+      "growth",
+      "momentum",
+      "sentiment",
+      "analyst",
+      "income",
+      "balanced",
+    ]);
+  });
+
+  it("fundamental: excludes momentum, sentiment, and analyst; returns six in authorship order", () => {
+    const result = presetsForGroup("fundamental");
+    expect(result.map((p) => p.id)).toEqual([
+      "value",
+      "deep-value",
+      "quality",
+      "growth",
+      "income",
+      "balanced",
+    ]);
+    expect(result.some((p) => p.id === "momentum")).toBe(false);
+    expect(result.some((p) => p.id === "sentiment")).toBe(false);
+    expect(result.some((p) => p.id === "analyst")).toBe(false);
   });
 });

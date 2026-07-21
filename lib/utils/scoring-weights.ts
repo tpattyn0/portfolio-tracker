@@ -261,6 +261,105 @@ export function percentsToFractions<K extends string>(percents: Record<K, number
 }
 
 /**
+ * Named investment-style scoring-weight presets (ADR-23,
+ * plans/2026-07-21-scoring-style-presets.md). Settings-layer data only — whole
+ * percentages summing to 100 per group, the same scale ADR-22 established for
+ * the settings API/UI boundary, NOT fractions and NOT the internal scoring
+ * scale. Applying a preset is a purely client-side populate of the settings
+ * page's input state (`setInputs(toInputs(preset[group]))`); it never touches
+ * `DEFAULT_SCORING_WEIGHTS`, `normalizeWeights`, `weightedCompositeTotal`,
+ * `weightedFundamentalTotal`, or any scoring consumer.
+ *
+ * `composite` and `fundamental` are both optional per preset: Momentum,
+ * Sentiment / News-driven, and Analyst Consensus are momentum-/flow-/
+ * consensus-driven styles with no coherent fundamental sub-tilt, so they
+ * define `composite` only.
+ *
+ * `balanced` is DERIVED from `fractionsToPercents(DEFAULT_SCORING_WEIGHTS.*)`,
+ * never hand-typed, so the house default has exactly one source of truth and
+ * a future default change flows into Balanced automatically (locked by a unit
+ * test in scoring-weights.test.ts).
+ */
+export interface ScoringStylePreset {
+  id: string;
+  label: string;
+  blurb: string;
+  composite?: Record<keyof CompositeWeights, number>;
+  fundamental?: Record<keyof FundamentalWeights, number>;
+}
+
+export const SCORING_STYLE_PRESETS: ScoringStylePreset[] = [
+  {
+    id: "value",
+    label: "Value",
+    blurb: "Leans on fundamentals and intrinsic value over momentum or sentiment.",
+    composite: { intrinsicValue: 40, fundamental: 35, technical: 5, sentiment: 5, analyst: 15 },
+    fundamental: { valuation: 45, profitability: 25, growth: 5, financial: 20, dividend: 5 },
+  },
+  {
+    id: "deep-value",
+    label: "Deep Value / Contrarian",
+    blurb: "Heaviest tilt to intrinsic value; higher sentiment weight to catch turnarounds.",
+    composite: { intrinsicValue: 45, fundamental: 30, technical: 5, sentiment: 15, analyst: 5 },
+    fundamental: { valuation: 50, profitability: 20, growth: 5, financial: 20, dividend: 5 },
+  },
+  {
+    id: "quality",
+    label: "Quality (GARP)",
+    blurb: "Balances strong fundamentals with reasonable weight on every other dimension.",
+    composite: { intrinsicValue: 25, fundamental: 40, technical: 10, sentiment: 10, analyst: 15 },
+    fundamental: { valuation: 15, profitability: 45, growth: 20, financial: 15, dividend: 5 },
+  },
+  {
+    id: "growth",
+    label: "Growth",
+    blurb: "Prioritizes growth and momentum over valuation and income.",
+    composite: { intrinsicValue: 10, fundamental: 30, technical: 20, sentiment: 20, analyst: 20 },
+    fundamental: { valuation: 5, profitability: 20, growth: 55, financial: 15, dividend: 5 },
+  },
+  {
+    id: "momentum",
+    label: "Momentum",
+    blurb: "Technical and sentiment lead; no fundamental sub-tilt (composite only).",
+    composite: { intrinsicValue: 5, fundamental: 10, technical: 45, sentiment: 25, analyst: 15 },
+  },
+  {
+    id: "sentiment",
+    label: "Sentiment / News-driven",
+    blurb: "Weighs news sentiment most heavily; no fundamental sub-tilt (composite only).",
+    composite: { intrinsicValue: 5, fundamental: 15, technical: 25, sentiment: 40, analyst: 15 },
+  },
+  {
+    id: "analyst",
+    label: "Analyst Consensus",
+    blurb: "Leans on analyst ratings and targets; no fundamental sub-tilt (composite only).",
+    composite: { intrinsicValue: 15, fundamental: 20, technical: 10, sentiment: 15, analyst: 40 },
+  },
+  {
+    id: "income",
+    label: "Dividend / Income",
+    blurb: "Favors analyst consensus and fundamentals, with dividend strength weighted highest.",
+    composite: { intrinsicValue: 20, fundamental: 30, technical: 5, sentiment: 10, analyst: 35 },
+    fundamental: { valuation: 20, profitability: 25, growth: 5, financial: 20, dividend: 30 },
+  },
+  {
+    id: "balanced",
+    label: "Balanced",
+    blurb: "The house default weighting — an even-handed starting point.",
+    composite: fractionsToPercents(DEFAULT_SCORING_WEIGHTS.composite),
+    fundamental: fractionsToPercents(DEFAULT_SCORING_WEIGHTS.fundamental),
+  },
+];
+
+/**
+ * Returns only the presets that define the given group ("composite" or
+ * "fundamental"), preserving `SCORING_STYLE_PRESETS`' authorship order.
+ */
+export function presetsForGroup(group: "composite" | "fundamental"): ScoringStylePreset[] {
+  return SCORING_STYLE_PRESETS.filter((preset) => preset[group] !== undefined);
+}
+
+/**
  * Validation predicate for the direct-percent settings UX (ADR-22): does this
  * group's values sum to 100 within `epsilon`? Whole-percent inputs summing to
  * 100 sum cleanly — the epsilon only guards floating-point dust (e.g. from
