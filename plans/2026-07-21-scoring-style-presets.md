@@ -167,7 +167,7 @@ pills, or a `select`) and its exact chrome:
 
 ## Tasks
 
-1. [ ] Add `ScoringStylePreset` type + `SCORING_STYLE_PRESETS` (whole-percent, nine
+1. [x] Add `ScoringStylePreset` type + `SCORING_STYLE_PRESETS` (whole-percent, nine
    composite / six fundamental entries; Balanced derived from
    `fractionsToPercents(DEFAULT_SCORING_WEIGHTS.*)`, not literal) to
    `lib/utils/scoring-weights.ts`. — Acceptance: `npm run verify` typecheck passes;
@@ -180,13 +180,13 @@ pills, or a `select`) and its exact chrome:
    `fundamental`, (d) `balanced.composite` deep-equals
    `fractionsToPercents(DEFAULT_SCORING_WEIGHTS.composite)` and
    `balanced.fundamental` deep-equals `fractionsToPercents(DEFAULT_SCORING_WEIGHTS.fundamental)`.
-2. [ ] Add a pure helper (co-located in `scoring-weights.ts` or the settings-gate
+2. [x] Add a pure helper (co-located in `scoring-weights.ts` or the settings-gate
    module) `presetsForGroup(group: "composite" | "fundamental"): ScoringStylePreset[]`
    returning only presets that define that group, preserving array order. —
    Acceptance: unit test — `presetsForGroup("fundamental")` excludes `momentum`,
    `sentiment`, `analyst` and returns six in listed order; `presetsForGroup("composite")`
    returns all nine.
-3. [ ] Wire the per-section preset picker into `app/(dashboard)/settings/page.tsx`'s
+3. [x] Wire the per-section preset picker into `app/(dashboard)/settings/page.tsx`'s
    `ScoringWeightsSection` per the Designer's spec: render `presetsForGroup(group)`,
    and on select call `setInputs(toInputs(preset[group]!))`. Reuse existing
    `toInputs` + existing token classes only. — Acceptance: applying a preset in the
@@ -194,7 +194,7 @@ pills, or a `select`) and its exact chrome:
    valid", enables Save (dirty+valid); Save persists exactly those percents and the
    toast fires (manual/Playwright — see Verification). No `PUT` fires on apply,
    only on the subsequent Save click.
-4. [ ] Update docs: `DESIGN.md` "Settings — scoring weights" gets the preset-picker
+4. [x] Update docs: `DESIGN.md` "Settings — scoring weights" gets the preset-picker
    entry (Designer, during the design stage — reference existing tokens); a new ADR
    in `DECISIONS.md` (ADR-23, drafted below) records the preset-as-percent-data +
    client-side-populate decisions; `ARCHITECTURE.md`'s `scoring-weights.ts` Key-files

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   DEFAULT_SCORING_WEIGHTS,
   fractionsToPercents,
+  presetsForGroup,
   type CompositeWeights,
   type FundamentalWeights,
 } from "@/lib/utils/scoring-weights";
@@ -218,6 +219,25 @@ function ScoringWeightsSection<K extends string>({
         )}
       >
         {isValid ? "Total: 100% · valid" : `Total: ${total}% · must equal 100%`}
+      </div>
+
+      <div className="mb-5">
+        <label className="mb-2 block text-[10.5px] uppercase tracking-[0.12em] text-mut">
+          Start from a style
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {presetsForGroup(group).map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              title={preset.blurb}
+              onClick={() => setInputs(toInputs(preset[group]! as Record<K, number>))}
+              className="h-8 rounded-full border border-line bg-transparent px-3.5 text-[12px] font-medium text-foreground hover:bg-fill focus-visible:border-foreground focus-visible:outline-none"
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
