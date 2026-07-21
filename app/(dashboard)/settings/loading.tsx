@@ -9,7 +9,11 @@ import { SkeletonBlock, SkeletonCard, SkeletonText } from "@/components/ui/loadi
  * kicker-variant block approximating the live group-total/validity status
  * line (revised, plans/2026-07-21-scoring-weights-direct-percent.md — no
  * longer a 5-col SkeletonStatBand, since the real band it stood in for was
- * removed), five label+field row approximations, and a pill-shaped block for
+ * removed), then, added per plans/2026-07-21-scoring-style-presets.md,
+ * another short kicker-variant block (the preset picker's label) followed by
+ * a small wrapped row of 3-4 pill-variant blocks of varied width (the preset
+ * picker itself — a representative sample, not the real per-section count of
+ * 9/6), then five label+field row approximations, and a pill-shaped block for
  * the reset action.
  */
 export default function SettingsLoading() {
@@ -30,6 +34,16 @@ export default function SettingsLoading() {
             </div>
 
             <SkeletonText variant="kicker" className="mt-2 w-56" />
+
+            <div className="mb-5 mt-5">
+              <SkeletonText variant="kicker" className="mb-2 w-32" />
+              <div className="flex flex-wrap gap-2">
+                <SkeletonText variant="pill" className="w-20" />
+                <SkeletonText variant="pill" className="w-24" />
+                <SkeletonText variant="pill" className="w-16" />
+                <SkeletonText variant="pill" className="w-28" />
+              </div>
+            </div>
 
             <div className="mt-7 grid grid-cols-1 gap-6 sm:grid-cols-2">
               {Array.from({ length: 5 }).map((_, i) => (
