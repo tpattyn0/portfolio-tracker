@@ -1,6 +1,6 @@
 # Review: scoring-picker-chips (inline name-chip picker + accessible tooltip, ADR-26)
 Date: 2026-07-21
-Status:
+Status: IMPLEMENTED — 2026-07-21 (PCH-I1 plans/INDEX.md advanced to implemented in this same commit)
 
 ## Summary
 Findings: 0 BLOCKERs, 1 ISSUE, 1 SUGGESTION, 0 QUESTIONs
