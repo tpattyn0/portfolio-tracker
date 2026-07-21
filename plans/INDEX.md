@@ -2,6 +2,7 @@
 
 | Plan | Date | Status | Review |
 |------|------|--------|--------|
+| plans/2026-07-21-scoring-picker-chips.md | 2026-07-21 | planned | — |
 | plans/2026-07-21-scoring-picker-collapsible-ux.md | 2026-07-21 | implemented | reviews/2026-07-21-scoring-picker-collapsible-ux.md |
 | plans/2026-07-21-scoring-style-descriptions-retune.md | 2026-07-21 | implemented | reviews/2026-07-21-scoring-style-descriptions-retune.md |
 | plans/2026-07-20-gemini-model-update.md | 2026-07-20 | implemented | reviews/2026-07-20-gemini-model-update.md |
