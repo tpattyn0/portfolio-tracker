@@ -4,7 +4,7 @@ Status: IMPLEMENTED — 2026-07-20
 
 ## Summary
 Findings: 0 BLOCKERs, 0 ISSUEs, 0 SUGGESTIONs, 1 QUESTION
-Requires owner decision: GMU-Q1 (owner UI acceptance — insights card + news sentiment populate live; not a code defect)
+Requires owner decision: GMU-Q1 (resolved 2026-07-21 — Morning Note + news sentiment verified populating live, owner-accepted)
 Ready for Coding agent: none — no actionable code findings
 
 Reviewed the full branch diff (`origin/main...HEAD`; fresh branch, so the whole diff is this fix) for PR #20. Verify block re-run independently: **pass** — typecheck ok, lint ok (only pre-existing unused-`error` warnings, none new), **117/117 tests (24 files)**, secret-scan `no leaks found`.
@@ -13,7 +13,8 @@ Reviewed the full branch diff (`origin/main...HEAD`; fresh branch, so the whole 
 
 ## Findings
 
-### GMU-Q1 — Owner UI acceptance (live AI features render)
+### GMU-Q1 — Owner UI acceptance (live AI features render) — RESOLVED (owner-accepted 2026-07-21)
+**Resolution:** Verified live 2026-07-21. The dashboard "Morning Note" (Gemini portfolio insight) generates real, portfolio-aware output — correctly names the actual holdings (tech/NVDA, biotech/ARGX, utility/ENGI), flags concentration risk in NVDA, and gives opportunities/recommendations — not the "AI analysis temporarily unavailable" fallback that appeared while gemini-1.5-flash was 404-ing. News sentiment also populates on the research News tab. Both Gemini surfaces work on gemini-2.5-flash. Owner accepted.
 **Type:** QUESTION (manual acceptance, not a code defect)
 **File:** app/api/insights/portfolio/route.ts, lib/services/sentiment.service.ts
 **Problem:** The live-probe objectively proves the model works (HTTP 200 for `gemini-2.5-flash` through the installed SDK with the production key, recorded by the Coding agent and re-confirmed after wiring). What a static review cannot confirm is the end-user surface: that the dashboard AI insight card populates with a real summary (not the "temporarily unavailable" placeholder) and that news sentiment renders non-neutral where content warrants. This is an acceptance check, not a defect.

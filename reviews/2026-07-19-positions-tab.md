@@ -4,7 +4,7 @@ Status: IMPLEMENTED — 2026-07-19
 
 ## Summary
 Findings: 0 BLOCKERs, 2 ISSUEs (PT-I1 resolved iter 2 · PT-I2 resolved iter 3 — direct test added + ADR-18 corrected), 2 SUGGESTIONs (PT-S1 resolved iter 2 · PT-S2 skipped/accepted), 2 QUESTIONs (PT-Q1 resolved by owner · PT-Q2 owner click-through pending — manual acceptance, not a code defect)
-Requires owner decision: PT-Q2 (four visual states across both routes — owner click-through; manual acceptance, not a code defect)
+Requires owner decision: PT-Q2 (resolved 2026-07-21 — Positions-tab restructure spot-verified live on NVDA, owner-accepted)
 Ready for Coding agent: none — all actionable findings resolved
 
 ---
@@ -65,7 +65,8 @@ The core correctness crux — the three-state panel gate — is **implemented co
 **Problem:** See PT-I1. This is surfaced as a QUESTION as well because whether the loss of the Realized P/L display is a defect or an accepted scope reduction is an owner call, not something the Coding agent can decide autonomously. The plan and ADR both implied relocation, not removal.
 **Recommendation:** Owner to confirm: should Realized P/L be re-surfaced in the Positions tab (PT-I1 option a), or is dropping it from the UI accepted (PT-I1 option b, with the ADR text corrected)?
 
-### PT-Q2 — QUESTION
+### PT-Q2 — QUESTION — RESOLVED (owner-accepted 2026-07-21)
+**Resolution:** Spot-verified live on NVDA (2026-07-21, a held stock via `/research/[symbol]`): the tab set reads Overview · Technical · Fundamental · Analysts · Intrinsic value · News & sentiment · **Positions** — the renamed "Positions" tab is present and placed last, as intended. Owner accepted the positions-tab restructure across its states. (The full four-state matrix — held/never-transacted/fully-sold and base-currency reconversion — is backed by the unit-tested pure gate helpers verified in this review; the owner accepts on the live spot-check plus that verified logic.)
 **File:** `app/(dashboard)/portfolio/[ticker]/page.tsx`, `app/(dashboard)/research/[symbol]/page.tsx`, `components/research/transactions-tab.tsx`
 **Problem:** The four visual states the feature turns on — (1) `/portfolio/[ticker]` held: general market grid populated + Buy more/Sell/Delete functional + Positions tab shows stat band + table; (2) `/research/[symbol]` held: unchanged header, 7th tab reads "Positions"; (3) `/research/[symbol]` never-transacted: 6 tabs, no Positions tab; (4) fully-sold (`quantity 0`): Positions tab shows table + "Position closed." caption, no zero-value band — plus base-currency reconversion in the panel — cannot be verified automatically (no Playwright project in this repo). The underlying logic *is* verified: the tab-visibility gate and the three-state panel gate are unit-tested pure helpers, and the component wiring is readable and correct. Judgement: the logic is verified; the live visual states are the residual.
 **Recommendation:** Owner to click through the four states across both routes (and confirm the base-currency switch reconverts the stat band values). This mirrors NAV-Q1 / FVL-Q1 handling on prior work here — not a merge blocker on its own.

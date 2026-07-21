@@ -4,7 +4,7 @@ Status: IMPLEMENTED — 2026-07-19
 
 ## Summary
 Findings: 0 BLOCKERs, 0 ISSUEs, 0 SUGGESTIONs, 1 QUESTION
-Requires owner decision: PSD-Q1 (manual visual acceptance only — not a code defect; does not block)
+Requires owner decision: PSD-Q1 (resolved 2026-07-21 — superseded by the band-restyle card treatment, PBR-Q1 accepted)
 Ready for Coding agent: none
 
 This is a clean, correctly-scoped presentational change. The realized-P/L /
@@ -22,7 +22,8 @@ NAV-Q1, FVL-Q1). No manufactured findings — this is a legitimate 0-ISSUE outco
 
 ## Findings
 
-### PSD-Q1 — QUESTION
+### PSD-Q1 — QUESTION — RESOLVED (superseded 2026-07-21)
+**Resolution:** Moot — this review's `bg-fill` titled-panel treatment was superseded by the band-restyle plan (PBR-Q1), which replaced it with the card+header idiom now shipped. That final treatment was verified live+DOM on NVDA 2026-07-21 and owner-accepted (see PBR-Q1 in `reviews/2026-07-19-positions-band-restyle.md`). The `bg-fill` panel PSD-Q1 asked to visually accept no longer exists, so PSD-Q1 is closed as superseded.
 **File:** `components/research/transactions-tab.tsx:97-149`
 **Problem:** Whether the rendered result actually reads as a distinct "your
 position" panel — clearly separated from the page-header market grid above the
