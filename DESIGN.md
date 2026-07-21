@@ -591,7 +591,7 @@ none defines new one-off markup):**
 | `wishlist/loading.tsx` | Kicker block + H1-height block on the left, one pill block (add-to-watchlist) on the right; `SkeletonStatBand columns={3}`; `SkeletonTable rows={5}`. Replaces the inline `WishlistSkeleton` (same shape, now shared). |
 | `portfolio/closed-positions/loading.tsx` | Kicker block + H1-height block + a detail-line block (realized-to-date line) on the left, one pill block (Export CSV) on the right; a `SkeletonCard` in the 6-col summary shape (reuse `SkeletonStatBand columns={6}`, card-wrapped per the Ruled stat band card-wrapped variant); a filter row (one pill-shaped block for the ticker filter, three short label blocks for All/Winning/Losing); `SkeletonTable rows={6}`. |
 | `portfolio/[ticker]/loading.tsx` | Same header/quote-card/tab-bar composition as `research/[symbol]/loading.tsx` (TD-32: this page reuses the Research detail screen's chrome, see UX flows → "Position detail" — its skeleton reuses the *same* skeleton composition for the same reason). Per `plans/2026-07-19-positions-tab.md`, the quote card is now literal parity, not just geometric similarity — both pages render the identical general-market 4-col grid (Current price / Day range / 52-week range / Market cap), so the skeleton's 4 equal columns, card-wrapped, `border-line2` verticals need no per-page distinction at all (skeletons never render real cell labels regardless). |
-| `settings/loading.tsx` | Kicker block + H1-height block on the left (no right-side action in the header — Settings has no page-level pill action, unlike the other routes above). Below: two `SkeletonCard editorial` blocks in page order (Composite score, then Fundamental score), each containing a kicker-height block (section header) then a single short `kicker`-variant block (approximating the live group-total/validity status line — **revised, `plans/2026-07-21-scoring-weights-direct-percent.md`**: no longer a `SkeletonStatBand columns={5}`, since the real band it stood in for was removed) then, **added per `plans/2026-07-21-scoring-style-presets.md`**, another short `kicker`-variant block (the preset picker's label) followed by a small wrapped row of 3–4 `pill`-variant blocks of varied width (the preset picker itself — a representative sample, not the real per-section count of 9/6), then 5 paired blocks approximating the label+input weight-stepper rows (a `kicker`-variant block over a `h-10` block, per dimension), then a `pill`-variant block (Reset to defaults) at the card's end. See UX flows → "Settings — scoring weights" for the real layout this mirrors. |
+| `settings/loading.tsx` | Kicker block + H1-height block on the left (no right-side action in the header — Settings has no page-level pill action, unlike the other routes above). Below: two `SkeletonCard editorial` blocks in page order (Composite score, then Fundamental score), each containing a kicker-height block (section header) then a single short `kicker`-variant block (approximating the live group-total/validity status line — **revised, `plans/2026-07-21-scoring-weights-direct-percent.md`**: no longer a `SkeletonStatBand columns={5}`, since the real band it stood in for was removed) then, **revised per `plans/2026-07-21-scoring-picker-chips.md`** (ADR-26 — supersedes the single compact trigger-row/chevron skeleton the `plans/2026-07-21-scoring-picker-collapsible-ux.md` note previously specified here, since the real picker is no longer a disclosure), a **kicker block + a wrapping row of several small chip-shaped skeleton blocks**: one `kicker`-variant block (the "Start from a style" label, same width class as every other `kicker`-variant block in this table) followed by a `flex flex-wrap gap-2` row of `SkeletonBlock`s sized to the real chip (`h-8 rounded-full`, a handful of varied narrow widths sampling short/long preset labels — no fixed count needs to match the live 9-or-6 exactly, since skeletons approximate shape, not literal content) — **no chevron, no disclosure, no bordered list** — because the real picker is now an always-visible inline row, its skeleton must also render as an inline row, not a collapsed trigger; then 5 paired blocks approximating the label+input weight-stepper rows (a `kicker`-variant block over a `h-10` block, per dimension), then a `pill`-variant block (Reset to defaults) at the card's end. See UX flows → "Settings — scoring weights" for the real layout this mirrors. |
 
 **Rule for the Coding agent:** every skeleton mirrors its real page's column
 count, card count, and block order — never a generic "3 boxes" placeholder. If a
@@ -708,132 +708,471 @@ the label gains the "%" affordance described above.
 ### Style preset picker (Settings — scoring weights)
 A per-section, one-click way to populate a Weight stepper group with a named,
 curated allocation instead of typing five percentages from scratch
-(`plans/2026-07-21-scoring-style-presets.md`). **New named component** — added
-here because neither existing pill idiom fits its semantics: **Pill sub-nav**
-(Components above) is a persistent view-switcher with a lasting active state,
-and this is a momentary, fire-and-forget action with **no persisted "selected"
-state** (per the plan's Assumptions — nothing records "you are on Value," so
-there is never an active pill to paint); **Segmented tabs** is likewise a
-lasting-selection idiom. This component reuses the existing **Secondary
-button** token set byte-for-byte (Spacing/shape → Buttons → Secondary:
-transparent background, `--ink` text, `1px --line` border, radius = half
-height) — it is N more instances of the button already sitting in this same
-card as "Reset to house defaults," at a smaller height tier, not a new visual
-language.
+(`plans/2026-07-21-scoring-style-presets.md`, revised — **visible
+descriptions** — by `plans/2026-07-21-scoring-style-descriptions-retune.md`,
+revised again — **collapsed-by-default disclosure** — by
+`plans/2026-07-21-scoring-picker-collapsible-ux.md` (ADR-25, now superseded),
+revised again — **inline name-chip row + accessible tooltip** — by
+`plans/2026-07-21-scoring-picker-chips.md` (ADR-26, current)).
+**Named component** — added here because neither existing idiom fits its
+semantics: **Pill sub-nav** (Components above) is a persistent view-switcher
+with a lasting active state, and this is a momentary, fire-and-forget action
+with **no persisted "selected" state** (per the plan's Assumptions — nothing
+records "you are on Value," so there is never an active option to paint);
+**Segmented tabs** is likewise a lasting-selection idiom.
 
-- **Placement** — inside each `ScoringWeightsSection` Editorial card, directly
-  below the live group-total/validity status line (item 2 in "Settings —
+**Latest revision (2026-07-21, scoring-picker-chips plan, ADR-26): the picker
+is a compact wrapping row of style-NAME-only chips, shown INLINE and always
+visible — no disclosure — with each chip's description in an accessible
+tooltip that opens on hover and on keyboard focus.** The owner's stated
+problem with the two prior shapes: ADR-24's always-visible label+description
+row list was tall enough (nine/six rows) to bury the five Weight stepper
+fields, and ADR-25's fix — collapsing that same tall list behind a
+disclosure — traded that problem for an extra click before any preset is
+reachable at all. A name-only chip is short enough that the whole row (nine
+chips on Composite, six on Fundamental) wraps to one or two lines and sits
+inline above the fields with no collapse needed; the description moves out of
+the chip and into an on-demand tooltip, because most users pick a style by
+its name (Value / Growth / Momentum / …) and reach for the description only
+when a name is ambiguous. **This deliberately reverses ADR-24's
+always-visible-description decision** — the accepted tradeoff (recorded in
+ADR-26) is compactness and name-scannability over always-visible text,
+**provided the tooltip is a real accessible tooltip, not the bare `title`
+attribute ADR-24 was created to replace** (mouse-only, invisible on touch and
+to screen readers). The disclosure ADR-25 added is removed outright: it
+existed only to hide the tall description list, and that list no longer
+exists.
+
+**Structure — inline chip row, no disclosure:**
+- **Kicker label** — a plain, always-visible text node above the chip row
+  (reverts to a standalone kicker; it is no longer a `<summary>` as it was
+  under ADR-25's collapse): `text-[10.5px] uppercase tracking-[0.12em]
+  text-mut`, copy **"Start from a style"** — same class and copy as every
+  prior revision's label, just no longer wrapped in a disclosure trigger.
+- **Chip row** — `flex flex-wrap items-center gap-2`, sitting directly below
+  the label. One chip per preset from `presetsForGroup(group)`, in
+  authorship order (unchanged: Value · Deep Value / Contrarian · Quality
+  (GARP) · Growth · Momentum · Sentiment / News-driven · Analyst Consensus ·
+  Dividend / Income · Balanced for Composite — nine; the same list minus
+  Momentum, Sentiment / News-driven, and Analyst Consensus for Fundamental —
+  six). Chips wrap to as many lines as needed at this `gap-2` — never
+  `overflow-x` scroll or truncation, matching this system's general aversion
+  to nested scroll regions (see Style preset picker's own disclosure-era
+  rejection of a scrollable list, and Loading skeleton's "no new motion
+  idiom" register).
+- **The chip itself** — a native `<button type="button">`, compact: `h-8
+  rounded-full border border-line bg-transparent px-3.5 text-[12px]
+  font-medium text-foreground`. This is the exact chip/pill sizing this
+  component used in its very first revision (Components → the superseded
+  note at the end of this entry, "compact pill row"), reused verbatim now
+  that the description no longer needs to live inside it. Chip **text is the
+  preset's `label` only** — e.g. "Value", "Deep Value / Contrarian",
+  "Growth" — never the `blurb`; the blurb lives in the tooltip only (see
+  Tooltip below). Being genuinely compact (single line, no wrap inside the
+  chip) is the entire point of this revision — it is what lets nine/six
+  chips sit inline above the fields with no collapse.
+- **States** (color values only — no new tokens; no distinct chip token set is
+  introduced, it reuses the Secondary button's border/fill/text tokens at a
+  smaller height tier):
+  - **Default** — transparent fill, 1px `--line` border, `--ink` text.
+  - **Hover** — background steps to `var(--fill)` (the system's one
+    hover-fill rule, Spacing/shape → Row hover), border and text unchanged.
+  - **Active (mouse-down/pressed)** — no distinct pressed-state token exists
+    elsewhere in the system for buttons or rows; omit a separate `:active`
+    visual beyond the browser default, matching every other button/row in
+    this app (Style preset picker's own row states, Reset/Save pills).
+  - **Focus-visible** — `outline: none` plus this system's existing focus
+    treatment, "rely on border" (Spacing/shape → Inputs): border steps to
+    `--ink` on focus-visible (`focus-visible:border-foreground` or
+    equivalent) — no ring, no glow, matching the pill-row revision's own
+    prior focus treatment (see the superseded note below) rather than the
+    inset-ring treatment the row-list revision used, since a pill's own
+    border is the affordance here, not a ring inside a bordered list
+    container that no longer exists.
+  - **CRITICAL — no persistent "selected/active" chip state, at all.** A chip
+    is a momentary action (it populates the fields and nothing else), not a
+    toggle — do not add a checked/selected/"currently applied" visual to any
+    chip, before or after it is clicked, regardless of whether the fields
+    currently match that chip's values. This is the same no-active-state rule
+    ADR-23/24/25 established for the option rows, carried forward verbatim
+    to the chip shape: nothing in this component's state model behaves like
+    a checked/radio control.
+- **Placement — inline, in the same slot the picker has always occupied.**
+  Directly below the group-total/validity status line (item 2 in "Settings —
   scoring weights") and directly above the five Weight stepper rows (item 4
-  there, immediately after this picker's own item 3), matching the plan's
-  required order: a starting point for tuning belongs
-  before the fields it fills, and after the status line so both live in the
-  same visual block before the field grid begins. `margin-top:4px` from the
-  status line's own bottom margin, `margin-bottom:20px` above the first
+  there) — unchanged by this revision. `margin-top:4px` from the status
+  line's own bottom margin (now the kicker label's top, replacing the
+  trigger row that occupied this slot under ADR-25), `margin-bottom:20px`
+  above the first stepper row (reuses the status line's existing spacing
+  slot — no new spacing token), applied after the chip row itself since
+  there is no longer a collapsed/expanded distinction to account for: the
+  chip row is always fully rendered, so the gap to the first Weight stepper
+  field is now constant regardless of chip count (it simply wraps to more
+  lines on Composite's nine than Fundamental's six).
+
+**Tooltip (blurb-on-hover-and-focus) — reuses `components/ui/tooltip.tsx`
+(Radix `Tooltip`/`TooltipTrigger`/`TooltipContent`) verbatim, no new
+primitive:**
+- **Trigger** — the chip itself is the `TooltipTrigger` (`asChild`, so the
+  trigger *is* the `<button>`, not a wrapper element around it).
+- **Content surface** — `TooltipContent` renders on the existing
+  `--popover`/`--popover-foreground` tokens (already wired into
+  `components/ui/tooltip.tsx`'s default classes: `rounded-md border
+  bg-popover text-popover-foreground`, `shadow-md` — the component's stock
+  shadow-bearing chrome; keep it as shipped rather than stripping the shadow
+  to match this system's normally shadow-free surfaces, since `--popover` is
+  the one surface class in this system already carrying its own elevation
+  treatment via shadcn, and diverging it card-by-card would be a one-off,
+  not a system rule). Padding and radius are the primitive's existing
+  `px-3 py-1.5` / `rounded-md` — no override needed.
+- **Blurb text** — Type scale → "Secondary / detail text" register (12–
+  12.5px, normal weight) on `--popover-foreground`; the primitive's stock
+  `text-sm` class is close enough to this system's 12–12.5px "Secondary /
+  detail text" scale that no override is needed — do not introduce a new
+  text-size utility solely for this tooltip.
+- **Max-width** — `max-w-[240px]` so a one-line blurb wraps onto two short
+  lines rather than stretching into one very long line that overshoots the
+  chip row's own visual density; blurbs are one sentence, so 240px comfortably
+  wraps to 2–3 lines without feeling cramped.
+- **Arrow / offset** — no `TooltipPrimitive.Arrow` (the primitive does not
+  render one by default and none is added here — an arrow would be a new
+  visual affordance this system has not used elsewhere); `sideOffset={4}`,
+  the primitive's own default, is kept as-is.
+- **Open delay** — `delayDuration={200}` on the section-local
+  `TooltipProvider` (Spacing/shape → Theme transition documents this app's
+  motion register as `.25s`/250ms for the theme fade and the 200ms
+  `transition-transform` already used by the chevron in the now-superseded
+  ADR-25 disclosure — 200ms is the "quick, not sluggish" value already
+  established in that register, applied here to hover-open latency so
+  tooltips feel responsive without popping instantly on every incidental
+  mouse pass over the row). Keyboard focus opens **immediately** — Radix
+  does not delay focus-triggered opens the way it delays hover-triggered
+  ones, and that default is kept (a delay on focus would make Tab-driven
+  discovery feel laggy, the opposite of what a keyboard-focus reveal is for).
+- **A11y contract (fixed by the plan, documented here so it is not lost):**
+  opens on **hover** and on **keyboard focus** (Tab to a chip → tooltip
+  shows); closes on blur / mouse-leave; **`aria-describedby`** links the chip
+  to its blurb (Radix wires this automatically from `TooltipTrigger` to
+  `TooltipContent`, no manual `id`/`aria-describedby` plumbing needed);
+  **Escape** dismisses it while the chip is focused. **Touch/tap does not
+  open the tooltip** — an accepted tradeoff (ADR-26): the chip's own
+  accessible name is the style name, which is self-describing, so a touch
+  user can still choose a style without the blurb; the blurb is
+  supplementary context, not required to act; this app is web-only,
+  desktop-primary (PRODUCT.md), so hover+focus covers the primary input
+  modalities. Do not attempt to add a tap-to-reveal affordance to satisfy
+  this without a separate design pass — it is out of scope here.
+- **No `title` attribute anywhere carrying the blurb** — the banned
+  regression this whole revision is designed not to reintroduce.
+
+**Structure this replaces — the disclosure (ADR-25, superseded by ADR-26) and
+the always-visible row list it wrapped (ADR-24, superseded by ADR-26) are both
+preserved below for history, not deleted:**
+
+<details>
+<summary>Superseded: collapsed-by-default disclosure wrapping a bordered option-row list (2026-07-21, ADR-25, superseded by ADR-26)</summary>
+
+**Prior revision (collapsible-UX plan): the whole picker — kicker
+label + bordered option-row list — was wrapped in a collapsible disclosure,
+closed by default.** The owner's stated problem at the time: the always-visible
+nine/six-row list (the revision below this one) dominated the section's Editorial
+card and pushed the five Weight stepper fields below the fold on first load.
+The fix was a disclosure, not a shorter list — shrinking or truncating the rows
+was explicitly rejected (it would have reintroduced the exact invisible-description
+problem the prior revision fixed, see ADR-24/the superseded note below it).
+Collapsing removed the list from the *default* view while keeping every row
+byte-identical, fully visible, for the user who opened it. **Superseded by
+ADR-26:** once the descriptions moved into a tooltip, the option-row list
+shrank to a short name-only chip row that no longer needs hiding, so the
+disclosure's reason for existing (keep a tall list off the default view) no
+longer applies, and it is removed.
+
+**Structure — trigger + disclosed body:**
+- **Trigger row (always visible, collapsed or expanded)** — a single compact
+  row, `flex items-center justify-between gap-2 py-1` (no card-within-card
+  border of its own; it sits flush in the section's existing content flow,
+  same left edge as the status line above it and the Weight stepper labels
+  below it):
+  - **Left side** — the existing kicker label, unchanged: `text-[10.5px]
+    uppercase tracking-[0.12em] text-mut` (byte-identical class and copy to
+    the label in the prior revision, below), copy **"Start from a style"**,
+    plus an optional one-line hint immediately after it in the same kicker
+    run (not a second line): **"— prefill weights from a named investing
+    style"** (em-dash separator, same `text-mut` color, same 10.5px size, no
+    new type-scale row — this is the kicker row's own text, just longer).
+    The hint is optional per-implementation (Coding agent may omit it if the
+    row reads cleanly without it); if included, it must not wrap the kicker
+    onto a second line on the section card's minimum supported width — drop
+    the hint clause first on narrow viewports rather than wrapping.
+  - **Right side** — a chevron affordance: `<ChevronDown>` from `lucide-react`
+    (already a dependency, ARCHITECTURE.md), `h-4 w-4 text-mut` (16px, the
+    same icon size and the same `--mut` color already used for every other
+    small inline icon in this app, e.g. the account-menu icons in
+    `components/navigation.tsx` — no new icon size or color introduced).
+    Rotates 180° when expanded via `transition-transform duration-200`
+    (Tailwind's default transform-transition timing; this app's only other
+    animated properties are the `.25s` theme-transition fade and the chart
+    range-morph — 200ms is in the same "quick, not sluggish" register as the
+    250ms theme fade, close enough to read as one motion language rather than
+    a second one, and is Tailwind's own default so it introduces no bespoke
+    duration constant). No color change on open — the chevron stays `--mut`
+    in both states; only its rotation communicates state, matching this
+    system's general preference for one state cue (position/rotation here,
+    color/fill elsewhere) rather than stacking multiple simultaneous cues for
+    the same fact.
+  - **Hover** — the trigger row background shifts to `var(--fill)` (the
+    system's one hover-fill rule, Spacing/shape → Row hover), applied to the
+    trigger's own row bounds only (not the collapsed/hidden body) — reusing
+    the exact hover idiom the option rows themselves use one level down, so
+    hovering "the picker" always means the same visual regardless of whether
+    you're hovering the trigger or (once open) a row inside it.
+  - **Focus-visible** — same treatment as the option rows below: `outline:
+    none` plus `focus-visible:ring-1 focus-visible:ring-inset
+    focus-visible:ring-foreground` (inset `1px --ink` ring, Spacing/shape →
+    Inputs: "no focus ring glow — outline none, rely on border"). No new
+    focus token; this is the same ring already specced for the option rows,
+    applied one level up to the trigger.
+- **Pattern — native `<details>/<summary>` preferred over a button + `useState`
+  region.** Recommended over the alternative because it gives closed-by-default,
+  keyboard support (Tab-reachable, Enter/Space toggles), and expanded-state
+  exposure to assistive tech for free — no `aria-expanded` wiring needed, no
+  risk of the state and the DOM disagreeing. The `<summary>` element carries
+  the trigger row's classes above (kicker + hint + chevron as its content); the
+  option-row list (below) is the `<details>` element's body content, rendered
+  only in the accessibility tree/interaction sense when open (browsers keep
+  closed `<details>` content in the DOM but `display:none`-equivalent, so no
+  client-side conditional-render logic is needed either). A row's own `<button
+  type="button">` click inside the body is not swallowed by the `<summary>`
+  toggle — only the `<summary>` element itself toggles the disclosure, so
+  clicking an option row applies the preset without also closing the
+  disclosure as a side effect. The plan accepts a button-controlled
+  `aria-expanded`/`aria-controls` region as an equally spec-compliant
+  alternative if `<summary>`'s default browser-drawn marker (the disclosure
+  triangle some browsers render before `<summary>` content) cannot be
+  suppressed cleanly with `list-style:none` / `::-webkit-details-marker` — in
+  that case the custom chevron is the only disclosure indicator, and the
+  button variant needs the same trigger classes, hover, and focus-visible
+  treatment specified above, plus `aria-expanded={open}` and
+  `aria-controls` pointing at the body's `id`.
+  - **Keyboard behavior** — Tab reaches the trigger (one stop, whether
+    `<summary>` or a button); Enter or Space toggles open/closed; the
+    expanded/collapsed state is announced to assistive tech (native for
+    `<summary>`; via `aria-expanded` for a button trigger). Tab order end to
+    end: kicker/trigger → (only when open) each option row, in order → Weight
+    stepper fields → actions row. When collapsed, Tab skips straight from the
+    trigger to the Weight stepper fields, since the option rows are not
+    reachable while hidden — this is the mechanism that makes "closed by
+    default" also shorten the keyboard path, not only the visual one.
+- **Stays open after a row click — does not auto-collapse.** Clicking (or
+  Enter/Space-activating) an option row applies the preset
+  (`setInputs(toInputs(preset[group]))`, unchanged, see Interaction below) and
+  the disclosure remains expanded afterward. Decided over auto-collapse: the
+  user may want to compare another style's row before committing, or wants to
+  see which row they just clicked next to the fields it populated — closing
+  the list out from under them the instant they click is a surprising,
+  unrequested side effect for a populate-only action, and the plan's own
+  default (Assumption 1) is leave-open "unless a strong design reason"
+  exists; there isn't one here that outweighs the surprise cost. This also
+  needs no extra state wiring for a `<details>` element (no `onClick` handler
+  closing it), keeping the disclosure's implementation exactly as thin as the
+  native element already makes it.
+- **No persisted "expanded" state across page loads.** Every section starts
+  collapsed on every fresh render/navigation, regardless of whether the user
+  had opened it earlier in the same session — this is a transient UI
+  affordance, not a preference, consistent with nothing else on this page
+  persisting UI-only state (e.g. no field remembers being previously edited
+  across a reload).
+- **CRITICAL — the collapse does not reintroduce active-preset state.** The
+  option rows inside, once expanded, keep the exact "No 'selected'/active-preset
+  visual state, ever" rule from the prior revision (States, below) — the
+  disclosure hides the list by default; it does not add a new "last applied"
+  highlight to compensate. Collapsing the list is the answer to "the list is
+  too visually loud," not a reason to add new visual state inside it.
+
+**Prior revision (ADR-24), unchanged by the ADR-25 disclosure wrapper above at
+the time — this was the content the disclosure framed, not something it
+restyled. Also superseded by ADR-26 (its always-visible-description
+presentation, specifically — the blurb copy and preset values it carries are
+NOT superseded, see ADR-26's Status line):**
+
+**Revised shape (2026-07-21 descriptions-retune plan, supersedes the
+compact-pill-row treatment in the superseded note at the end of this entry):
+each option is now a full-width row — label + its always-visible `blurb`
+stacked beneath it — not a bare label-only pill.** The owner's directive: the
+description was previously exposed only via a native `title` tooltip
+(invisible on touch, on scan, and to most users); it must now read as
+visible text under every option's label, at up to nine rows (Composite) and
+six (Fundamental). A wrapping grid of variable-height cards was considered
+and rejected: at 9 items, cards of uneven height (blurbs vary in line count)
+reflow unpredictably across rows, breaking left-edge scanning — exactly the
+failure mode a "richer" treatment must avoid. A single-column list of
+fixed-structure rows (kicker-scale label, then a `--mut` caption line
+beneath it, every row) stays scannable regardless of item count, because
+the eye tracks one consistent left edge top-to-bottom instead of parsing a
+reflowing grid. This reuses the **Editorial coverage list** component's row
+idiom (Components → "Editorial coverage list": hairline-divided rows, row
+hover, cursor pointer) rather than inventing new list chrome — the picker is
+that same "hairline rows, `--fill` hover" pattern applied to a two-line
+label+description cell instead of a headline+tag cell.
+
+- **Placement — the disclosure wrapper (trigger + body) occupies the same
+  slot the always-visible list used to.** Inside each `ScoringWeightsSection`
+  Editorial card, directly below the live group-total/validity status line
+  (item 2 in "Settings — scoring weights") and directly above the five Weight
+  stepper rows (item 4 there, immediately after this picker's own item 3): a
+  starting point for tuning still belongs before the fields it fills, and
+  after the status line so both live in the same visual block before the
+  field grid begins. `margin-top:4px` from the status line's own bottom
+  margin (now the trigger row's top), `margin-bottom:20px` above the first
   stepper row (reuses the status line's existing `margin-bottom:20px` slot —
-  no new spacing token; the picker sits inside that existing gap rather than
-  adding a second one).
-- **Structure** — a kicker label above a wrapping row of pills, matching the
-  Weight stepper field label's own idiom so the picker reads as "one more
-  labelled row in this card," not a foreign insert:
-  - **Label** — kicker-style, `text-[10.5px] uppercase tracking-[0.12em]
-    text-mut mb-2 block` (byte-identical to the Weight stepper field label
-    class), copy **"Start from a style"**.
-  - **Pill row** — `flex flex-wrap gap-2` (matching Pill sub-nav's
-    `flex-wrap:wrap` density rule so N pills reflow across lines rather than
-    overflowing or scrolling).
-  - **Each pill** — the existing Secondary button token set at its smaller
-    height tier (Spacing/shape → Buttons: "Secondary: transparent background,
-    `--ink` text, 1px `--line` border" at the 38px-and-under sizing this
-    system already uses for compact secondary actions), rendered compact for
-    this denser context: `h-8 rounded-full border border-line bg-transparent
-    px-3.5 text-[12px] font-medium text-foreground` — 32px height (below the
-    system's existing 38px secondary-button floor, justified because up to
-    nine of these sit in one row and the button height scale has no smaller
-    named rung; treat 32px as a documented compact instance of the Secondary
-    button, not a new token — it changes no color, border, or radius, only
-    height/padding, mirroring how the Circular row-action button already runs
-    the same border+icon idiom at two sizes, 28px and 34px, without being
-    called two components). Label text is the preset's `label` only (e.g.
-    "Value", "Growth", "Deep Value / Contrarian") — no visible blurb line;
-    the preset's `blurb` is exposed only via a native `title` attribute
-    (browser tooltip on hover/focus, zero-cost progressive enhancement, no
-    new tooltip component). This keeps the composite section's nine pills
-    scannable as a dense, wrapping two-to-three-line block instead of a tall
-    stack with a secondary text line under each entry.
-  - **Order** — presets render in `presetsForGroup(group)`'s array order
-    (`lib/utils/scoring-weights.ts`), which is authorship order, not
+  no new spacing token) applied after the disclosure's body **when open**,
+  or directly after the trigger row **when closed** — either way the gap to
+  the first Weight stepper field is the same 20px, so the fields never
+  shift position based on the disclosure's state beyond simply moving up
+  when the body is hidden.
+- **Structure when expanded** — the disclosure's trigger row (see the
+  collapsible-disclosure revision above for its own spec: kicker label +
+  optional hint + chevron) sits above a bordered, hairline-divided list of
+  option rows (not a wrapping pill row), unchanged in every visual respect
+  from the prior revision below. **The standalone kicker label described
+  below is now the trigger row's label — it is not duplicated** (the
+  disclosure revision above supersedes only the label's *position*, moving
+  it from "always above the list" to "inside the always-visible trigger";
+  its class, copy, and meaning are unchanged).
+  - **List container** — `rounded-md border border-line divide-y
+    divide-line2` (a bordered list wrapper: 1px `--line` border all
+    around, radius 6px — matching the Weight stepper field's own input
+    radius, since this list sits in the same field-adjacent visual tier —
+    with `1px --line2` hairline dividers between rows, none after the
+    last, exactly the Hairline row dividers rule already in Spacing/shape).
+    No card-within-card effect: this list sits directly inside the
+    section's own Editorial card, one visual layer down, the same way a
+    table sits inside a page without its own second card chrome.
+  - **Each option row** — a native `<button type="button">` filling the
+    full row width: `w-full flex flex-col items-start gap-1 px-4 py-3
+    text-left bg-transparent`, containing exactly two lines:
+    1. **Label line** — the preset's `label` (e.g. "Value", "Growth",
+       "Deep Value / Contrarian"), sans 13.5px/500 `--ink` (Type scale →
+       "Body / table text" weight bumped to 500 for emphasis, matching how
+       Market value / Realized P/L cells use weight 500 over the same
+       13.5px body size elsewhere in this system — no new size token).
+    2. **Description line** — the preset's `blurb`, sans 12–12.5px `--mut`
+       (Type scale → "Secondary / detail text" row, the same scale already
+       used for detail lines under stat values and table secondary cells),
+       normal weight, wrapping to as many lines as the copy needs (blurbs
+       are one sentence; no line-clamp or truncation — the whole point of
+       this revision is that the description is fully readable, not
+       clipped).
+  - **Order** — unchanged: presets render in `presetsForGroup(group)`'s
+    array order (`lib/utils/scoring-weights.ts`), authorship order, not
     alphabetical: Value · Deep Value / Contrarian · Quality (GARP) · Growth ·
     Momentum · Sentiment / News-driven · Analyst Consensus · Dividend /
     Income · Balanced for Composite (nine); the same list minus Momentum,
     Sentiment / News-driven, and Analyst Consensus for Fundamental (six).
-    Balanced sits last in both rows — it mirrors "Reset to house defaults"
-    immediately below it, so ending the row on the house-default entry keeps
-    the picker's reading order and the actions row's own default-affordance
-    in visual agreement.
-- **States** (color values only — no new tokens, same rule as Weight
-  stepper):
-  - **Default** — `--line` border, `--ink` text, transparent fill (identical
-    to Secondary button's resting state).
+    Balanced sits last in both lists — it mirrors "Reset to house defaults"
+    immediately below it, so ending the list on the house-default entry
+    keeps the picker's reading order and the actions row's own
+    default-affordance in visual agreement.
+- **States** (color values only — no new tokens):
+  - **Default** — transparent fill, `--ink` label / `--mut` description, no
+    visible per-row border beyond the list container's own outer border and
+    the hairline dividers between rows.
   - **Hover** — background `var(--fill)` (the system's one hover-fill rule,
-    Spacing/shape → Row hover, reused here rather than inventing a
-    pill-specific hover; border and text color unchanged).
-  - **Active (mouse-down/pressed)** — no distinct pressed-state token exists
-    elsewhere in the system for buttons; omit a separate `:active` visual
-    beyond the browser default, matching every other button in this app
-    (Reset/Save/etc. specify no `:active` treatment either).
+    Spacing/shape → Row hover, reused here exactly as the Editorial
+    coverage list and every clickable table/list row already do — "one row
+    hover treatment, not several idioms"); label/description colors
+    unchanged.
+  - **Active (mouse-down/pressed)** — no distinct pressed-state token
+    exists elsewhere in the system for buttons or rows; omit a separate
+    `:active` visual beyond the browser default, matching every other
+    button/row in this app.
   - **Focus-visible** — `outline: none` plus the system's existing focus
-    treatment for interactive controls, "rely on border" (Spacing/shape →
-    Inputs: "no focus ring glow — outline none, rely on border"): on
-    focus-visible the pill's border color steps up to `--ink` (same border,
-    darker/lighter per theme, no glow) so keyboard users can see focus
-    without introducing a new ring/glow idiom the rest of the system doesn't
-    use.
+    treatment, "rely on border" (Spacing/shape → Inputs: "no focus ring
+    glow — outline none, rely on border"): on focus-visible the row gets an
+    inset `1px --ink` ring via `focus-visible:ring-1 focus-visible:ring-inset
+    focus-visible:ring-foreground` (inset so it does not get clipped by the
+    list container's own rounded corners or bleed outside the row into a
+    sibling), no glow, no new color.
   - **No "selected"/active-preset visual state, ever** — per the plan's
     Assumptions, applying a preset does not persist which preset (if any)
-    matches the section's current values, so no pill is ever painted as
-    "currently chosen." Every pill always renders in its Default/Hover/Focus
-    states only, regardless of what the fields currently hold. (This is a
-    deliberate absence, not an oversight the Coding agent should "fix" by
-    adding comparison logic — seeing that logic added is exactly the
-    speculative "show which preset is active" feature the plan defers.)
-- **Interaction** — clicking (or Enter/Space while focused) a pill calls
-  `setInputs(toInputs(preset[group]))` for that section only — the same
-  `setInputs` call `handleReset` already makes, just seeded from
-  `preset[group]` instead of `defaultPercents`. This is **populate-only**:
-  no `PUT` fires, Save is not invoked, and the section's existing dirty/valid
-  computation (`computeGroupTotalState`) reacts exactly as it would to manual
-  typing — because every preset group sums to 100 by construction, the
-  status line immediately reads its valid state and Save enables via the
-  existing dirty gate, with zero special-casing for "a preset was clicked."
-  The user still reviews the five populated fields and presses the
-  existing **Save weights** pill to persist, per the plan's explicit-save
-  requirement.
-- **Keyboard / a11y** — each pill is a native `<button type="button">`
-  (never a `<div onClick>`), so it is Tab-reachable in DOM order (label →
-  pill row → Weight stepper fields → actions row), activates on Enter and
-  Space with no extra wiring, and is announced by screen readers using its
-  own visible text (the preset label) as its accessible name — no
-  `aria-label` override needed since the visible label already is the full
-  name. The row's kicker label ("Start from a style") is a plain `<label>`-
-  style text node associated by DOM adjacency/visual proximity only (matching
-  how the Weight stepper's own field labels work — this system does not use
-  `<fieldset>`/`aria-labelledby` wiring for its grouped-control labels
-  elsewhere, so the picker does not introduce that pattern unilaterally). The
-  `title` attribute carrying the blurb is supplemental, not the a11y
-  affordance — the pill remains fully operable and its purpose fully legible
-  from its visible label alone with `title` absent (e.g. on touch, where
-  `title` never surfaces).
-- **Light/dark themes** — every value referenced above (`--line`, `--ink`,
-  `--fill`, `--mut`) is a themed CSS variable already carrying distinct
-  light/dark values per the Colors table; the picker requires no
+    matches the section's current values, so no row is ever painted as
+    "currently chosen." Every row always renders in its Default/Hover/Focus
+    states only, regardless of what the fields currently hold, and
+    regardless of whether it was the most recently clicked row. This is a
+    deliberate absence, not an oversight — do not add comparison logic to
+    "fix" it. **Each option is a momentary action (a button that fires an
+    effect), not a toggle** — nothing in this component's state model
+    behaves like a checked/radio control.
+- **Interaction — unchanged.** Clicking (or Enter/Space while focused) an
+  option row calls `setInputs(toInputs(preset[group]))` for that section
+  only — the same `setInputs` call `handleReset` already makes, just seeded
+  from `preset[group]` instead of `defaultPercents`. This is
+  **populate-only**: no `PUT` fires, Save is not invoked, and the section's
+  existing dirty/valid computation (`computeGroupTotalState`) reacts exactly
+  as it would to manual typing — because every preset group sums to 100 by
+  construction, the status line immediately reads its valid state and Save
+  enables via the existing dirty gate, with zero special-casing for "a
+  preset was clicked." The user still reviews the five populated fields and
+  presses the existing **Save weights** pill to persist.
+- **The `blurb` is now the primary description surface.** The `title`
+  attribute carrying the blurb (the prior spec's sole affordance) is
+  redundant now that the same text is always-visible: it may be kept
+  (harmless progressive enhancement) or dropped — Coding agent's call,
+  either is spec-compliant.
+- **Keyboard / a11y** — each option is a native `<button type="button">`
+  (never a `<div onClick>`), Tab-reachable one stop per row, activates on
+  Enter and Space with no extra wiring, and is announced by screen readers
+  using its own visible text — **both the label and the description line,
+  concatenated as the button's rendered text content** — as its accessible
+  name (no `aria-label` override needed: the description being part of the
+  button's visible content means it is part of the accessible name for free,
+  an improvement over the prior pill's label-only name). This preserves full
+  parity with the pills' keyboard/a11y behavior (Tab-reachable, Enter/Space
+  activates, no toggle/checked semantics) while strictly improving the
+  accessible name's completeness. **Tab order and the kicker label's role are
+  now governed by the disclosure spec above** (the label lives in the
+  trigger row, not as a standalone text node above the list, and rows are
+  only Tab-reachable while the disclosure is open) — this bullet's
+  per-row button semantics are otherwise unchanged.
+- **Light/dark themes** — every value referenced above (`--line`, `--line2`,
+  `--ink`, `--fill`, `--mut`) is a themed CSS variable already carrying
+  distinct light/dark values per the Colors table; the picker requires no
   theme-conditional styling of its own; the same class list produces the
   correct look in both themes automatically, exactly like the "Reset to
   house defaults" button beside it in the same card.
 - **Composite vs. Fundamental consistency** — both sections render the exact
-  same component (label copy, pill classes, spacing, states); the only
-  difference between the two cards' pickers is the list length (nine vs.
-  six) and which presets appear, both driven purely by `presetsForGroup`
-  data — never a chrome difference between the two sections.
+  same component (label copy, list container, row classes, spacing,
+  states); the only difference between the two cards' pickers is the list
+  length (nine rows vs. six) and which presets appear, both driven purely
+  by `presetsForGroup` data — never a chrome difference between the two
+  sections. Six rows and nine rows both stay scannable under this list
+  treatment because row height is driven by content (one label line + one
+  wrapping description line), not a fixed grid cell — the list simply gets
+  taller, it never gets denser or truncated.
+
+<details>
+<summary>Superseded: compact pill row, description in <code>title</code> tooltip only (2026-07-21, prior revision, superseded first by ADR-24's visible-description rows, whose chip sizing/token values ADR-26 above later re-adopts verbatim for the current inline chip row)</summary>
+
+The original spec rendered each option as a compact `h-8` (32px) pill in a
+`flex flex-wrap gap-2` row, reusing the Secondary button token set at a
+smaller height tier (`h-8 rounded-full border border-line bg-transparent
+px-3.5 text-[12px] font-medium text-foreground`), showing only the
+preset's `label` text; the `blurb` was exposed solely via a native `title`
+attribute (hover/focus tooltip, invisible on touch and on scan). Default
+state was `--line` border / `--ink` text / transparent fill; hover was
+`var(--fill)`; focus-visible stepped the border to `--ink`. Superseded by
+the visible-description list above per
+`plans/2026-07-21-scoring-style-descriptions-retune.md` — the owner's
+directive was that the description must be legible without hovering, which
+a `title`-only tooltip structurally cannot satisfy. (Note, ADR-26: the
+current — non-superseded — revision at the top of this entry returns to
+this exact `h-8` chip sizing and default/hover state, but pairs it with an
+accessible Radix hover+focus tooltip instead of a `title` attribute, so the
+sizing is reused while the a11y problem that superseded it here is not
+reintroduced.)
+</details>
+
+</details>
 
 ### Card
 Base surface for every non-table content block: `--card` background, 1px `--line`
@@ -1345,17 +1684,22 @@ tracked under TD-32 until reskinned in a later pass.
 ### Settings — scoring weights
 
 Governing plans: `plans/2026-07-20-configurable-scoring-weights.md` (original
-surface) and `plans/2026-07-21-scoring-weights-direct-percent.md` (**current** —
-revises the input model and the live readout per owner decision; supersedes OD-4
-of the prior plan). Route `app/(dashboard)/settings/page.tsx`, reached only via
-the account-menu dropdown (no top-nav entry — this is an account-level control
-surface, not a research/portfolio destination). Everything below reuses existing
+surface), `plans/2026-07-21-scoring-weights-direct-percent.md` (revises the
+input model and the live readout per owner decision; supersedes OD-4 of the
+prior plan), `plans/2026-07-21-scoring-picker-collapsible-ux.md` (collapsed the
+Style preset picker closed-by-default, ADR-25 — now superseded), and
+`plans/2026-07-21-scoring-picker-chips.md` (**current** — replaces the
+collapsed disclosure with an inline name-chip row + accessible hover/focus
+tooltip, ADR-26; layout-only, does not touch the input model). Route
+`app/(dashboard)/settings/page.tsx`, reached only via the account-menu
+dropdown (no top-nav entry — this is an account-level control surface, not a
+research/portfolio destination). Everything below reuses existing
 tokens/components named elsewhere in this file; no new color, spacing, or
 type-scale value is introduced. Two new named components exist: **Weight
 stepper** (see Components above, revised meaning per the direct-percent plan)
-and **Style preset picker** (see Components above,
-`plans/2026-07-21-scoring-style-presets.md`); everything else is an existing
-pattern applied to new content.
+and **Style preset picker** (see Components above, now an inline name-chip row
+with an accessible tooltip per the scoring-picker-chips plan); everything else
+is an existing pattern applied to new content.
 
 **What changed in this revision, at a glance:** the five inputs per section are
 now direct whole percentages (0–100) that must sum to exactly 100, not arbitrary
@@ -1365,7 +1709,15 @@ was the type-and-watch-normalized-% loop — and replaced by a single live
 group-total/validity status line. Save is gated on that same sum-to-100 check
 (plus the existing dirty check). The two-card layout, header row/meta kicker,
 field order, Reset behaviour, toasts, and the "Your weighting" meta-kicker
-elsewhere are unchanged.
+elsewhere are unchanged. **Latest change (scoring-picker-chips plan, ADR-26):**
+the Style preset picker (item 3 below) is now a compact, always-visible,
+wrapping row of name-only chips — no disclosure, no collapse — with each
+chip's description moved into an accessible hover/focus tooltip. The card's
+visible height on first load is "status line + a short inline chip row +
+fields," which is shorter than the pre-ADR-25 always-visible row list and
+needs no extra click to reach a preset, unlike ADR-25's collapsed trigger: the
+five Weight stepper fields (item 4) sit immediately below the status line and
+the chip row on first paint.
 
 **Page chrome.** Standard authed-screen container: max-width 1400px, padding
 `56px 32px 96px` (Spacing/shape → Page container). H1 block:
@@ -1415,9 +1767,16 @@ would under-signal that. Each card's internal structure, top to bottom:
      percentages themselves, in their own fields) — giving it the hero serif
      treatment would misstate its importance and re-create exactly the "watch
      the big number" loop the owner asked to remove.
-   - **Placement** — `margin-top:8px` below the header row's bottom border,
-     `margin-bottom:20px` above the first Weight stepper row (replaces the
-     band's own vertical rhythm 1:1 — no new spacing token).
+   - **Placement — confirmed unchanged by the scoring-picker-chips plan (no
+     move).** `margin-top:8px` below the header row's bottom border,
+     `margin-bottom:20px` above the picker's kicker label + chip row (item 3)
+     — the status line was already the thing directly above the picker under
+     every prior revision, and swapping the collapsed trigger for an
+     always-visible chip row only changes what the picker itself looks like,
+     not what the status line sits beneath. The status line stays the "first
+     thing you see under the header" scan position every reader of this page
+     already learned, immediately followed by the (now always fully visible)
+     picker. No-op, re-confirmed.
    - **Two states, same line, text color only (no new token):**
      - **Valid** (group sums to 100 within epsilon) — settles to `--mut`. Decided
        over `--ink`: `--mut` matches every other quiet status/caption line in this
@@ -1445,23 +1804,36 @@ would under-signal that. Each card's internal structure, top to bottom:
      used, consistent with the "only `--up`/`--dn`/`--amber` are chromatic, and
      only for their named meanings" rule.
 3. **Style preset picker** (Components → "Style preset picker (Settings —
-   scoring weights)", `plans/2026-07-21-scoring-style-presets.md`) — a
-   labelled row of compact secondary pills, one per preset that defines this
-   section's group (`presetsForGroup(group)`): nine pills on Composite (Value
-   · Deep Value / Contrarian · Quality (GARP) · Growth · Momentum · Sentiment
-   / News-driven · Analyst Consensus · Dividend / Income · Balanced), six on
-   Fundamental (the same list minus Momentum, Sentiment / News-driven, and
-   Analyst Consensus, which define no fundamental tilt). Sits directly below
-   this status line and directly above the five Weight stepper rows — a
-   starting point belongs before the fields it fills. Clicking a pill calls
-   `setInputs(toInputs(preset[group]))` for this section only: **populate-only,
-   client-side, no request** — identical mechanism to "Reset to house
-   defaults" below, just seeded from the clicked preset instead of the house
-   default. Because every preset sums to 100 by construction, the status line
-   above immediately reads its valid state and Save enables via the ordinary
-   dirty gate — applying a preset never bypasses the sum-to-100/dirty Save
-   gate this section already enforces. No preset is ever shown as "currently
-   active"; see the Components entry for the full state/a11y spec.
+   scoring weights)", `plans/2026-07-21-scoring-style-presets.md`, visible-
+   description shape per `plans/2026-07-21-scoring-style-descriptions-retune.md`
+   (ADR-24, superseded), collapsed-by-default disclosure per
+   `plans/2026-07-21-scoring-picker-collapsible-ux.md` (ADR-25, superseded),
+   **inline name-chip row + accessible hover/focus tooltip per
+   `plans/2026-07-21-scoring-picker-chips.md` (ADR-26) — current**) — sits
+   directly below this status line and directly above the five Weight
+   stepper rows, unchanged in position. **Always visible, no disclosure**:
+   a kicker label **"Start from a style"** sits above a compact, wrapping row
+   of name-only chips, one per preset that defines this section's group
+   (`presetsForGroup(group)`): nine chips on Composite (Value · Deep Value /
+   Contrarian · Quality (GARP) · Growth · Momentum · Sentiment / News-driven
+   · Analyst Consensus · Dividend / Income · Balanced), six on Fundamental
+   (the same list minus Momentum, Sentiment / News-driven, and Analyst
+   Consensus, which define no fundamental tilt). Each chip shows only the
+   preset's **label** — its `blurb` is not rendered as text anywhere in the
+   row; it appears in an accessible tooltip on hover or keyboard focus (see
+   the Components entry's Tooltip spec for the full chrome/a11y contract:
+   `--popover` surface, `aria-describedby`, Escape-dismiss, `delayDuration:
+   200` on hover, immediate on focus, no `title` attribute, touch does not
+   open it). Clicking a chip calls `setInputs(toInputs(preset[group]))` for
+   this section only: **populate-only, client-side, no request** — identical
+   mechanism to "Reset to house defaults" below, just seeded from the
+   clicked preset instead of the house default. Because every preset sums to
+   100 by construction, the status line above immediately reads its valid
+   state and Save enables via the ordinary dirty gate — applying a preset
+   never bypasses the sum-to-100/dirty Save gate this section already
+   enforces. No chip is ever shown as "currently active" — each is a
+   momentary action, not a toggle; see the Components entry for the full
+   chip chrome, states, and a11y spec.
 4. **Five Weight stepper rows** (Components → "Weight stepper", revised meaning:
    the number typed IS the percent, 0–100 whole), one per dimension, in a
    `grid grid-cols-2 gap-6` (matching the Add-position form's field grid; single
@@ -1479,7 +1851,14 @@ would under-signal that. Each card's internal structure, top to bottom:
 5. **Actions row** (`margin-top:24px`, flex, `gap:12px`, right-aligned — matching
    the Add-position form's action-row alignment pattern, adapted from
    full-width/50-50 to auto-width/right-aligned since this is an in-page section
-   action, not a full-form submit):
+   action, not a full-form submit). **Placement confirmed unchanged by the
+   scoring-picker-chips plan (no move).** It stays directly below the five
+   Weight stepper rows, same as before: the picker being an inline chip row
+   rather than a disclosure only changes vertical distance between the
+   status line and the fields (item 3 above), it does not change anything
+   below the fields — Reset and Save still read as "the two things you do
+   once you're done with the fields above them," which is unaffected by how
+   the picker renders:
    - **Reset to defaults** — secondary pill (Spacing/shape → Buttons secondary:
      transparent background, `--ink` text, 1px `--line` border, 38px height,
      radius = half height). Copy: **"Reset to house defaults"** (measured
@@ -1571,22 +1950,52 @@ score cards) reminding the user their number is personalized, not in reminding
 them here where they just set it.
 
 **Loading state.** `app/(dashboard)/settings/loading.tsx` — see Components →
-"Loading skeleton" → per-route composition table for the exact primitive
-composition. **Revised for this change:** the per-section skeleton drops the
-`SkeletonStatBand columns={5}` block that stood in for the removed normalized-%
-band and replaces it with a single short `kicker`-variant block (approximating
-the new one-line group-total status line) between the header block and the five
-label+field row approximations; the five paired label+input row blocks and the
-trailing pill-variant (Reset) block are unchanged. **Further revised,
-`plans/2026-07-21-scoring-style-presets.md`:** the per-section skeleton adds one
-more short `kicker`-variant block (approximating the preset picker's "Start from
-a style" label) followed by a short row of small `pill`-variant blocks (3–4 of
-varied width, approximating a wrapped preset row — skeletons never render the
-real count/labels, matching every other skeleton's "a few representative
-blocks" rule, e.g. `SkeletonTabBar`) between the group-total status block and
-the five label+field row approximations. Coding agent updates `loading.tsx` in
-the same change per the "Rule for the Coding agent" above (a skeleton out of
-sync with its real page is a design regression).
+"Loading skeleton" → per-route composition table for the exact, **current**
+primitive composition (the inline chip-row skeleton, revised per
+`plans/2026-07-21-scoring-picker-chips.md`, ADR-26). Chain of revisions, most
+recent first:
+- **Current (`plans/2026-07-21-scoring-picker-chips.md`, ADR-26):** the
+  preset-picker region of each section's skeleton is a **kicker block + a
+  wrapping row of several small chip-shaped skeleton blocks** — one
+  `kicker`-variant block (the "Start from a style" label) followed by a
+  `flex flex-wrap gap-2` row of `h-8 rounded-full` `SkeletonBlock`s at a
+  handful of varied narrow widths — **no chevron, no disclosure, no bordered
+  list** — matching the real picker's **always-visible inline** first paint.
+  This replaces the prior revision's single compact trigger-row/chevron
+  skeleton below, which would otherwise mismatch the real page: the picker
+  is no longer a collapsed disclosure, so a skeleton still shaped like one
+  is exactly the kind of out-of-sync shape the "Rule for the Coding agent"
+  (Components → Loading skeleton) warns against. The rest of the
+  composition — header block, one-line group-total status block, five
+  paired label+input row blocks, trailing pill-variant (Reset) block — is
+  unchanged by this revision.
+- **Superseded (`plans/2026-07-21-scoring-picker-collapsible-ux.md`, ADR-25):**
+  the preset-picker region of each section's skeleton was a single compact
+  trigger-row block (one `kicker`-variant block + a small trailing chevron-
+  footprint block, no bordered list beneath it) — matching the disclosure's
+  then-current closed-by-default first paint. This had replaced the prior
+  revision's 3-representative-row expanded-list skeleton below, which would
+  otherwise have flashed a tall expanded-looking skeleton against a short
+  collapsed real card on hydration.
+- **Superseded (`plans/2026-07-21-scoring-style-descriptions-retune.md`):**
+  the per-section skeleton added one short `kicker`-variant block
+  (approximating the preset picker's "Start from a style" label) followed by
+  a small bordered stack of 3 representative `SkeletonBlock` label-line/
+  description-line row pairs (`divide-y divide-line2` inside a `rounded-md
+  border border-line` wrapper), mirroring the then-always-visible option-row
+  list's chrome.
+- **Superseded (`plans/2026-07-21-scoring-style-presets.md`):** the earliest
+  revision added the same label block followed by a short row of small
+  `pill`-variant blocks (3–4 of varied width), approximating the original
+  compact-pill-row preset picker before it grew visible descriptions.
+- **Original (`plans/2026-07-21-scoring-weights-direct-percent.md`):** dropped
+  the `SkeletonStatBand columns={5}` block that stood in for the removed
+  normalized-% band, replacing it with the single short `kicker`-variant
+  block (the group-total status line) that all revisions above keep.
+
+Coding agent updates `loading.tsx` in the same change per the "Rule for the
+Coding agent" (Components → Loading skeleton) — a skeleton out of sync with
+its real page is a design regression.
 
 **Data flow (reference only — Coding agent's concern, included here so the visual
 spec is legible against real state):** `GET /api/settings/scoring-weights` seeds

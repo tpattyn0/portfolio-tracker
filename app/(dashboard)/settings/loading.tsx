@@ -9,12 +9,14 @@ import { SkeletonBlock, SkeletonCard, SkeletonText } from "@/components/ui/loadi
  * kicker-variant block approximating the live group-total/validity status
  * line (revised, plans/2026-07-21-scoring-weights-direct-percent.md — no
  * longer a 5-col SkeletonStatBand, since the real band it stood in for was
- * removed), then, added per plans/2026-07-21-scoring-style-presets.md,
- * another short kicker-variant block (the preset picker's label) followed by
- * a small wrapped row of 3-4 pill-variant blocks of varied width (the preset
- * picker itself — a representative sample, not the real per-section count of
- * 9/6), then five label+field row approximations, and a pill-shaped block for
- * the reset action.
+ * removed), then an inline chip-row block (revised per
+ * plans/2026-07-21-scoring-picker-chips.md, ADR-26 — supersedes the
+ * collapsed-trigger-row skeleton ADR-25 specified here: the real picker is
+ * now an always-visible inline row of name chips, not a disclosure, so its
+ * skeleton must match that shape) approximating the "Start from a style"
+ * chip row — a kicker-variant block plus a wrapping row of small
+ * pill-shaped blocks, no chevron/disclosure — then five label+field row
+ * approximations, and a pill-shaped block for the reset action.
  */
 export default function SettingsLoading() {
   return (
@@ -36,12 +38,11 @@ export default function SettingsLoading() {
             <SkeletonText variant="kicker" className="mt-2 w-56" />
 
             <div className="mb-5 mt-5">
-              <SkeletonText variant="kicker" className="mb-2 w-32" />
-              <div className="flex flex-wrap gap-2">
-                <SkeletonText variant="pill" className="w-20" />
-                <SkeletonText variant="pill" className="w-24" />
-                <SkeletonText variant="pill" className="w-16" />
-                <SkeletonText variant="pill" className="w-28" />
+              <SkeletonText variant="kicker" className="w-40" />
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <SkeletonBlock key={i} className="h-8 w-20 rounded-full" />
+                ))}
               </div>
             </div>
 
