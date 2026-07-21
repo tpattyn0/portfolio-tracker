@@ -109,7 +109,8 @@ min/max promise, and the unchanged TD-33 scope. No doc contradicts the code.
 
 ## Findings
 
-### DIP-Q1 — QUESTION
+### DIP-Q1 — QUESTION — RESOLVED (owner-accepted 2026-07-21)
+**Resolution:** Owner-verified live on the dashboard Performance chart (1M range, the reported real-data case): the dip just before the recent spike sits clearly inside the plot area above the bottom axis (no clipping), the spike is fully visible, and the y-axis labels read the true min/max (€2,245.80 / €3,810.71 / €5,375.62). Accepted.
 **File:** `components/portfolio-chart.tsx` (dashboard hero), `components/research/detail-price-chart.tsx` (research Overview/Technical)
 **Problem:** Correctness of the geometry, the domain-registration invariant, the
 labels-on-true-min/max promise, and margin sufficiency are all verified
