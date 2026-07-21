@@ -3,9 +3,14 @@ Date: 2026-07-21
 Status:
 
 ## Summary
-Findings: [0 BLOCKERs, 1 ISSUE, 0 SUGGESTIONs, 0 QUESTIONs]
+Findings: [0 BLOCKERs, 1 ISSUE (RTN-I1 — RESOLVED in iteration 2), 0 SUGGESTIONs, 0 QUESTIONs]
 Requires owner decision: none
-Ready for Coding agent: RTN-I1
+Ready for Coding agent: none — the sole ISSUE (RTN-I1) is now resolved; branch is clean.
+
+**Iteration 2 verdict (2026-07-21): CLEAN.** The only ISSUE from iteration 1,
+RTN-I1, is fully resolved and no new issue was introduced. See the
+"## Iteration 2 — RTN-I1 verification" section below. The iteration-1 record
+that follows is retained unchanged for history.
 
 Reviews the iteration-1 diff of `plans/2026-07-21-scoring-style-descriptions-retune.md`
 on `feature/scoring-style-descriptions-retune` (PR #25), isolated against its PR base
@@ -29,7 +34,7 @@ No security findings.
 
 ## Findings
 
-### RTN-I1 — ISSUE
+### RTN-I1 — ISSUE (RESOLVED in iteration 2 — see "## Iteration 2" section)
 **File:** plans/2026-07-21-scoring-style-descriptions-retune.md:267-274 (plan "Blurb copy" draft) vs. lib/utils/scoring-weights.ts:295-343 (shipped `blurb` strings)
 **Problem:** Six of the nine shipped blurbs differ in wording from the plan file's own
 "Blurb copy" draft list. The numbers are identical everywhere; only phrasing diverges,
@@ -121,3 +126,80 @@ match the shipped numbers.
 
 ## Proposed DECISIONS.md entries
 None — ADR-24 already captures this change accurately.
+
+---
+
+## Iteration 2 — RTN-I1 verification (2026-07-21)
+
+Second-pass review of the fix for RTN-I1, isolated to the changes made since the
+iteration-1 review commit (`0d7101db`). Target: branch HEAD `892045c9`. Diff
+isolated against the PR base with `git diff plan/scoring-style-presets...HEAD`
+and, for the fix specifically, `git diff 0d7101db..HEAD`. PR #24 base
+(`plan/scoring-style-presets`) not re-reviewed. Working tree clean at review time
+(`git status --porcelain` empty).
+
+### Scope of the iteration-2 change
+`git diff 0d7101db..HEAD --stat` shows exactly two files touched since iteration 1:
+- `plans/2026-07-21-scoring-style-descriptions-retune.md` — 6 insertions / 6 deletions (the RTN-I1 fix commit `b0c611dd`).
+- `STATUS.md` — orchestrator/session bookkeeping only.
+
+No application code, no test, no other doc changed. `lib/utils/scoring-weights.ts`
+and `lib/utils/scoring-weights.test.ts` are **byte-identical** since iteration 1
+(`git diff 0d7101db..HEAD -- lib/utils/scoring-weights.ts lib/utils/scoring-weights.test.ts`
+returns empty). The fix is therefore correctly doc-only and did **not** accidentally
+edit the code blurbs or the weights.
+
+### (1) RTN-I1 resolved — all 9 blurbs match byte-exactly
+The plan's "Blurb copy" list (lines 267-275) now matches the nine shipped `blurb`
+strings in `SCORING_STYLE_PRESETS` (`lib/utils/scoring-weights.ts:295-348`)
+character-for-character, including the em-dashes (`—`) in the growth blurb.
+Verified by an exact string-by-string comparison keyed on preset id:
+
+| Preset | Match |
+|--------|-------|
+| value | exact |
+| deep-value | exact |
+| quality | exact |
+| growth | exact (em-dash preserved) |
+| momentum | exact |
+| sentiment | exact (unchanged both sides) |
+| analyst | exact (unchanged both sides) |
+| income | exact |
+| balanced | exact (unchanged both sides) |
+
+0 mismatches across all 9. The fix commit updated the 6 blurbs that had drifted
+(value, deep-value, quality, growth, momentum, income) and left the 3 that already
+matched (sentiment, analyst, balanced) untouched — correct.
+
+### (2) No new issue introduced
+- The fix commit (`b0c611dd`) touches only the plan markdown; `--stat` confirms no code file in the commit.
+- The edited region is a clean bulleted list (lines 267-275), not a markdown table — no table was broken and the list structure is intact and well-formed.
+- The surrounding plan prose ("Growth's blurb now emphasizes business compounding…") remains consistent with the shipped growth blurb.
+- Commit message correctly notes DECISIONS.md ADR-24 and DESIGN.md reference the blurbs generically without quoting verbatim, so neither needed a change — verified: neither file quotes a blurb string.
+
+### (3) Core retune unchanged since iteration 1 (spot-check)
+The weight numbers and derived-Balanced are byte-identical since iteration 1: the
+only commit that ever touched `scoring-weights.ts` on this branch is the original
+feat commit `df5afd6a` (pre-iteration-1), and the code diff since the iteration-1
+review commit is empty. The iteration-1 verifications in sections (a)-(f) above
+therefore still hold without re-derivation. `npm run verify` re-run on HEAD:
+typecheck ok · lint ok (pre-existing warnings only, per AGENT.md) · **254/254 tests
+pass** · secret-scan clean.
+
+### Iteration-2 security pass
+Doc-only diff since iteration 1 (plan markdown + STATUS.md); no code, route, auth,
+DB, or injection surface touched. The `security-review` skill diffs the working
+tree against HEAD and the tree is clean with HEAD already committed, so it has no
+meaningful input — skipped per the Reviewer protocol, security pass done manually
+against `0d7101db..HEAD`. secret-scan (via `npm run verify`): clean. No security
+findings.
+
+### Iteration-2 standing checklist
+- Working tree clean — `git status --porcelain` empty. PASS.
+- STATUS.md within limits — links only, no narrative, no custom sections. PASS.
+- File structures conform — plan blurb list well-formed; no template drift introduced. PASS.
+- Secrets — no keys/tokens in the diff; secret-scan clean. PASS.
+- Verify block present and passing — `npm run verify` green (254/254). PASS.
+
+**Conclusion:** RTN-I1 resolved, no new findings, core retune unchanged. This
+review has 0 open findings. The plan and shipped code now fully agree.
