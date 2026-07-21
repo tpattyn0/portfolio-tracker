@@ -1,6 +1,6 @@
 # Review: Scoring weights — direct whole percentages summing to 100 (ADR-22 revision)
 Date: 2026-07-21
-Status:
+Status: IMPLEMENTED — 2026-07-21 (migration applied; feature live)
 
 ## Summary
 Findings: 0 BLOCKERs, 1 ISSUE (RESOLVED iter 2), 1 SUGGESTION (addressed iter 2), 1 QUESTION (RESOLVED iter 2)
