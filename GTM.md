@@ -5,6 +5,22 @@
 > inline and collected in `## Assumptions [REQUIRES CONFIRMATION]` at the bottom — approving
 > this file approves those assumptions.
 
+## Product name
+
+**Meridian.**
+
+A meridian is an imaginary line of longitude running pole to pole — the reference line navigators
+and mapmakers use to fix a position. The most famous is the Prime Meridian at Greenwich, the zero
+point from which all time zones and positions are measured. Figuratively, a meridian is also a high
+point or peak ("the meridian of his career"), from the Latin *meridianus* — midday, when the sun is
+highest.
+
+The name works on both levels for this product: a **fixed reference line for navigating your
+finances**, and the **pursuit of a peak**. The vaguely 19th-century, nautical-almanac tone also
+suits the newspaper-masthead visual identity (see `DESIGN.md`). This naming and its rationale are
+the branding decision of record — the design system (ADR-8/9/11 in `DECISIONS.md`) already carries
+the "Meridian" wordmark through the UI masthead, login, and page title.
+
 ## Target customer
 
 Self-directed retail investors who actively manage their own portfolio of individual stocks —
@@ -36,7 +52,7 @@ but don't track; and the terminals that do both are priced and designed for prof
 
 ## Positioning
 
-A personal portfolio tracker with a built-in research desk. Log your real buy/sell
+Meridian is a personal portfolio tracker with a built-in research desk. Log your real buy/sell
 transactions, see live-priced performance in your own base currency, and run automated
 technical, fundamental, valuation, and news-sentiment analysis on any stock — owned or not —
 in one place. Unlike broker apps it scores and values stocks for you; unlike screeners it knows
