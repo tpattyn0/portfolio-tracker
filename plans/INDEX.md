@@ -18,3 +18,5 @@
 | plans/2026-07-20-small-visual-fixes.md | 2026-07-20 | implemented | reviews/2026-07-20-small-visual-fixes.md |
 | plans/2026-07-20-perf-graph-spike-fix.md | 2026-07-20 | superseded (misread; spike is correct) | — |
 | plans/2026-07-20-perf-graph-dip-clipping-fix.md | 2026-07-20 | implemented | reviews/2026-07-20-perf-graph-dip-clipping-fix.md |
+| plans/2026-07-20-configurable-scoring-weights.md | 2026-07-20 | implemented (migration applied 2026-07-21) | reviews/2026-07-20-configurable-scoring-weights.md |
+| plans/2026-07-21-scoring-weights-direct-percent.md | 2026-07-21 | implemented (migration applied 2026-07-21; supersedes OD-4 auto-normalize) | reviews/2026-07-21-scoring-weights-direct-percent.md |

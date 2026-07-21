@@ -30,6 +30,12 @@ vi.mock("@/lib/prisma", () => {
       analystRating: {
         findUnique: vi.fn().mockResolvedValue(null),
       },
+      userScoringPreferences: {
+        // No row — getWeights falls back to DEFAULT_SCORING_WEIGHTS, matching
+        // this test's pre-existing hand-computed expected composite exactly
+        // (plans/2026-07-20-configurable-scoring-weights.md, Task 8).
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
     },
   };
 });

@@ -289,6 +289,28 @@ kicker (10.5px uppercase, 0.1em, `--mut`) — e.g. "Meridian rating · updated d
 analysts · last 90 days", "Discounted cash flow · 10-year model", "1,240 articles
 analysed · last 30 days".
 
+**Custom-weighting meta kicker (Overview + Fundamental only — see UX flows →
+"Settings — scoring weights").** When the signed-in user's fetched scoring weights
+differ from `DEFAULT_SCORING_WEIGHTS` for the group that card's score is built
+from, the meta kicker's copy swaps to signal the score is personalized, using the
+exact same slot and type treatment — no new chrome, no new color, no badge:
+- **Overview tab** (composite, driven by the 5-category weights): meta kicker reads
+  **"Your weighting · updated daily"** instead of "Meridian rating · updated
+  daily" when composite weights ≠ defaults.
+- **Fundamental tab** (driven by the 5-subcategory weights): meta kicker reads
+  **"Your weighting · trailing twelve months"** instead of "Trailing twelve
+  months · FY ends Sep" when fundamental weights ≠ defaults. (The FY-end clause is
+  dropped in the custom state rather than appended, to keep the kicker at its
+  normal length — both are muted secondary facts, not additive.)
+- Every other tab (Technical, Analysts, Intrinsic, News) is unaffected — those
+  scores are not weight-configurable at any sub-dimension level (per the plan's
+  Assumptions), so their meta kickers never change.
+- The comparison is a cheap deep-equal against the already-fetched
+  `["scoring-weights"]` query result vs. the imported `DEFAULT_SCORING_WEIGHTS`
+  constant — no extra request. Text-only, matching the "no fourth accent" rule;
+  this is the full extent of the affordance — no icon, no dot, no pill is added
+  to the header row for this signal.
+
 Body: `grid-template-columns: 280px 1fr`, `gap:56px`, `padding-top:28px`.
 - **Left column** — always in this order:
   1. `ScoreFigure` at 84px with the `/10` suffix at 30px `--mut`, banded per Score
@@ -569,6 +591,7 @@ none defines new one-off markup):**
 | `wishlist/loading.tsx` | Kicker block + H1-height block on the left, one pill block (add-to-watchlist) on the right; `SkeletonStatBand columns={3}`; `SkeletonTable rows={5}`. Replaces the inline `WishlistSkeleton` (same shape, now shared). |
 | `portfolio/closed-positions/loading.tsx` | Kicker block + H1-height block + a detail-line block (realized-to-date line) on the left, one pill block (Export CSV) on the right; a `SkeletonCard` in the 6-col summary shape (reuse `SkeletonStatBand columns={6}`, card-wrapped per the Ruled stat band card-wrapped variant); a filter row (one pill-shaped block for the ticker filter, three short label blocks for All/Winning/Losing); `SkeletonTable rows={6}`. |
 | `portfolio/[ticker]/loading.tsx` | Same header/quote-card/tab-bar composition as `research/[symbol]/loading.tsx` (TD-32: this page reuses the Research detail screen's chrome, see UX flows → "Position detail" — its skeleton reuses the *same* skeleton composition for the same reason). Per `plans/2026-07-19-positions-tab.md`, the quote card is now literal parity, not just geometric similarity — both pages render the identical general-market 4-col grid (Current price / Day range / 52-week range / Market cap), so the skeleton's 4 equal columns, card-wrapped, `border-line2` verticals need no per-page distinction at all (skeletons never render real cell labels regardless). |
+| `settings/loading.tsx` | Kicker block + H1-height block on the left (no right-side action in the header — Settings has no page-level pill action, unlike the other routes above). Below: two `SkeletonCard editorial` blocks in page order (Composite score, then Fundamental score), each containing a kicker-height block (section header) then a single short `kicker`-variant block (approximating the live group-total/validity status line — **revised, `plans/2026-07-21-scoring-weights-direct-percent.md`**: no longer a `SkeletonStatBand columns={5}`, since the real band it stood in for was removed) then 5 paired blocks approximating the label+input weight-stepper rows (a `kicker`-variant block over a `h-10` block, per dimension), then a `pill`-variant block (Reset to defaults) at the card's end. See UX flows → "Settings — scoring weights" for the real layout this mirrors. |
 
 **Rule for the Coding agent:** every skeleton mirrors its real page's column
 count, card count, and block order — never a generic "3 boxes" placeholder. If a
@@ -609,6 +632,78 @@ above a `3px double var(--ink)` top rule with `12px` margin-top / `14px` padding
 rendered at Newsreader 22px in `--ink` (no muted styling — this is the number the
 screen exists to show). Used identically in Buy-more/Sell-position modals per the
 plan's Task 10 (shared form surface).
+
+### Weight stepper (numeric input, ledger form field)
+The control for entering a dimension's weight (Settings — scoring weights, see UX
+flows). **A numeric input, not a slider** — decided over `components/ui/slider.tsx`
+(Radix) per `plans/2026-07-20-configurable-scoring-weights.md`'s Designer note, and
+unchanged by the revision below: a precise numeric field is the existing
+Add-position form idiom applied to a new field, not a new primitive. A 20px
+round-thumb filled-track slider remains rejected as a heavier, more "app-like" motif
+than Meridian's flat ruled surfaces, and would be the first rounded/filled
+interactive control in the system. No Slider component entry is added —
+`slider.tsx` remains unused by this feature and by the rest of the app today.
+
+**Revised meaning (`plans/2026-07-21-scoring-weights-direct-percent.md`,
+supersedes OD-4/the auto-normalize model below): the number the user types IS the
+dimension's percent weight (0–100 whole), not an arbitrary relative number that
+gets normalized after the fact.** The owner's stated objection to the prior model
+was the "type-and-watch-normalized-%" loop; direct percentages remove the
+translation step entirely — what you type is what is scored (after the group
+passes its sum-to-100 validity check; see the "Settings — scoring weights" UX-flow
+section below for the group-total/validity readout and save-gate this drives).
+
+This is still exactly the Add-position form's label+input field pattern
+(`app/(dashboard)/portfolio/add/page.tsx`), reused verbatim, not reinvented:
+- **Label** — kicker-style, `text-[10.5px] uppercase tracking-[0.12em] text-mut
+  mb-2 block`, the dimension name ("Technical", "Valuation", etc.) followed by a
+  literal `%` — e.g. **"Technical %"** — so the field's meaning (a percent, not an
+  arbitrary weight) is legible from the label alone without adding any per-field
+  suffix chrome inside the input. Decided over an inline trailing "%" glyph inside
+  the field (e.g. `right-3` absolutely positioned over the input) because that
+  would require new padding/positioning rules on the existing `inputClass` idiom
+  the Add-position fields also use unchanged — pushing the affordance into the
+  label keeps the field itself byte-identical to every other text field in the
+  system, one label convention doing the whole job.
+- **Field** — `<input type="text" inputMode="decimal">`, class
+  `w-full h-10 box-border rounded-md border border-border bg-background px-3.5
+  text-sm text-foreground outline-none` (the exact `inputClass` constant from the
+  Add-position page — `--bg` cutout background, 1px `--line` border via
+  `border-border`, radius 6px via `rounded-md`, 40px height, no focus glow). Same
+  free-text parsing pattern as the Add-position quantity/price/fees fields (a
+  controlled string state) — not a native `<input type="number">` spinner, which
+  would introduce a different, unprecedented micro-interaction (browser spinner
+  arrows) this system has never used.
+- **Range and step — whole percents, 0–100.** The value is a whole number of
+  percentage points; the control stays a free-text field (no native spinner per
+  above), but the accepted/parsed range narrows from "any non-negative real
+  number" to **0–100 inclusive, integers** — matching what the value now means.
+  Decimal keystrokes are not blocked at the keystroke level (still
+  `inputMode="decimal"`, consistent with every other numeric field in this system
+  not hard-masking input), but a value outside `[0, 100]` or non-integer keeps the
+  section's group-total indicator in its invalid state and Save disabled (see UX
+  flow) exactly as an off-100 sum does — one validity mechanism covers both "wrong
+  range" and "doesn't sum to 100," not two separate error treatments.
+- **Layout** — one label+field pair per dimension, arranged in the section Card's
+  own grid (`grid grid-cols-2 gap-6` on wide viewports, matching the Add-position
+  form's two-column field grid; single column below the form's existing
+  responsive breakpoint — no new breakpoint token introduced). Unchanged by this
+  revision.
+
+<details>
+<summary>Superseded: arbitrary relative-weight range, no label "%" (2026-07-20, prior revision)</summary>
+
+The original spec accepted **any non-negative real number the user types (0
+upward, integers or decimals both valid — a value of `0` is a legal "exclude this
+dimension" input)**, reasoning that `normalizeWeights` treats input as arbitrary
+relative weights with no fixed max, so no client-side upper clamp was specced
+beyond the API's reject-negative/non-finite guard. The label carried no "%"
+suffix, since the typed number was not itself a percentage — the live normalized-%
+band (see the superseded note in the UX-flow section below) was the only place a
+percent appeared. Superseded by the direct-percent model above: the owner asked
+for the typed number to be the actual percent, so the range tightens to 0–100 and
+the label gains the "%" affordance described above.
+</details>
 
 ### Card
 Base surface for every non-table content block: `--card` background, 1px `--line`
@@ -793,6 +888,12 @@ unchanged. The 7 screens covered (per the plan) and their navigation:
    bundle; it inherits the Login screen's treatment by direct extrapolation (same
    420px column, masthead block, card, field/label/button patterns) — see the plan's
    `## Assumptions`. No new tokens or patterns are needed for it.
+8. **Settings** (`/settings`) — per-user scoring-weight controls (Composite score,
+   Fundamental score), a live normalized-% readout, reset-to-defaults, save. Reached
+   via the account-menu dropdown ("Settings", `components/navigation.tsx:110-112`,
+   which already links here and currently 404s). Added by
+   `plans/2026-07-20-configurable-scoring-weights.md`; full spec: see "Settings —
+   scoring weights" below.
 
 ### Research detail — tab-by-tab
 
@@ -1110,6 +1211,237 @@ No new tokens or components are defined for this page — the header is now a di
 reuse of an existing pattern, not a variant. Any lower section of
 `/portfolio/[ticker]` not covered by this header/quote-card/tab-bar scope remains
 tracked under TD-32 until reskinned in a later pass.
+
+### Settings — scoring weights
+
+Governing plans: `plans/2026-07-20-configurable-scoring-weights.md` (original
+surface) and `plans/2026-07-21-scoring-weights-direct-percent.md` (**current** —
+revises the input model and the live readout per owner decision; supersedes OD-4
+of the prior plan). Route `app/(dashboard)/settings/page.tsx`, reached only via
+the account-menu dropdown (no top-nav entry — this is an account-level control
+surface, not a research/portfolio destination). Everything below reuses existing
+tokens/components named elsewhere in this file; no new color, spacing, or
+type-scale value is introduced. The one new named component is **Weight stepper**
+(see Components above, revised meaning per the direct-percent plan); everything
+else is an existing pattern applied to new content.
+
+**What changed in this revision, at a glance:** the five inputs per section are
+now direct whole percentages (0–100) that must sum to exactly 100, not arbitrary
+relative numbers auto-normalized after the fact. The live "normalized %" ruled
+band (item 2 below, prior revision) is removed — the owner's explicit objection
+was the type-and-watch-normalized-% loop — and replaced by a single live
+group-total/validity status line. Save is gated on that same sum-to-100 check
+(plus the existing dirty check). The two-card layout, header row/meta kicker,
+field order, Reset behaviour, toasts, and the "Your weighting" meta-kicker
+elsewhere are unchanged.
+
+**Page chrome.** Standard authed-screen container: max-width 1400px, padding
+`56px 32px 96px` (Spacing/shape → Page container). H1 block:
+- **Kicker eyebrow** (Tone of voice: "every screen's H1 gets one"): **"House rules
+  · how your scores are weighed"** — sans, 10.5–11px uppercase, 0.12–0.14em,
+  `--mut`, matching every other screen's eyebrow (e.g. "Under observation ·
+  before you invest").
+- **H1**: **"Scoring weights"** — Newsreader, Screen H1 scale (52px/500, line-height
+  1.05, `--ink`).
+- **Italic subline** (optional pattern, used here): Research index H1 subline
+  treatment (16px italic Newsreader, `--mut`) — **"Set how much each dimension
+  counts toward your Composite and Fundamental scores. Unweighted dimensions fall
+  back to the house default."** Quiet, secondary, matching the "italic for asides,
+  not instructions" rule — the page still works without reading it.
+
+No page-level pill action sits beside the H1 (unlike Dashboard's "+ Add position"
+or Closed-positions' "Export CSV") — Save lives inside each section instead (see
+below), so there is nothing to put in the header's right slot.
+
+**Two sections, in fixed order: Composite score, then Fundamental score.** Each
+section is an **Editorial card** (Components → "Card" → Editorial card variant:
+`--card` background, 1px `--line` border, radius 8px, `border-top: 3px double
+var(--ink)`, padding `24px 28px 28px`) — the same top-rule treatment as the
+Headline score card and Morning Note, chosen because this page's settings are
+exactly as consequential as the scores they drive; a plain (non-editorial) Card
+would under-signal that. Each card's internal structure, top to bottom:
+
+1. **Header row** (`padding-bottom:16px`, `1px --line2` bottom border, matching
+   Headline score card's header-row idiom exactly): left = section kicker (11px/600
+   uppercase 0.14em `--ink`) — **"Composite score"** / **"Fundamental score"**;
+   right = a muted meta kicker (10.5px uppercase 0.1em `--mut`) stating what the
+   section governs — **"5 categories · drives every research Overview"** /
+   **"5 subcategories · drives the Fundamental tab"**.
+2. **Live group-total / validity status line** (`plans/2026-07-21-scoring-weights-direct-percent.md`,
+   supersedes the "Live normalized-% band" below). Where the ruled band used to
+   sit — directly beneath the header row, above the five Weight stepper rows —
+   this section now shows a **single status line**, not a 5-column band: a
+   left-aligned running total plus its requirement, e.g. **"Total: 94% · must
+   equal 100%"**, recomputed on every keystroke in any of the section's five
+   Weight stepper fields, client-side, no request (`sumsTo100`, epsilon `0.01`).
+   - **Typography** — this is a status line, not a hero figure: Kicker/label
+     scale (Type scale → "Kicker / label" — sans, 10.5–11px, uppercase,
+     0.12–0.14em), the same scale the removed band's own bottom caption used —
+     **not** the 28px Newsreader serif the removed band gave the per-dimension
+     percentages. A running total is a validity check the user scans, not the
+     number the page exists to show (that role now belongs to the typed
+     percentages themselves, in their own fields) — giving it the hero serif
+     treatment would misstate its importance and re-create exactly the "watch
+     the big number" loop the owner asked to remove.
+   - **Placement** — `margin-top:8px` below the header row's bottom border,
+     `margin-bottom:20px` above the first Weight stepper row (replaces the
+     band's own vertical rhythm 1:1 — no new spacing token).
+   - **Two states, same line, text color only (no new token):**
+     - **Valid** (group sums to 100 within epsilon) — settles to `--mut`. Decided
+       over `--ink`: `--mut` matches every other quiet status/caption line in this
+       system, e.g. the removed band's own "Sums to 100%..." caption, so "valid"
+       reads as "back to normal, nothing to look at," not as a new emphasis
+       state — `--ink` would make a passing check look like an achievement worth
+       the primary-text weight, which overstates it. Copy: **"Total: 100% ·
+       valid"**.
+     - **Invalid** (sum ≠ 100, or any field outside its 0–100 whole-percent
+       range) — text shifts to `--dn`. Decided over `--amber`: `--dn` is this
+       system's existing "something needs your attention before you can proceed"
+       tone (it is already what disabled-until-valid states borrow via
+       `text-destructive`/error toasts elsewhere in the app — see the Save
+       button's own error-toast treatment two paragraphs below), and it is the
+       lighter-touch default the governing plan calls out. `--amber` (reserved
+       elsewhere for "middling, 4–7 band" *scores* — a mid-quality signal, not a
+       form-validity signal) stays reserved for that scoring-band meaning only;
+       reusing it here would blur "your score is middling" with "your
+       percentages don't add up yet," two unrelated meanings. Copy: **"Total:
+       94% · must equal 100%"** (states both the live number and the
+       requirement in one line, so the user does not have to hold "100" in
+       their head separately).
+   - No `--up` banding in either state — this is never a "good" number the way a
+     gain is; it is binary valid/invalid, so only the neutral/`--dn` pair is
+     used, consistent with the "only `--up`/`--dn`/`--amber` are chromatic, and
+     only for their named meanings" rule.
+3. **Five Weight stepper rows** (Components → "Weight stepper", revised meaning:
+   the number typed IS the percent, 0–100 whole), one per dimension, in a
+   `grid grid-cols-2 gap-6` (matching the Add-position form's field grid; single
+   column below its existing responsive breakpoint):
+   - **Composite section fields, in this order:** Technical % · Fundamental % ·
+     Analysts % · Intrinsic value % · News & sentiment % (matching the Overview
+     tab's `SubscoreBand` column order exactly, so the settings page and the
+     score card it drives read as the same list in the same order; each label
+     carries the "%" suffix described in the Weight stepper component entry).
+   - **Fundamental section fields, in this order:** Valuation % · Profitability %
+     · Growth % · Financial health % · Dividend % (matching the Fundamental
+     tab's `SubscoreBand` column order).
+   - The group-total/validity status line above updates from these fields on
+     every change — no separate "recalculate" step.
+4. **Actions row** (`margin-top:24px`, flex, `gap:12px`, right-aligned — matching
+   the Add-position form's action-row alignment pattern, adapted from
+   full-width/50-50 to auto-width/right-aligned since this is an in-page section
+   action, not a full-form submit):
+   - **Reset to defaults** — secondary pill (Spacing/shape → Buttons secondary:
+     transparent background, `--ink` text, 1px `--line` border, 38px height,
+     radius = half height). Copy: **"Reset to house defaults"** (measured
+     register, not "Reset!"; the copy drops any mention of "normalization,"
+     since nothing is normalized anymore — the reset sets the actual percent
+     values directly). **Per-section reset, not one global reset** — the two
+     groups independently drive different scores, so resetting one should not
+     silently touch the other the user may have already tuned; this also
+     matches the section-scoped Header/status-line/fields grouping above
+     (everything else in this spec is already per-section). Clicking it sets
+     that section's five fields to a **100-sum whole-percent split** —
+     Composite: **25 / 25 / 20 / 15 / 15**; Fundamental: **30 / 30 / 20 / 15 /
+     5** (`fractionsToPercents(DEFAULT_SCORING_WEIGHTS...)`, already clean whole
+     numbers summing to 100 — no rounding-drift repair visibly needed for the
+     defaults) — client-side only, does not itself save; the user still
+     presses Save to persist, consistent with explicit-save below. Immediately
+     after Reset the group-total status line reads its valid state (Total:
+     100%) and Save enables if the reset values differ from the last-saved
+     ones (dirty-state gate, unchanged).
+   - **Save weights** — primary pill (Spacing/shape → Buttons primary: `--btnbg`
+     background, `--btnfg` text, no border, 40px height). **Disabled (existing
+     `disabled:opacity-50` idiom, per the Add-position submit button) until BOTH
+     (a) the section sums to 100 within epsilon — the same `sumsTo100` check the
+     status line already displays — AND (b) the section's fields differ from
+     the last-saved values (dirty-state gate, unchanged from the prior
+     revision).** The group-total status line above is the **primary** signal
+     for why Save is disabled when the sum is off; the disabled pill itself is
+     **secondary** confirmation, not a separate explanation — no additional
+     inline helper line is added next to Save restating "must sum to 100," since
+     that would duplicate the status line sitting a few inches above it in the
+     same card and risk drifting out of sync with it. If the two ever need to
+     be read together without scrolling (e.g. a very tall stacked-field layout
+     on narrow viewports), that is a candidate for a future revision, not
+     something this spec adds preemptively.
+     **Explicit save, not auto-save** — unchanged: auto-save would fire a `PUT`
+     on every keystroke across ten free-text fields, which is both wasteful and
+     removes the user's ability to compose a full set of percentages before
+     committing. Explicit save also matches every other mutating form in this
+     app (Add position, Buy more, Sell, wishlist add/remove) — none auto-saves
+     on keystroke.
+   - On success: existing `useToast`/`Toaster` pattern (Components — reuse the
+     exact `toast({ title, description })` call shape from `buy-more-modal.tsx`),
+     title **"Weights saved"**, description **"Your Composite scores now use
+     this weighting."** / **"Your Fundamental scores now use this weighting."**
+     matching the section. On error: same toast, `variant: "destructive"`, title
+     **"Save failed"**, description = the error message (matching the existing
+     error-toast shape used throughout the app).
+   - Each section saves and resets independently — saving Composite does not
+     require the Fundamental section to also be valid/dirty, and vice versa (two
+     independent `PUT` payload groups, per the plan's API shape).
+
+**Superseded note.** Item 2's live group-total/validity status line above
+**supersedes** the prior revision's live normalized-% ruled band — kept below for
+history, not deleted:
+
+<details>
+<summary>Superseded: live normalized-% band (2026-07-20, prior revision)</summary>
+
+The prior revision's item 2 was a `SubscoreBand`-style ruled band (5 equal
+columns, `1px --line2` verticals between, first/last column flush padding) that
+recomputed on every keystroke via `normalizeWeights`, client-side. Cell content
+per column, top to bottom: kicker label (10.5px uppercase `--mut`) = the
+dimension name; **the normalized percentage in Newsreader serif, 28px/400** (the
+Subscore band's own value size — "the serif for the value that matters" rule),
+formatted `"31%"` (integer, no decimal); no `--up`/`--dn`/`--amber` banding on
+this figure — a normalized share was reasoned to be neither good nor bad, so it
+stayed `--ink`. No 12px detail line under the percentage. A bottom caption line
+below the band stated the group sums to 100 — sans 10.5px uppercase `--mut`,
+`margin-top:8px`: **"Sums to 100% after normalization."**
+
+The owner explicitly disliked this model in practice: the user filled in
+arbitrary relative numbers and had to watch this band to see the resulting
+normalized percentages — an indirect type-and-watch loop. Superseded by the
+direct-percent input model above, where the typed number already IS the percent
+and the only remaining feedback needed is a validity check (sums to 100 or not),
+not a second computed number to watch.
+</details>
+
+**Custom-weighting affordance.** Handled entirely by the Headline score card's
+meta kicker (see Components → "Headline score card" → "Custom-weighting meta
+kicker" above) — no additional chrome is added on the Settings page itself beyond
+what's already specified in the sections above, **unchanged by this revision**.
+This was judged sufficient rather than adding a second signal here: the Settings
+page is where the user is already looking at their own percentages directly (each
+field IS the percent now, and the group-total status line already confirms the
+section is valid), so a redundant "these differ from default" indicator on this
+page would be noise: the affordance's value is entirely in *other* screens (the
+score cards) reminding the user their number is personalized, not in reminding
+them here where they just set it.
+
+**Loading state.** `app/(dashboard)/settings/loading.tsx` — see Components →
+"Loading skeleton" → per-route composition table for the exact primitive
+composition. **Revised for this change:** the per-section skeleton drops the
+`SkeletonStatBand columns={5}` block that stood in for the removed normalized-%
+band and replaces it with a single short `kicker`-variant block (approximating
+the new one-line group-total status line) between the header block and the five
+label+field row approximations; the five paired label+input row blocks and the
+trailing pill-variant (Reset) block are unchanged. Coding agent updates
+`loading.tsx` in the same change per the "Rule for the Coding agent" above (a
+skeleton out of sync with its real page is a design regression).
+
+**Data flow (reference only — Coding agent's concern, included here so the visual
+spec is legible against real state):** `GET /api/settings/scoring-weights` seeds
+both sections' fields with **whole percents summing to 100**
+(`getWeightsForSettings`, per the governing plan — defaults-filled and
+normalized-then-converted for legacy rows, so a user with no saved row, or a
+legacy raw-weight row, sees a valid 100-sum split already populated, not blank
+fields and not an off-100 total); `PUT` validates sum≈100 and persists one or
+both groups (0–100 range, all five keys required); on success the
+`["scoring-weights"]` query is invalidated so any open research tab's Headline
+score card picks up the new weighting (and its meta kicker) without a manual
+refresh.
 
 **Edge cases carried over unchanged:** empty/loading/error states on the dashboard
 chart, sorting on every Watchlist column, add/remove mutations, CSV export, currency

@@ -1,6 +1,7 @@
 import { safeQuoteSummary } from '@/lib/yahoo-finance';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { DEFAULT_SCORING_WEIGHTS, normalizeFundamentalWeights, weightedFundamentalTotal, type FundamentalWeights } from '@/lib/utils/scoring-weights';
 
 interface AnalystRatings {
   targetPrice: number | null;
@@ -66,7 +67,19 @@ interface FundamentalMetrics {
 }
 
 export class FundamentalAnalysisService {
-  async fetchFundamentals(symbol: string): Promise<FundamentalMetrics> {
+  /**
+   * `fundamentalWeights` (plans/2026-07-20-configurable-scoring-weights.md,
+   * ADR-21) is an optional pure parameter — this service NEVER reads
+   * UserScoringPreferences itself (the route does, per ADR-3). When
+   * provided, `metrics.score.total` is recomputed on read from the
+   * weight-independent `score.breakdown` using the user's normalized
+   * weights, for BOTH the fresh and the 24h-cache path. This reweight is
+   * NEVER written back — `saveToDatabase` always persists the
+   * default-weighted total, so the shared symbol-keyed FundamentalData
+   * cache stays user-independent (ADR-4). Omitting the param reproduces
+   * today's behavior byte-for-byte.
+   */
+  async fetchFundamentals(symbol: string, fundamentalWeights?: FundamentalWeights): Promise<FundamentalMetrics> {
     try {
       // Check cache first
       const cached = await prisma.fundamentalData.findUnique({
@@ -82,7 +95,7 @@ export class FundamentalAnalysisService {
 
       // Only use cache if it's fresh AND within 24 hours
       if (cached && isCacheFresh && isWithin24Hours) {
-        return this.formatCachedData(cached);
+        return this.applyPerUserReweight(this.formatCachedData(cached), fundamentalWeights);
       }
 
 
@@ -121,16 +134,37 @@ export class FundamentalAnalysisService {
         score
       };
 
-      // Save to database
+      // Save to database — always the DEFAULT-weighted total + the
+      // weight-independent breakdown (before any per-user reweight below),
+      // so the shared symbol-keyed cache stays user-independent (ADR-4).
       await this.saveToDatabase(symbol, completeMetrics);
 
-      return completeMetrics;
+      return this.applyPerUserReweight(completeMetrics, fundamentalWeights);
     } catch (error) {
       console.error(`Failed to fetch fundamentals for ${symbol}:`, error);
       throw error;
     }
   }
 
+  /**
+   * Pure post-step: when `fundamentalWeights` is provided, recomputes
+   * `score.total` from the weight-independent `score.breakdown` using the
+   * user's normalized weights. Applied on read only, after the cache lookup/
+   * write above — never persisted. Omitting `fundamentalWeights` returns
+   * `metrics` unchanged (byte-identical to pre-feature behavior).
+   */
+  private applyPerUserReweight(metrics: FundamentalMetrics, fundamentalWeights?: FundamentalWeights): FundamentalMetrics {
+    if (!fundamentalWeights) return metrics;
+    const normalized = normalizeFundamentalWeights(fundamentalWeights);
+    const total = weightedFundamentalTotal(metrics.score.breakdown, normalized);
+    return {
+      ...metrics,
+      score: {
+        ...metrics.score,
+        total,
+      },
+    };
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private extractMetrics(data: Record<string, any>): Omit<FundamentalMetrics, 'score'> {
@@ -318,22 +352,13 @@ export class FundamentalAnalysisService {
       ? dividendScores.reduce((a, b) => a + b, 0) / dividendScores.length
       : 0;
 
-    // Calculate total score (weighted average)
-    const weights = {
-      valuation: 0.3,
-      profitability: 0.3,
-      growth: 0.2,
-      financial: 0.15,
-      dividend: 0.05,
-    };
-
-    const totalScore = (
-      breakdown.valuation * weights.valuation +
-      breakdown.profitability * weights.profitability +
-      breakdown.growth * weights.growth +
-      breakdown.financial * weights.financial +
-      breakdown.dividend * weights.dividend
-    ) / (weights.valuation + weights.profitability + weights.growth + weights.financial + weights.dividend);
+    // Calculate total score (weighted average) — uses the same
+    // DEFAULT_SCORING_WEIGHTS.fundamental + weightedFundamentalTotal the
+    // rest of the app shares (lib/utils/scoring-weights.ts), so this
+    // default-weighted total is the single source of truth, not a second
+    // definition (plans/2026-07-20-configurable-scoring-weights.md, Task 8).
+    // Byte-identical to the previous inline weights object + formula.
+    const totalScore = weightedFundamentalTotal(breakdown, DEFAULT_SCORING_WEIGHTS.fundamental);
 
     // Generate interpretation
     const interpretation = this.generateInterpretation(totalScore, breakdown, metrics);

@@ -11,6 +11,7 @@ import { HeadlineScoreCard } from "@/components/research/headline-score-card";
 import { SubscoreBand } from "@/components/research/subscore-band";
 import { GradedMetricRow } from "@/components/research/graded-metric-row";
 import { ScoreFigure } from "@/components/research/score-figure";
+import { DEFAULT_SCORING_WEIGHTS, weightsEqualDefaults, type FundamentalWeights } from "@/lib/utils/scoring-weights";
 
 interface FundamentalAnalysisProps {
   symbol: string;
@@ -62,6 +63,23 @@ export function FundamentalAnalysis({ symbol, currency }: FundamentalAnalysisPro
     staleTime: 60 * 60 * 1000,
   });
 
+  // Custom-weighting meta kicker (DESIGN.md "Headline score card" ->
+  // "Custom-weighting meta kicker"): a cheap comparison against the
+  // already-fetched ["scoring-weights"] query vs. DEFAULT_SCORING_WEIGHTS —
+  // no extra request. Swaps the meta kicker copy to signal this score is
+  // personalized when the user's fundamental subcategory weights differ
+  // from the house default.
+  const weightsQ = useQuery<{ fundamental: FundamentalWeights }>({
+    queryKey: ["scoring-weights"],
+    queryFn: async () => {
+      const res = await fetch("/api/settings/scoring-weights");
+      if (!res.ok) throw new Error("Failed to fetch scoring weights");
+      return res.json();
+    },
+    staleTime: Infinity,
+  });
+  const hasCustomWeights = !weightsEqualDefaults(weightsQ.data?.fundamental, DEFAULT_SCORING_WEIGHTS.fundamental);
+
   if (isLoading) {
     return (
       <div className="flex h-32 items-center justify-center rounded-lg border border-border bg-card text-mut">
@@ -91,7 +109,7 @@ export function FundamentalAnalysis({ symbol, currency }: FundamentalAnalysisPro
     <div className="space-y-5">
       <HeadlineScoreCard
         kicker="Fundamental analysis"
-        metaKicker="Trailing twelve months · FY ends"
+        metaKicker={hasCustomWeights ? "Your weighting · trailing twelve months" : "Trailing twelve months · FY ends"}
         score={data.score.total}
         summary={data.score.interpretation}
       >
