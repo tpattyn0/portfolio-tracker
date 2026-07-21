@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
@@ -221,11 +222,16 @@ function ScoringWeightsSection<K extends string>({
         {isValid ? "Total: 100% · valid" : `Total: ${total}% · must equal 100%`}
       </div>
 
-      <div className="mb-5">
-        <label className="mb-2 block text-[10.5px] uppercase tracking-[0.12em] text-mut">
-          Start from a style
-        </label>
-        <div className="rounded-md border border-line divide-y divide-line2">
+      <details className="group mb-5">
+        <summary
+          className="flex list-none items-center justify-between gap-2 py-1 [&::-webkit-details-marker]:hidden hover:bg-fill focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground"
+        >
+          <span className="text-[10.5px] uppercase tracking-[0.12em] text-mut">
+            Start from a style — prefill weights from a named investing style
+          </span>
+          <ChevronDown className="h-4 w-4 shrink-0 text-mut transition-transform duration-200 group-open:rotate-180" />
+        </summary>
+        <div className="mt-2 rounded-md border border-line divide-y divide-line2">
           {presetsForGroup(group).map((preset) => (
             <button
               key={preset.id}
@@ -238,7 +244,7 @@ function ScoringWeightsSection<K extends string>({
             </button>
           ))}
         </div>
-      </div>
+      </details>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         {fields.map((f) => (

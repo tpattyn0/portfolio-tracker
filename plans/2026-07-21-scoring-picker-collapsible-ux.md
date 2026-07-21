@@ -108,7 +108,7 @@ persisted key mapping (see Open decisions for why that is safe).
 
 ## Tasks
 
-1. [ ] **Collapsible preset picker (PRIMARY), shared component, closed by
+1. [x] **Collapsible preset picker (PRIMARY), shared component, closed by
    default, both sections.** Wrap the "Start from a style" label + option-row list
    in `ScoringWeightsSection` (`page.tsx:224-241`) in a native-disclosure collapse,
    closed by default, per the six functional requirements in Approach → Primary.
@@ -129,16 +129,19 @@ persisted key mapping (see Open decisions for why that is safe).
    or `aria-expanded` on a button trigger). Repeat spot-check on the Fundamental
    card (six rows). `npm run verify` green.
 
-2. [ ] **Status-line / actions placement review (SECONDARY, minor).** Apply the
-   Designer's decision on whether the status line and/or Reset+Save actions row
-   move relative to the input fields; if the Designer confirms the current
-   placement, close as no-op with that confirmation recorded in the design spec.
-   Meaning, copy, states, and the `sumsTo100`/dirty Save gate are unchanged either
-   way.
-   — Acceptance: card layout matches the Designer's final spec; status-line copy
-   ("Total: X% · valid" / "Total: X% · must equal 100%") and its `--mut`/`--dn`
-   state coloring are byte-identical to today; Save still enables only on
-   `sumsTo100 && dirty`. `npm run verify` green.
+2. [x] **Status-line / actions placement review (SECONDARY, minor) — CONFIRMED NO
+   CHANGE per Designer.** DESIGN.md's "Settings — scoring weights" flow explicitly
+   confirms the status line's placement is unchanged by the collapsible-UX plan
+   (`DESIGN.md` item 2, "Placement — confirmed unchanged by the collapsible-UX
+   plan (no move)"): it stays directly beneath the header row, above the picker's
+   trigger row, since collapsing the picker only shortens what comes *after* the
+   status line, not what it sits beneath. Reset/Save actions row placement is
+   likewise unchanged (still the card's final row, below the Weight stepper
+   grid). No code change made for this task.
+   — Acceptance: verified live — both cards' status line reads "Total: 100% ·
+   valid" directly under the header row, above the (collapsed) trigger row;
+   Reset/Save actions render at the bottom of each card, unchanged; Save still
+   enables only on `sumsTo100 && dirty`. `npm run verify` green.
 
 3. [x] **Composite input field order (SECONDARY, GATED — see Open decisions).**
    **RESOLVED 2026-07-21 — owner chose Option A: keep the current order, close

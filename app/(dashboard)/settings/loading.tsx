@@ -9,14 +9,15 @@ import { SkeletonBlock, SkeletonCard, SkeletonText } from "@/components/ui/loadi
  * kicker-variant block approximating the live group-total/validity status
  * line (revised, plans/2026-07-21-scoring-weights-direct-percent.md — no
  * longer a 5-col SkeletonStatBand, since the real band it stood in for was
- * removed), then another short kicker-variant block (the preset picker's
- * label) followed by a small bordered stack of 3 label-line/description-line
- * row pairs (revised per plans/2026-07-21-scoring-style-descriptions-retune.md
- * — supersedes the wrapped-pill-row skeleton the presets plan originally
- * specified here — mirroring the real hairline-divided list container: a
- * representative sample of 3 rows, not the real per-section count of 9/6),
- * then five label+field row approximations, and a pill-shaped block for
- * the reset action.
+ * removed), then a single compact trigger-row block (revised per
+ * plans/2026-07-21-scoring-picker-collapsible-ux.md, ADR-25 — supersedes the
+ * 3-representative-row expanded-list skeleton the descriptions-retune plan
+ * originally specified here: the real disclosure is closed by default, so
+ * its skeleton must also render as a closed disclosure, not a preview of its
+ * open contents) approximating the collapsed "Start from a style" trigger —
+ * one kicker-variant block plus a small square chevron-footprint block, no
+ * bordered option list beneath it — then five label+field row
+ * approximations, and a pill-shaped block for the reset action.
  */
 export default function SettingsLoading() {
   return (
@@ -37,16 +38,9 @@ export default function SettingsLoading() {
 
             <SkeletonText variant="kicker" className="mt-2 w-56" />
 
-            <div className="mb-5 mt-5">
-              <SkeletonText variant="kicker" className="mb-2 w-32" />
-              <div className="rounded-md border border-line divide-y divide-line2">
-                {[0, 1, 2].map((row) => (
-                  <div key={row} className="flex flex-col gap-1 px-4 py-3">
-                    <SkeletonBlock className="h-4 w-24" />
-                    <SkeletonBlock className="h-3 w-4/5" />
-                  </div>
-                ))}
-              </div>
+            <div className="mb-5 mt-5 flex items-center justify-between gap-2 py-1">
+              <SkeletonText variant="kicker" className="w-56" />
+              <SkeletonBlock className="h-4 w-4 shrink-0" />
             </div>
 
             <div className="mt-7 grid grid-cols-1 gap-6 sm:grid-cols-2">
