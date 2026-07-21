@@ -1,6 +1,6 @@
 # Review: Collapsible style-preset picker (scoring-weights settings UX)
 Date: 2026-07-21
-Status:
+Status: IMPLEMENTED — 2026-07-21 (SUG-1 applied: chevron aria-hidden)
 
 ## Summary
 Findings: [0 BLOCKERs, 0 ISSUEs, 1 SUGGESTION, 0 QUESTIONs]
