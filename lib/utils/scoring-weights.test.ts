@@ -7,6 +7,9 @@ import {
   weightedCompositeTotal,
   weightedFundamentalTotal,
   weightsEqualDefaults,
+  fractionsToPercents,
+  percentsToFractions,
+  sumsTo100,
 } from "./scoring-weights";
 
 describe("DEFAULT_SCORING_WEIGHTS", () => {
@@ -183,5 +186,141 @@ describe("weightsEqualDefaults", () => {
   it("returns false when any key differs", () => {
     const custom = { ...DEFAULT_SCORING_WEIGHTS.composite, technical: 0.5 };
     expect(weightsEqualDefaults(custom, DEFAULT_SCORING_WEIGHTS.composite)).toBe(false);
+  });
+});
+
+// ADR-22 (plans/2026-07-21-scoring-weights-direct-percent.md): direct whole
+// percentages summing to 100, validated at the settings boundary. The
+// internal scoring scale (DEFAULT_SCORING_WEIGHTS, normalizeWeights, the two
+// weighted-total functions) stays fractions and is unchanged above — these
+// are pure conversion/validation helpers at the settings API boundary.
+
+describe("fractionsToPercents", () => {
+  it("converts the composite defaults to whole percents summing to exactly 100", () => {
+    const result = fractionsToPercents(DEFAULT_SCORING_WEIGHTS.composite);
+    expect(result).toEqual({
+      intrinsicValue: 25,
+      fundamental: 25,
+      technical: 20,
+      sentiment: 15,
+      analyst: 15,
+    });
+    expect(Object.values(result).reduce((a, b) => a + b, 0)).toBe(100);
+  });
+
+  it("converts the fundamental defaults to whole percents summing to exactly 100", () => {
+    const result = fractionsToPercents(DEFAULT_SCORING_WEIGHTS.fundamental);
+    expect(result).toEqual({
+      valuation: 30,
+      profitability: 30,
+      growth: 20,
+      financial: 15,
+      dividend: 5,
+    });
+    expect(Object.values(result).reduce((a, b) => a + b, 0)).toBe(100);
+  });
+
+  it("repairs rounding drift via largest-remainder so equal thirds sum to exactly 100 (not 99)", () => {
+    const thirds = { a: 1 / 3, b: 1 / 3, c: 1 / 3 };
+    const result = fractionsToPercents(thirds);
+    const sum = result.a + result.b + result.c;
+    expect(sum).toBe(100);
+    // Naive Math.round(33.333) x 3 = 99 — largest-remainder gives the leftover
+    // point to (one of) the largest-remainder buckets, e.g. 33/33/34.
+    expect([result.a, result.b, result.c].sort()).toEqual([33, 33, 34]);
+  });
+
+  it("handles an arbitrary legacy raw row (non-1.0-summing input) by scaling and repairing to 100", () => {
+    // A raw (un-normalized) row like the pre-ADR-22 storage format — this
+    // helper is typically called on already-normalized fractions, but must
+    // still produce a clean 100-sum for any positive input group.
+    // Raw sums to 8: 2 + 2 + 1.6 + 1.2 + 1.2.
+    const normalized = { a: 2 / 8, b: 2 / 8, c: 1.6 / 8, d: 1.2 / 8, e: 1.2 / 8 };
+    const result = fractionsToPercents(normalized);
+    expect(Object.values(result).reduce((a, b) => a + b, 0)).toBe(100);
+  });
+});
+
+describe("percentsToFractions", () => {
+  it("divides each value by 100", () => {
+    const result = percentsToFractions({ a: 25, b: 25, c: 20, d: 15, e: 15 });
+    expect(result).toEqual({ a: 0.25, b: 0.25, c: 0.2, d: 0.15, e: 0.15 });
+  });
+
+  it("round-trips the composite defaults through fractionsToPercents -> percentsToFractions", () => {
+    const percents = fractionsToPercents(DEFAULT_SCORING_WEIGHTS.composite);
+    const backToFractions = percentsToFractions(percents);
+    expect(backToFractions).toEqual(DEFAULT_SCORING_WEIGHTS.composite);
+  });
+});
+
+describe("sumsTo100", () => {
+  it("is true for a group summing exactly to 100", () => {
+    expect(sumsTo100({ a: 25, b: 25, c: 20, d: 15, e: 15 })).toBe(true);
+  });
+
+  it("is true within the default epsilon (0.01) of floating-point dust", () => {
+    expect(sumsTo100({ a: 100.005, b: 0 })).toBe(true);
+    expect(sumsTo100({ a: 99.995, b: 0 })).toBe(true);
+  });
+
+  it("is false when the sum is short (94)", () => {
+    expect(sumsTo100({ a: 25, b: 25, c: 20, d: 15, e: 9 })).toBe(false);
+  });
+
+  it("is false when the sum is over (101)", () => {
+    expect(sumsTo100({ a: 26, b: 25, c: 20, d: 15, e: 15 })).toBe(false);
+  });
+
+  it("respects a custom epsilon", () => {
+    expect(sumsTo100({ a: 99 }, 2)).toBe(true);
+    expect(sumsTo100({ a: 99 }, 0.5)).toBe(false);
+  });
+});
+
+// Task 2 — scale-invariance regression (proves the scoring math is unchanged
+// by ADR-22): a group expressed as whole percents and the identical
+// proportions expressed as fractions must normalize to the same fractions
+// and therefore produce byte-identical scores.
+describe("scale-invariance regression (ADR-22 guard)", () => {
+  it("weightedCompositeTotal is identical for a percent-scaled group vs its fraction-scaled equivalent", () => {
+    const percentGroup = { intrinsicValue: 25, fundamental: 25, technical: 20, sentiment: 15, analyst: 15 };
+    const fractionGroup = { intrinsicValue: 0.25, fundamental: 0.25, technical: 0.2, sentiment: 0.15, analyst: 0.15 };
+    const scores = { intrinsicValue: 8, fundamental: 6, technical: 7, sentiment: 5, analyst: 9 };
+
+    const totalFromPercents = weightedCompositeTotal(scores, normalizeCompositeWeights(percentGroup));
+    const totalFromFractions = weightedCompositeTotal(scores, normalizeCompositeWeights(fractionGroup));
+
+    expect(totalFromPercents).toBe(totalFromFractions);
+  });
+
+  it("weightedFundamentalTotal is identical for a percent-scaled group vs its fraction-scaled equivalent", () => {
+    const percentGroup = { valuation: 30, profitability: 30, growth: 20, financial: 15, dividend: 5 };
+    const fractionGroup = { valuation: 0.3, profitability: 0.3, growth: 0.2, financial: 0.15, dividend: 0.05 };
+    const breakdown = { valuation: 7, profitability: 6, growth: 8, financial: 5, dividend: 3 };
+
+    const totalFromPercents = weightedFundamentalTotal(breakdown, normalizeFundamentalWeights(percentGroup));
+    const totalFromFractions = weightedFundamentalTotal(breakdown, normalizeFundamentalWeights(fractionGroup));
+
+    expect(totalFromPercents).toBe(totalFromFractions);
+  });
+
+  it("an arbitrary legacy raw row scores identically to its fractionsToPercents(normalize(...)) presentation", () => {
+    // A raw relative-weight row as it could exist under the pre-ADR-22 (ADR-20)
+    // storage model — arbitrary positive numbers, not normalized, not percents.
+    const legacyRawRow = { intrinsicValue: 2, fundamental: 2, technical: 1.6, sentiment: 1.2, analyst: 1.2 };
+    const scores = { intrinsicValue: 8, fundamental: 6, technical: 7, sentiment: 5, analyst: 9 };
+
+    // Path A: score directly off the raw row (what scoring consumers do today
+    // via normalizeCompositeWeights, unchanged by this plan).
+    const totalFromRaw = weightedCompositeTotal(scores, normalizeCompositeWeights(legacyRawRow));
+
+    // Path B: what the settings page would now show for this legacy row
+    // (getWeightsForSettings: normalize -> fractionsToPercents), then scored
+    // as if that presented percent group were saved back and normalized again.
+    const presentedPercents = fractionsToPercents(normalizeCompositeWeights(legacyRawRow));
+    const totalFromPresentedPercents = weightedCompositeTotal(scores, normalizeCompositeWeights(presentedPercents));
+
+    expect(totalFromPresentedPercents).toBe(totalFromRaw);
   });
 });

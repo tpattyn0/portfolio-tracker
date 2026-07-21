@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { DEFAULT_SCORING_WEIGHTS } from "@/lib/utils/scoring-weights";
+import { DEFAULT_SCORING_WEIGHTS, fractionsToPercents } from "@/lib/utils/scoring-weights";
 
 const findUnique = vi.fn();
 const upsert = vi.fn();
@@ -13,7 +13,15 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-import { getWeights, saveWeights, InvalidScoringWeightsError } from "./scoring-preferences.service";
+import {
+  getWeights,
+  getWeightsForSettings,
+  saveWeights,
+  InvalidScoringWeightsError,
+} from "./scoring-preferences.service";
+
+const COMPLETE_COMPOSITE = { intrinsicValue: 25, fundamental: 25, technical: 20, sentiment: 15, analyst: 15 };
+const COMPLETE_FUNDAMENTAL = { valuation: 30, profitability: 30, growth: 20, financial: 15, dividend: 5 };
 
 describe("getWeights", () => {
   beforeEach(() => {
@@ -83,6 +91,66 @@ describe("getWeights", () => {
   });
 });
 
+describe("getWeightsForSettings", () => {
+  beforeEach(() => {
+    findUnique.mockReset();
+    upsert.mockReset();
+  });
+
+  it("returns defaults-as-percents summing to 100 for a missing row", async () => {
+    findUnique.mockResolvedValueOnce(null);
+    const result = await getWeightsForSettings("user-1");
+
+    expect(result.composite).toEqual(fractionsToPercents(DEFAULT_SCORING_WEIGHTS.composite));
+    expect(result.fundamental).toEqual(fractionsToPercents(DEFAULT_SCORING_WEIGHTS.fundamental));
+    expect(Object.values(result.composite).reduce((a, b) => a + b, 0)).toBe(100);
+    expect(Object.values(result.fundamental).reduce((a, b) => a + b, 0)).toBe(100);
+  });
+
+  it("returns a legacy raw row's normalized-% split, summing to exactly 100", async () => {
+    // A raw (un-normalized, pre-ADR-22) row — arbitrary positive numbers, not
+    // percents, not summing to 1.0 or 100.
+    findUnique.mockResolvedValueOnce({
+      wCompositeIntrinsic: 2,
+      wCompositeFundamental: 2,
+      wCompositeTechnical: 1.6,
+      wCompositeSentiment: 1.2,
+      wCompositeAnalyst: 1.2,
+      wFundValuation: 6,
+      wFundProfitability: 6,
+      wFundGrowth: 4,
+      wFundFinancial: 3,
+      wFundDividend: 1,
+    });
+
+    const result = await getWeightsForSettings("user-1");
+
+    expect(Object.values(result.composite).reduce((a, b) => a + b, 0)).toBe(100);
+    expect(Object.values(result.fundamental).reduce((a, b) => a + b, 0)).toBe(100);
+    // Every value is a whole number.
+    for (const v of Object.values(result.composite)) expect(Number.isInteger(v)).toBe(true);
+  });
+
+  it("a valid percent-form row (already summing to 100) round-trips through unchanged", async () => {
+    findUnique.mockResolvedValueOnce({
+      wCompositeIntrinsic: 25,
+      wCompositeFundamental: 25,
+      wCompositeTechnical: 20,
+      wCompositeSentiment: 15,
+      wCompositeAnalyst: 15,
+      wFundValuation: 30,
+      wFundProfitability: 30,
+      wFundGrowth: 20,
+      wFundFinancial: 15,
+      wFundDividend: 5,
+    });
+
+    const result = await getWeightsForSettings("user-1");
+    expect(result.composite).toEqual(COMPLETE_COMPOSITE);
+    expect(result.fundamental).toEqual(COMPLETE_FUNDAMENTAL);
+  });
+});
+
 describe("saveWeights", () => {
   beforeEach(() => {
     findUnique.mockReset();
@@ -92,11 +160,11 @@ describe("saveWeights", () => {
   it("upserts on userId with the provided fields mapped to their DB columns", async () => {
     upsert.mockResolvedValueOnce({});
     findUnique.mockResolvedValueOnce({
-      wCompositeIntrinsic: 2,
-      wCompositeFundamental: null,
-      wCompositeTechnical: null,
-      wCompositeSentiment: null,
-      wCompositeAnalyst: null,
+      wCompositeIntrinsic: 25,
+      wCompositeFundamental: 25,
+      wCompositeTechnical: 20,
+      wCompositeSentiment: 15,
+      wCompositeAnalyst: 15,
       wFundValuation: null,
       wFundProfitability: null,
       wFundGrowth: null,
@@ -104,23 +172,23 @@ describe("saveWeights", () => {
       wFundDividend: null,
     });
 
-    await saveWeights("user-1", { composite: { intrinsicValue: 2 } });
+    await saveWeights("user-1", { composite: COMPLETE_COMPOSITE });
 
     expect(upsert).toHaveBeenCalledTimes(1);
     const call = upsert.mock.calls[0][0];
     expect(call.where).toEqual({ userId: "user-1" });
-    expect(call.create).toMatchObject({ userId: "user-1", wCompositeIntrinsic: 2 });
-    expect(call.update).toMatchObject({ wCompositeIntrinsic: 2 });
+    expect(call.create).toMatchObject({ userId: "user-1", wCompositeIntrinsic: 25 });
+    expect(call.update).toMatchObject({ wCompositeIntrinsic: 25 });
   });
 
-  it("returns the saved+defaulted set (re-reads via getWeights)", async () => {
+  it("returns the saved set (re-reads via getWeights)", async () => {
     upsert.mockResolvedValueOnce({});
     findUnique.mockResolvedValueOnce({
-      wCompositeIntrinsic: 3,
-      wCompositeFundamental: null,
-      wCompositeTechnical: null,
-      wCompositeSentiment: null,
-      wCompositeAnalyst: null,
+      wCompositeIntrinsic: 25,
+      wCompositeFundamental: 25,
+      wCompositeTechnical: 20,
+      wCompositeSentiment: 15,
+      wCompositeAnalyst: 15,
       wFundValuation: null,
       wFundProfitability: null,
       wFundGrowth: null,
@@ -128,19 +196,19 @@ describe("saveWeights", () => {
       wFundDividend: null,
     });
 
-    const result = await saveWeights("user-1", { composite: { intrinsicValue: 3 } });
-    expect(result.composite.intrinsicValue).toBe(3);
-    expect(result.composite.fundamental).toBe(DEFAULT_SCORING_WEIGHTS.composite.fundamental);
+    const result = await saveWeights("user-1", { composite: COMPLETE_COMPOSITE });
+    expect(result.composite).toEqual(COMPLETE_COMPOSITE);
+    expect(result.fundamental).toEqual(DEFAULT_SCORING_WEIGHTS.fundamental);
   });
 
-  it("accepts an all-zero group (normalizer handles it at read time, not a write-time concern)", async () => {
+  it("accepts a valid complete group summing to 100", async () => {
     upsert.mockResolvedValueOnce({});
     findUnique.mockResolvedValueOnce({
-      wCompositeIntrinsic: 0,
-      wCompositeFundamental: 0,
-      wCompositeTechnical: 0,
-      wCompositeSentiment: 0,
-      wCompositeAnalyst: 0,
+      wCompositeIntrinsic: 25,
+      wCompositeFundamental: 25,
+      wCompositeTechnical: 20,
+      wCompositeSentiment: 15,
+      wCompositeAnalyst: 15,
       wFundValuation: null,
       wFundProfitability: null,
       wFundGrowth: null,
@@ -148,27 +216,47 @@ describe("saveWeights", () => {
       wFundDividend: null,
     });
 
-    await expect(
-      saveWeights("user-1", {
-        composite: { intrinsicValue: 0, fundamental: 0, technical: 0, sentiment: 0, analyst: 0 },
-      })
-    ).resolves.toBeTruthy();
+    await expect(saveWeights("user-1", { composite: COMPLETE_COMPOSITE })).resolves.toBeTruthy();
   });
 
-  it("rejects a negative weight", async () => {
-    await expect(saveWeights("user-1", { composite: { intrinsicValue: -1 } })).rejects.toBeInstanceOf(
-      InvalidScoringWeightsError
-    );
+  it("rejects a group summing to 94 (short of 100)", async () => {
+    const short = { ...COMPLETE_COMPOSITE, analyst: 9 }; // sums to 94
+    await expect(saveWeights("user-1", { composite: short })).rejects.toBeInstanceOf(InvalidScoringWeightsError);
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it("rejects a group summing to 101 (over 100)", async () => {
+    const over = { ...COMPLETE_COMPOSITE, analyst: 16 }; // sums to 101
+    await expect(saveWeights("user-1", { composite: over })).rejects.toBeInstanceOf(InvalidScoringWeightsError);
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it("rejects a value of -1 (out of [0,100] range)", async () => {
+    const negative = { ...COMPLETE_COMPOSITE, intrinsicValue: -1, analyst: 16 }; // still sums to 100 to isolate the range check
+    await expect(saveWeights("user-1", { composite: negative })).rejects.toBeInstanceOf(InvalidScoringWeightsError);
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it("rejects a value of 101 (out of [0,100] range)", async () => {
+    const over101 = { ...COMPLETE_COMPOSITE, intrinsicValue: -1, technical: 121 }; // sums to 100, isolates range check
+    await expect(saveWeights("user-1", { composite: over101 })).rejects.toBeInstanceOf(InvalidScoringWeightsError);
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it("rejects a group missing a key (partial group)", async () => {
+    const { analyst, ...partial } = COMPLETE_COMPOSITE;
+    void analyst;
+    await expect(saveWeights("user-1", { composite: partial })).rejects.toBeInstanceOf(InvalidScoringWeightsError);
     expect(upsert).not.toHaveBeenCalled();
   });
 
   it("rejects a non-finite (NaN/Infinity) weight", async () => {
-    await expect(saveWeights("user-1", { fundamental: { valuation: NaN } })).rejects.toBeInstanceOf(
-      InvalidScoringWeightsError
-    );
-    await expect(saveWeights("user-1", { fundamental: { valuation: Infinity } })).rejects.toBeInstanceOf(
-      InvalidScoringWeightsError
-    );
+    await expect(
+      saveWeights("user-1", { fundamental: { ...COMPLETE_FUNDAMENTAL, valuation: NaN } })
+    ).rejects.toBeInstanceOf(InvalidScoringWeightsError);
+    await expect(
+      saveWeights("user-1", { fundamental: { ...COMPLETE_FUNDAMENTAL, valuation: Infinity } })
+    ).rejects.toBeInstanceOf(InvalidScoringWeightsError);
     expect(upsert).not.toHaveBeenCalled();
   });
 });

@@ -126,7 +126,7 @@ contract:
 
 ## Tasks
 
-1. [ ] **Add pure conversion + validation helpers to `lib/utils/scoring-weights.ts`.**
+1. [x] **Add pure conversion + validation helpers to `lib/utils/scoring-weights.ts`.**
    Add `fractionsToPercents<K>(weights)` (×100, round to whole, largest-remainder repair
    so the result sums to exactly 100), `percentsToFractions<K>(percents)` (÷100), and
    `sumsTo100<K>(weights, epsilon = 0.01)`. `DEFAULT_SCORING_WEIGHTS` stays fractions;
@@ -139,7 +139,7 @@ contract:
    normalizes to the DEFAULT fractions; `sumsTo100` true for `{25,25,20,15,15}`, true at
    `100.005` (within epsilon), false at `94`, false at `101`.
 
-2. [ ] **Scale-invariance regression test (proves scoring is unchanged).** Add a test
+2. [x] **Scale-invariance regression test (proves scoring is unchanged).** Add a test
    asserting `weightedCompositeTotal(scores, normalizeCompositeWeights(percentGroup))`
    equals `weightedCompositeTotal(scores, normalizeCompositeWeights(fractionGroup))` for
    the same proportions (e.g. `{25,25,20,15,15}` vs `{0.25,0.25,0.20,0.15,0.15}`), and the
@@ -148,7 +148,7 @@ contract:
    the identical composite. — Acceptance: new test file section passes; demonstrates the
    percent split and the raw row score identically.
 
-3. [ ] **`scoring-preferences.service.ts` — percent-form accessor + sum-to-100 validation.**
+3. [x] **`scoring-preferences.service.ts` — percent-form accessor + sum-to-100 validation.**
    Add `getWeightsForSettings(userId)`: load row → coalesce to defaults (existing `getWeights`
    internals) → `normalizeCompositeWeights`/`normalizeFundamentalWeights` → `fractionsToPercents`
    per group; returns `{composite, fundamental}` as whole percents summing to 100. Keep
@@ -162,14 +162,14 @@ contract:
    summing to 100; `saveWeights` rejects a group summing to 94 (400-class error), rejects a
    value of `-1`, rejects `101`, rejects a group missing a key, accepts `{25,25,20,15,15}`.
 
-4. [ ] **API route `app/api/settings/scoring-weights/route.ts` — GET returns percents.**
+4. [x] **API route `app/api/settings/scoring-weights/route.ts` — GET returns percents.**
    GET calls `getWeightsForSettings(auth.userId)` (percent form). PUT unchanged in shape
    (still delegates to `saveWeights`, still maps `InvalidScoringWeightsError` → 400) but now
    the service enforces sum-to-100. — Acceptance: `npx vitest run app/api/settings/scoring-weights/route.test.ts`
    passes with: GET returns a body whose groups sum to 100; PUT with a group summing to 94
    returns 400; PUT with a valid 100-sum group returns 200 and the saved (percent) body.
 
-5. [ ] **Settings page rework — direct-percent inputs, live group total, save-gated-on-100.**
+5. [x] **Settings page rework — direct-percent inputs, live group total, save-gated-on-100.**
    In `app/(dashboard)/settings/page.tsx`: inputs are whole percents (seed from the GET
    percent response; `toInputs`/`toNumbers` unchanged in mechanism, now carrying percents).
    **Remove the "normalized %" readout band** (the 28px-serif normalized figures + "Sums to
@@ -185,7 +185,7 @@ contract:
    total as invalid; at exactly 100 Save enables (if dirty); Reset restores a 100-sum default
    split; save succeeds and Overview/Fundamental scores reflect the new weighting.
 
-6. [ ] **Settings page unit/interaction test.** Add a test (Vitest + Testing Library, matching
+6. [x] **Settings page unit/interaction test.** Add a test (Vitest + Testing Library, matching
    the repo's existing component-test setup if present; otherwise a focused pure-helper test of
    the total/validity logic extracted into a testable function) covering: Save disabled when the
    group total ≠ 100, enabled at 100 (and dirty); the running total reflects the summed inputs;
@@ -194,7 +194,7 @@ contract:
    (`sumsTo100` already covers validity — test the summing + gating logic). — Acceptance:
    the new test passes under `npm run verify`.
 
-7. [ ] **Docs: supersede OD-4 in DECISIONS (ADR update), AGENT.md note, ARCHITECTURE.md line.**
+7. [x] **Docs: supersede OD-4 in DECISIONS (ADR update), AGENT.md note, ARCHITECTURE.md line.**
    Update ADR-20 to reflect the new direct-percent + sum-to-100-validated model superseding
    auto-normalize (see "Proposed DECISIONS.md entries"). Update the AGENT.md "Configurable
    scoring weights" fragile-surface entry: stored form is now whole percents summing to 100;

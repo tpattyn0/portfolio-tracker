@@ -1,13 +1,16 @@
-import { SkeletonBlock, SkeletonCard, SkeletonStatBand, SkeletonText } from "@/components/ui/loading-skeleton";
+import { SkeletonBlock, SkeletonCard, SkeletonText } from "@/components/ui/loading-skeleton";
 
 /**
  * Settings route-level loading boundary (DESIGN.md "Loading skeleton
  * (route-level loading.tsx)" -> per-route composition table, "settings/loading.tsx").
  * Kicker + H1 block (no right-side page-level action — Save lives inside
  * each section). Two editorial SkeletonCards in page order (Composite score,
- * then Fundamental score), each with a 5-col SkeletonStatBand (the live
- * normalized-% band) and five label+field row approximations, ending in a
- * pill-shaped block for the reset action.
+ * then Fundamental score), each with a header block, a single short
+ * kicker-variant block approximating the live group-total/validity status
+ * line (revised, plans/2026-07-21-scoring-weights-direct-percent.md — no
+ * longer a 5-col SkeletonStatBand, since the real band it stood in for was
+ * removed), five label+field row approximations, and a pill-shaped block for
+ * the reset action.
  */
 export default function SettingsLoading() {
   return (
@@ -26,7 +29,7 @@ export default function SettingsLoading() {
               <SkeletonText variant="kicker" className="w-56" />
             </div>
 
-            <SkeletonStatBand columns={5} className="mt-7" />
+            <SkeletonText variant="kicker" className="mt-2 w-56" />
 
             <div className="mt-7 grid grid-cols-1 gap-6 sm:grid-cols-2">
               {Array.from({ length: 5 }).map((_, i) => (

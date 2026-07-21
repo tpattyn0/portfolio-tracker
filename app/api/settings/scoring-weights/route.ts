@@ -1,19 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/utils/auth";
-import { getWeights, saveWeights, InvalidScoringWeightsError } from "@/lib/services/scoring-preferences.service";
+import {
+  getWeightsForSettings,
+  saveWeights,
+  InvalidScoringWeightsError,
+} from "@/lib/services/scoring-preferences.service";
 
 /**
  * GET/PUT the authenticated user's scoring weights
- * (plans/2026-07-20-configurable-scoring-weights.md, ADR-20/ADR-21). Thin —
+ * (plans/2026-07-20-configurable-scoring-weights.md, ADR-20/ADR-21; direct-percent
+ * revision ADR-22, plans/2026-07-21-scoring-weights-direct-percent.md). Thin —
  * delegates to lib/services/scoring-preferences.service.ts (ADR-3): the
  * route does auth + I/O, the service stays pure business logic.
+ *
+ * GET returns whole percentages summing to 100 per group (`getWeightsForSettings`)
+ * — this is the settings-page-only percent form; scoring consumers (overview.tsx,
+ * fundamental-analysis.service.ts, wishlist.service.ts) read `getWeights`
+ * (raw/fraction form) directly and are unaffected by this route.
  */
 
 export async function GET() {
   const auth = await getAuthenticatedUser();
   if (auth.error) return auth.error;
 
-  const weights = await getWeights(auth.userId);
+  const weights = await getWeightsForSettings(auth.userId);
   return NextResponse.json(weights);
 }
 

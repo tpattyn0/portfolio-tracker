@@ -6,24 +6,28 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
   DEFAULT_SCORING_WEIGHTS,
-  normalizeCompositeWeights,
-  normalizeFundamentalWeights,
+  fractionsToPercents,
   type CompositeWeights,
   type FundamentalWeights,
 } from "@/lib/utils/scoring-weights";
+import {
+  computeGroupTotalState,
+  toNumbers,
+  type WeightInputs,
+} from "@/lib/utils/scoring-weights-settings-gate";
 
 /**
- * Settings — scoring weights (plans/2026-07-20-configurable-scoring-weights.md,
- * DESIGN.md "Settings — scoring weights"). Two Editorial-card sections,
- * Composite score then Fundamental score, each with five Weight steppers, a
- * live normalized-% ruled band, a per-section reset, and an explicit save
- * gated on a dirty-state comparison against the last-saved values.
+ * Settings — scoring weights (plans/2026-07-21-scoring-weights-direct-percent.md,
+ * DESIGN.md "Settings — scoring weights", ADR-22 — supersedes the
+ * plans/2026-07-20-configurable-scoring-weights.md auto-normalize UX). Two
+ * Editorial-card sections, Composite score then Fundamental score, each with
+ * five direct-whole-percent Weight steppers, a live group-total/validity
+ * status line (replacing the removed live-normalized-% band), a per-section
+ * reset, and an explicit save gated on sum-to-100 (within epsilon) AND dirty.
  */
 
 const inputClass =
   "w-full h-10 box-border rounded-md border border-border bg-background px-3.5 text-sm text-foreground outline-none";
-
-const parseWeightInput = (value: string): string => value.replace(",", ".");
 
 interface DimensionField<K extends string> {
   key: K;
@@ -46,8 +50,6 @@ const FUNDAMENTAL_FIELDS: DimensionField<keyof FundamentalWeights>[] = [
   { key: "dividend", label: "Dividend" },
 ];
 
-type WeightInputs<K extends string> = Record<K, string>;
-
 function toInputs<K extends string>(weights: Record<K, number>): WeightInputs<K> {
   const result = {} as WeightInputs<K>;
   for (const key of Object.keys(weights) as K[]) {
@@ -56,19 +58,13 @@ function toInputs<K extends string>(weights: Record<K, number>): WeightInputs<K>
   return result;
 }
 
-function toNumbers<K extends string>(inputs: WeightInputs<K>): Record<K, number> {
-  const result = {} as Record<K, number>;
-  for (const key of Object.keys(inputs) as K[]) {
-    const parsed = parseFloat(parseWeightInput(inputs[key]));
-    result[key] = Number.isFinite(parsed) ? parsed : 0;
-  }
-  return result;
-}
-
 interface ScoringWeightsResponse {
   composite: CompositeWeights;
   fundamental: FundamentalWeights;
 }
+
+const DEFAULT_COMPOSITE_PERCENTS = fractionsToPercents(DEFAULT_SCORING_WEIGHTS.composite);
+const DEFAULT_FUNDAMENTAL_PERCENTS = fractionsToPercents(DEFAULT_SCORING_WEIGHTS.fundamental);
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
@@ -105,9 +101,8 @@ export default function SettingsPage() {
             title="Composite score"
             metaKicker="5 categories · drives every research Overview"
             fields={COMPOSITE_FIELDS}
-            defaults={DEFAULT_SCORING_WEIGHTS.composite}
-            savedWeights={weightsQ.data?.composite ?? DEFAULT_SCORING_WEIGHTS.composite}
-            normalize={normalizeCompositeWeights}
+            defaultPercents={DEFAULT_COMPOSITE_PERCENTS}
+            savedWeights={weightsQ.data?.composite ?? DEFAULT_COMPOSITE_PERCENTS}
             group="composite"
             queryClient={queryClient}
             toast={toast}
@@ -117,9 +112,8 @@ export default function SettingsPage() {
             title="Fundamental score"
             metaKicker="5 subcategories · drives the Fundamental tab"
             fields={FUNDAMENTAL_FIELDS}
-            defaults={DEFAULT_SCORING_WEIGHTS.fundamental}
-            savedWeights={weightsQ.data?.fundamental ?? DEFAULT_SCORING_WEIGHTS.fundamental}
-            normalize={normalizeFundamentalWeights}
+            defaultPercents={DEFAULT_FUNDAMENTAL_PERCENTS}
+            savedWeights={weightsQ.data?.fundamental ?? DEFAULT_FUNDAMENTAL_PERCENTS}
             group="fundamental"
             queryClient={queryClient}
             toast={toast}
@@ -134,9 +128,8 @@ interface ScoringWeightsSectionProps<K extends string> {
   title: string;
   metaKicker: string;
   fields: DimensionField<K>[];
-  defaults: Record<K, number>;
+  defaultPercents: Record<K, number>;
   savedWeights: Record<K, number>;
-  normalize: (raw: Partial<Record<K, number>> | null | undefined) => Record<K, number>;
   group: "composite" | "fundamental";
   queryClient: ReturnType<typeof useQueryClient>;
   toast: ReturnType<typeof useToast>["toast"];
@@ -146,9 +139,8 @@ function ScoringWeightsSection<K extends string>({
   title,
   metaKicker,
   fields,
-  defaults,
+  defaultPercents,
   savedWeights,
-  normalize,
   group,
   queryClient,
   toast,
@@ -166,25 +158,19 @@ function ScoringWeightsSection<K extends string>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(savedWeights)]);
 
-  const isDirty = useMemo(() => {
-    return fields.some((f) => inputs[f.key] !== savedInputs[f.key]);
-  }, [fields, inputs, savedInputs]);
+  const fieldKeys = useMemo(() => fields.map((f) => f.key), [fields]);
 
-  const normalizedPercents = useMemo(() => {
-    const normalized = normalize(toNumbers(inputs));
-    const result = {} as Record<K, number>;
-    for (const key of Object.keys(normalized) as K[]) {
-      result[key] = Math.round(normalized[key] * 100);
-    }
-    return result;
-  }, [inputs, normalize]);
+  const { total, isValid, canSave } = useMemo(
+    () => computeGroupTotalState(inputs, savedInputs, fieldKeys),
+    [inputs, savedInputs, fieldKeys]
+  );
 
   const handleChange = (key: K, value: string) => {
     setInputs((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleReset = () => {
-    setInputs(toInputs(defaults));
+    setInputs(toInputs(defaultPercents));
   };
 
   const handleSave = async () => {
@@ -225,24 +211,19 @@ function ScoringWeightsSection<K extends string>({
         <span className="text-[10.5px] uppercase tracking-[0.1em] text-mut">{metaKicker}</span>
       </div>
 
-      <div className="pt-7">
-        <div className="grid grid-cols-2 sm:grid-cols-5">
-          {fields.map((f, i) => (
-            <div key={f.key} className={cn("pb-[18px] pr-5", i > 0 && "border-l border-line2 pl-5")}>
-              <div className="font-serif text-[28px] text-foreground">{normalizedPercents[f.key]}%</div>
-              <div className="mt-1.5 text-[10.5px] uppercase tracking-[0.12em] text-mut">{f.label}</div>
-            </div>
-          ))}
-        </div>
-        <div className="mt-2 text-[10.5px] uppercase tracking-[0.1em] text-mut">
-          Sums to 100% after normalization.
-        </div>
+      <div
+        className={cn(
+          "mt-2 pb-5 text-[10.5px] uppercase tracking-[0.1em]",
+          isValid ? "text-mut" : "text-dn"
+        )}
+      >
+        {isValid ? "Total: 100% · valid" : `Total: ${total}% · must equal 100%`}
       </div>
 
-      <div className="mt-7 grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         {fields.map((f) => (
           <div key={f.key}>
-            <label className="mb-2 block text-[10.5px] uppercase tracking-[0.12em] text-mut">{f.label}</label>
+            <label className="mb-2 block text-[10.5px] uppercase tracking-[0.12em] text-mut">{f.label} %</label>
             <input
               type="text"
               inputMode="decimal"
@@ -265,7 +246,7 @@ function ScoringWeightsSection<K extends string>({
         <button
           type="button"
           onClick={handleSave}
-          disabled={!isDirty || isSaving}
+          disabled={!canSave || isSaving}
           className="h-10 rounded-full bg-btnbg px-5 text-[13px] font-medium text-btnfg disabled:opacity-50"
         >
           Save weights

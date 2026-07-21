@@ -172,3 +172,70 @@ export function weightsEqualDefaults<K extends string>(
   const keys = Object.keys(defaults) as K[];
   return keys.every((key) => weights[key] === defaults[key]);
 }
+
+/**
+ * Converts a group of fractions (assumed to already sum to ~1.0, e.g. the
+ * output of normalizeCompositeWeights/normalizeFundamentalWeights) into whole
+ * percentages that sum to EXACTLY 100 (ADR-22, plans/2026-07-21-scoring-weights-direct-percent.md).
+ *
+ * Naive `Math.round(fraction * 100)` per key can drift off 100 due to rounding
+ * (e.g. three even thirds round to 33/33/33 = 99). This applies the
+ * "largest remainder" method: round every value down, then distribute the
+ * leftover percentage points (100 - sum-of-floors) one at a time to the
+ * entries with the largest fractional remainder — the standard apportionment
+ * fix for exactly this class of rounding drift.
+ *
+ * Pure conversion — does not touch the internal fraction-based scoring scale
+ * (DEFAULT_SCORING_WEIGHTS stays fractions) or any of normalizeWeights /
+ * weightedCompositeTotal / weightedFundamentalTotal.
+ */
+export function fractionsToPercents<K extends string>(weights: Record<K, number>): Record<K, number> {
+  const keys = Object.keys(weights) as K[];
+
+  const scaled = keys.map((key) => {
+    const raw = weights[key] * 100;
+    const safe = Number.isFinite(raw) && raw > 0 ? raw : 0;
+    const floor = Math.floor(safe);
+    return { key, floor, remainder: safe - floor };
+  });
+
+  const flooredSum = scaled.reduce((sum, s) => sum + s.floor, 0);
+  let leftover = Math.round(100 - flooredSum);
+
+  // Largest remainder first; ties broken by original key order (stable sort).
+  const byRemainderDesc = [...scaled].sort((a, b) => b.remainder - a.remainder);
+
+  const result = {} as Record<K, number>;
+  for (const s of scaled) result[s.key] = s.floor;
+
+  for (let i = 0; i < byRemainderDesc.length && leftover > 0; i++, leftover--) {
+    result[byRemainderDesc[i].key] += 1;
+  }
+  // Defensive: if leftover is somehow negative (shouldn't happen for a group
+  // that summed to ~1.0 pre-scaling), trim from the smallest remainders last.
+  for (let i = byRemainderDesc.length - 1; i >= 0 && leftover < 0; i--, leftover++) {
+    result[byRemainderDesc[i].key] = Math.max(0, result[byRemainderDesc[i].key] - 1);
+  }
+
+  return result;
+}
+
+/** Converts a group of whole percentages (0-100) back to fractions (÷100). */
+export function percentsToFractions<K extends string>(percents: Record<K, number>): Record<K, number> {
+  const result = {} as Record<K, number>;
+  for (const key of Object.keys(percents) as K[]) {
+    result[key] = percents[key] / 100;
+  }
+  return result;
+}
+
+/**
+ * Validation predicate for the direct-percent settings UX (ADR-22): does this
+ * group's values sum to 100 within `epsilon`? Whole-percent inputs summing to
+ * 100 sum cleanly — the epsilon only guards floating-point dust (e.g. from
+ * repeated ÷100/×100 round-trips), not real drift.
+ */
+export function sumsTo100<K extends string>(weights: Record<K, number>, epsilon = 0.01): boolean {
+  const sum = Object.values(weights as Record<string, number>).reduce((a, b) => a + b, 0);
+  return Math.abs(sum - 100) <= epsilon;
+}
