@@ -9,11 +9,13 @@ import { SkeletonBlock, SkeletonCard, SkeletonText } from "@/components/ui/loadi
  * kicker-variant block approximating the live group-total/validity status
  * line (revised, plans/2026-07-21-scoring-weights-direct-percent.md — no
  * longer a 5-col SkeletonStatBand, since the real band it stood in for was
- * removed), then, added per plans/2026-07-21-scoring-style-presets.md,
- * another short kicker-variant block (the preset picker's label) followed by
- * a small wrapped row of 3-4 pill-variant blocks of varied width (the preset
- * picker itself — a representative sample, not the real per-section count of
- * 9/6), then five label+field row approximations, and a pill-shaped block for
+ * removed), then another short kicker-variant block (the preset picker's
+ * label) followed by a small bordered stack of 3 label-line/description-line
+ * row pairs (revised per plans/2026-07-21-scoring-style-descriptions-retune.md
+ * — supersedes the wrapped-pill-row skeleton the presets plan originally
+ * specified here — mirroring the real hairline-divided list container: a
+ * representative sample of 3 rows, not the real per-section count of 9/6),
+ * then five label+field row approximations, and a pill-shaped block for
  * the reset action.
  */
 export default function SettingsLoading() {
@@ -37,11 +39,13 @@ export default function SettingsLoading() {
 
             <div className="mb-5 mt-5">
               <SkeletonText variant="kicker" className="mb-2 w-32" />
-              <div className="flex flex-wrap gap-2">
-                <SkeletonText variant="pill" className="w-20" />
-                <SkeletonText variant="pill" className="w-24" />
-                <SkeletonText variant="pill" className="w-16" />
-                <SkeletonText variant="pill" className="w-28" />
+              <div className="rounded-md border border-line divide-y divide-line2">
+                {[0, 1, 2].map((row) => (
+                  <div key={row} className="flex flex-col gap-1 px-4 py-3">
+                    <SkeletonBlock className="h-4 w-24" />
+                    <SkeletonBlock className="h-3 w-4/5" />
+                  </div>
+                ))}
               </div>
             </div>
 

@@ -290,22 +290,22 @@ in review.
 
 ## Tasks
 
-1. [ ] Retune **all eight** style composite groups in `SCORING_STYLE_PRESETS`
+1. [x] Retune **all eight** style composite groups in `SCORING_STYLE_PRESETS`
    (`lib/utils/scoring-weights.ts`) to the "Proposed composite weights" table
    (value/deep-value/quality/growth/momentum/sentiment/analyst/income); Balanced
    stays derived and untouched. — Acceptance: `SCORING_STYLE_PRESETS` composite
    groups match the table exactly; `npx vitest run lib/utils/scoring-weights.test.ts`
    green (every group sums to 100, all keys present).
-2. [ ] Retune **all five** style-defining fundamental groups
+2. [x] Retune **all five** style-defining fundamental groups
    (value/deep-value/quality/growth/income) to the "Proposed fundamental
    weights" table; Balanced fundamental stays derived and untouched. —
    Acceptance: fundamental groups match the table; the fundamental
    sum-to-100 / five-keys tests still pass; `balanced.fundamental` deep-equals
    `fractionsToPercents(DEFAULT_SCORING_WEIGHTS.fundamental)`.
-3. [ ] Rewrite all nine `blurb` strings to the "Blurb copy" list above (Growth's
+3. [x] Rewrite all nine `blurb` strings to the "Blurb copy" list above (Growth's
    emphasizes business compounding). — Acceptance: each preset's `blurb` matches
    the new copy; TypeCheck passes (blurb stays a required `string`).
-4. [ ] Change the picker in `app/(dashboard)/settings/page.tsx` to render each
+4. [x] Change the picker in `app/(dashboard)/settings/page.tsx` to render each
    option as **label + always-visible `blurb`** per the functional spec, using
    the Designer's spec + existing `DESIGN.md` tokens. Keep populate-only
    behavior, `presetsForGroup` order, and keyboard/a11y parity.
@@ -313,12 +313,12 @@ in review.
    fundamental options shows its description under its label without hovering;
    clicking one populates the five fields (including any 0% fields) and flips the
    status line to valid; no `PUT` fires until Save.
-5. [ ] Update `DESIGN.md`: the "Style preset picker" component entry and the
+5. [x] Update `DESIGN.md`: the "Style preset picker" component entry and the
    `settings/loading.tsx` skeleton note, to describe label+description options
    instead of a bare `title`-tooltip pill. — Acceptance: `DESIGN.md` no longer
    claims the blurb is `title`-only; the skeleton note matches the new option
    shape. (Designer stage owns this; Coding agent verifies no residual drift.)
-6. [ ] Update tests: the structural assertions in
+6. [x] Update tests: the structural assertions in
    `lib/utils/scoring-weights.test.ts` (sum-to-100, five keys, nine ids,
    composite-only vs both-groups membership, Balanced-derived) all still pass
    unchanged — they assert structure, never specific numbers, so the retune is
@@ -329,7 +329,7 @@ in review.
    caught. — Acceptance: `npx vitest run` green; the new value-lock assertions
    reflect the retuned numbers and include at least one zero-containing group per
    group type.
-7. [ ] Update **ADR-24** in `DECISIONS.md`: its rationale must record BOTH
+7. [x] Update **ADR-24** in `DECISIONS.md`: its rationale must record BOTH
    governing principles — (a) **maximize distinction between styles, zeros
    allowed for noise / anti-diagnostic dimensions**, and (b) **`intrinsicValue`
    is structurally biased against growth styles** (so it is zeroed, not merely

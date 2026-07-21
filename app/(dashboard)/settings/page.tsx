@@ -225,16 +225,16 @@ function ScoringWeightsSection<K extends string>({
         <label className="mb-2 block text-[10.5px] uppercase tracking-[0.12em] text-mut">
           Start from a style
         </label>
-        <div className="flex flex-wrap gap-2">
+        <div className="rounded-md border border-line divide-y divide-line2">
           {presetsForGroup(group).map((preset) => (
             <button
               key={preset.id}
               type="button"
-              title={preset.blurb}
               onClick={() => setInputs(toInputs(preset[group]! as Record<K, number>))}
-              className="h-8 rounded-full border border-line bg-transparent px-3.5 text-[12px] font-medium text-foreground hover:bg-fill focus-visible:border-foreground focus-visible:outline-none"
+              className="flex w-full flex-col items-start gap-1 bg-transparent px-4 py-3 text-left hover:bg-fill focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-foreground"
             >
-              {preset.label}
+              <span className="text-[13.5px] font-medium text-foreground">{preset.label}</span>
+              <span className="text-[12px] text-mut">{preset.blurb}</span>
             </button>
           ))}
         </div>

@@ -475,6 +475,177 @@ describe("SCORING_STYLE_PRESETS", () => {
   });
 });
 
+// ADR-24 (plans/2026-07-21-scoring-style-descriptions-retune.md): the preset
+// values were re-derived to maximize inter-style distinction (zeros allowed
+// for noise/anti-diagnostic dimensions). The structural tests above stay
+// numeric-agnostic on purpose; these value-lock assertions pin the retuned
+// numbers for the zero-containing groups (one composite + one fundamental
+// pair per "side" of the retune) so a future accidental edit — or a
+// well-meaning "presets shouldn't have zeros" change — is caught immediately.
+describe("SCORING_STYLE_PRESETS value-lock (ADR-24 retune)", () => {
+  const byId = (id: string) => SCORING_STYLE_PRESETS.find((p) => p.id === id)!;
+
+  it("growth.composite is locked to the business-led, IV-zeroed retune", () => {
+    expect(byId("growth").composite).toEqual({
+      intrinsicValue: 0,
+      fundamental: 55,
+      technical: 10,
+      sentiment: 15,
+      analyst: 20,
+    });
+  });
+
+  it("growth.fundamental is locked to the growth-subscore-dominant retune", () => {
+    expect(byId("growth").fundamental).toEqual({
+      valuation: 0,
+      profitability: 15,
+      growth: 70,
+      financial: 15,
+      dividend: 0,
+    });
+  });
+
+  it("deep-value.composite is locked to the max-IV, tech/sentiment-zeroed retune", () => {
+    expect(byId("deep-value").composite).toEqual({
+      intrinsicValue: 55,
+      fundamental: 30,
+      technical: 0,
+      sentiment: 0,
+      analyst: 15,
+    });
+  });
+
+  it("deep-value.fundamental is locked to the max-valuation, growth/dividend-zeroed retune", () => {
+    expect(byId("deep-value").fundamental).toEqual({
+      valuation: 65,
+      profitability: 15,
+      growth: 0,
+      financial: 20,
+      dividend: 0,
+    });
+  });
+
+  it("value.composite is locked (tech/sentiment zeroed)", () => {
+    expect(byId("value").composite).toEqual({
+      intrinsicValue: 45,
+      fundamental: 35,
+      technical: 0,
+      sentiment: 0,
+      analyst: 20,
+    });
+  });
+
+  it("value.fundamental is locked (growth zeroed)", () => {
+    expect(byId("value").fundamental).toEqual({
+      valuation: 55,
+      profitability: 20,
+      growth: 0,
+      financial: 20,
+      dividend: 5,
+    });
+  });
+
+  it("quality.composite is locked (fundamental-dominant)", () => {
+    expect(byId("quality").composite).toEqual({
+      intrinsicValue: 15,
+      fundamental: 55,
+      technical: 5,
+      sentiment: 5,
+      analyst: 20,
+    });
+  });
+
+  it("quality.fundamental is locked (profitability-dominant, dividend zeroed)", () => {
+    expect(byId("quality").fundamental).toEqual({
+      valuation: 10,
+      profitability: 60,
+      growth: 20,
+      financial: 10,
+      dividend: 0,
+    });
+  });
+
+  it("momentum.composite is locked (technical-dominant, IV zeroed)", () => {
+    expect(byId("momentum").composite).toEqual({
+      intrinsicValue: 0,
+      fundamental: 5,
+      technical: 60,
+      sentiment: 25,
+      analyst: 10,
+    });
+  });
+
+  it("sentiment.composite is locked (sentiment-dominant, IV zeroed)", () => {
+    expect(byId("sentiment").composite).toEqual({
+      intrinsicValue: 0,
+      fundamental: 10,
+      technical: 15,
+      sentiment: 60,
+      analyst: 15,
+    });
+  });
+
+  it("analyst.composite is locked (analyst-dominant)", () => {
+    expect(byId("analyst").composite).toEqual({
+      intrinsicValue: 5,
+      fundamental: 15,
+      technical: 5,
+      sentiment: 15,
+      analyst: 60,
+    });
+  });
+
+  it("income.composite is locked (technical zeroed)", () => {
+    expect(byId("income").composite).toEqual({
+      intrinsicValue: 15,
+      fundamental: 40,
+      technical: 0,
+      sentiment: 5,
+      analyst: 40,
+    });
+  });
+
+  it("income.fundamental is locked (dividend-dominant, growth zeroed)", () => {
+    expect(byId("income").fundamental).toEqual({
+      valuation: 10,
+      profitability: 20,
+      growth: 0,
+      financial: 15,
+      dividend: 55,
+    });
+  });
+
+  it("every preset's blurb states what the style optimizes for", () => {
+    expect(byId("value").blurb).toBe(
+      "Optimizes for stocks trading below DCF fair value with solid, safe fundamentals."
+    );
+    expect(byId("deep-value").blurb).toBe(
+      "Maximizes cheapness vs. intrinsic value for distressed or contrarian turnarounds."
+    );
+    expect(byId("quality").blurb).toBe(
+      "Optimizes for durable profitability and growth at a still-reasonable price."
+    );
+    expect(byId("growth").blurb).toBe(
+      "Optimizes for accelerating revenue and earnings — the business compounding, not the price chart."
+    );
+    expect(byId("momentum").blurb).toBe(
+      "Optimizes for price trend and volume strength; fundamentals barely count."
+    );
+    expect(byId("sentiment").blurb).toBe(
+      "Optimizes for positive news-sentiment flow above all other signals."
+    );
+    expect(byId("analyst").blurb).toBe(
+      "Optimizes for Wall-Street consensus buy ratings, corroborated by news flow."
+    );
+    expect(byId("income").blurb).toBe(
+      "Optimizes for dividend strength and payout safety over price appreciation."
+    );
+    expect(byId("balanced").blurb).toBe(
+      "The house-default weighting — an even, all-signals starting point."
+    );
+  });
+});
+
 describe("presetsForGroup", () => {
   it("composite: returns all nine presets in authorship order", () => {
     const result = presetsForGroup("composite");
