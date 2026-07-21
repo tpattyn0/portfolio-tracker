@@ -231,7 +231,7 @@ proving these need no change.
 The `## Verify` block in AGENT.md runs automatically (`npm run verify`). Beyond it:
 
 - **Manual, settings page (requires the owner-gated migration to be applied to exercise
-  live GET/PUT — see Assumptions):** open `/settings`; each group loads showing whole
+  live GET/PUT — see Assumptions; applied 2026-07-21):** open `/settings`; each group loads showing whole
   percents summing to 100 ("Total: 100% / 100%", valid). Change one input so the group sums
   to 94 → Save disabled, total shows invalid. Change so it sums to 101 → Save disabled.
   Adjust to exactly 100 → Save enables (when dirty). Save → toast; open a research symbol's
@@ -261,6 +261,10 @@ The `## Verify` block in AGENT.md runs automatically (`npm run verify`). Beyond 
   is not applied by this plan.** Live GET/PUT and per-user reweight still require the owner's
   `prisma migrate deploy` (unchanged from the prior plan). All new code/tests are exercised via
   mocks, as before. This plan adds no new migration.
+  **Update 2026-07-21: the owner has since run `prisma migrate deploy` — `prisma migrate status`
+  confirms "Database schema is up to date!". Live GET/PUT and per-user reweight are now
+  exercisable against the real database (see ADR-22 in DECISIONS.md and the Verification
+  section's manual-check caveat above, which depended on this).**
 - **Save is gated on `dirty && sumsTo100(group)`.** A pristine, already-100 group keeps Save
   disabled (nothing to save) — consistent with today's dirty-gate.
 - **Per-section (per-group) validation and save are retained** — Composite and Fundamental are

@@ -1,10 +1,10 @@
 # Review: configurable per-user scoring weights (PR #22)
 Date: 2026-07-20
-Status: IMPLEMENTED — 2026-07-21 (code + review complete; migration created but NOT applied — owner `prisma migrate deploy` required before the feature is live)
+Status: IMPLEMENTED — 2026-07-21 (code + review complete; migration applied 2026-07-21 — the feature is live)
 
 ## Summary
 Findings: 0 BLOCKERs, 0 ISSUEs, 1 SUGGESTION, 2 QUESTIONs
-Requires owner decision: SCW-Q1 (owner must run `prisma migrate deploy` before the feature works live), SCW-Q2 (visual/live click-through of the settings page + live composite update)
+Requires owner decision: SCW-Q1 (resolved 2026-07-21 — migration applied), SCW-Q2 (visual/live click-through of the settings page + live composite update)
 Ready for Coding agent: SCW-S1 (optional — a small clarifying comment; non-blocking)
 
 Reviewed branch HEAD `a6d2d4b6` against `origin/main` (`git fetch --prune` first; working tree clean, branch pushed). This is a large, well-executed feature diff (2505 insertions across 28 files). Every high-risk property called out in the task was verified statically against the actual code and its tests, not assumed:
@@ -26,10 +26,10 @@ Apart from the two owner-action QUESTIONs (which are process/deploy gates, not c
 
 ## Findings
 
-### SCW-Q1 — QUESTION (owner action: apply the migration)
+### SCW-Q1 — QUESTION (owner action: apply the migration) — RESOLVED 2026-07-21
 **File:** `prisma/migrations/20260720220007_user_scoring_preferences/migration.sql`
-**Problem:** The migration was generated with `prisma migrate dev --create-only` and is intentionally NOT applied (correct per the ADR-6/ADR-14/ADR-19 owner-gated protocol — dev and prod share one Supabase DB, so no migration is applied without explicit owner sign-off). This is not a defect and must not be treated as one. The consequence to make visible: until the owner runs `prisma migrate deploy`, the `UserScoringPreferences` table does not exist in the live database, so `GET`/`PUT /api/settings/scoring-weights` — and the per-user fundamental/composite reweight paths that call `getWeights()` — will 500 against the real table, even though the code and the regenerated Prisma Client are complete. The `getWeights` coalescing does not rescue this: the failure is at the Prisma query (missing relation), before any coalescing.
-**Recommendation:** Owner runs `prisma migrate deploy` (with `DIRECT_URL` set) to create the table, then confirms `prisma migrate status` shows it applied. No code change. The migration SQL was reviewed and is additive-only (`CREATE TABLE`, two `CREATE INDEX`, one `ADD CONSTRAINT` FK — no `DROP`/`ALTER DROP`/destructive statement) and matches the `UserScoringPreferences` model in `schema.prisma` exactly (10 `Float?`/`DOUBLE PRECISION` columns, `userId` unique index, `onDelete: Cascade` FK to `User`, `User.scoringPreferences` back-relation).
+**Problem (as originally raised):** The migration was generated with `prisma migrate dev --create-only` and was intentionally NOT applied (correct per the ADR-6/ADR-14/ADR-19 owner-gated protocol — dev and prod share one Supabase DB, so no migration is applied without explicit owner sign-off). This was not a defect. The consequence made visible at the time: until the owner ran `prisma migrate deploy`, the `UserScoringPreferences` table did not exist in the live database, so `GET`/`PUT /api/settings/scoring-weights` — and the per-user fundamental/composite reweight paths that call `getWeights()` — would 500 against the real table, even though the code and the regenerated Prisma Client were complete.
+**Resolution:** The owner ran `prisma migrate deploy` on 2026-07-21; `prisma migrate status` now confirms "Database schema is up to date!" — no pending migrations. The migration SQL was additive-only (`CREATE TABLE`, two `CREATE INDEX`, one `ADD CONSTRAINT` FK — no `DROP`/`ALTER DROP`/destructive statement) and matches the `UserScoringPreferences` model in `schema.prisma` exactly. `GET`/`PUT /api/settings/scoring-weights` and the per-user reweight paths are live.
 
 ### SCW-Q2 — QUESTION (owner action: live/visual verification the Verify block cannot cover)
 **File:** `app/(dashboard)/settings/page.tsx`, `components/overview.tsx`, `components/fundamental-analysis.tsx`

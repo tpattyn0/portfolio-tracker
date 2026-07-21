@@ -183,9 +183,46 @@ describe("weightsEqualDefaults", () => {
     expect(weightsEqualDefaults(DEFAULT_SCORING_WEIGHTS.composite, DEFAULT_SCORING_WEIGHTS.composite)).toBe(true);
   });
 
-  it("returns false when any key differs", () => {
+  it("returns false when any key differs (same scale)", () => {
     const custom = { ...DEFAULT_SCORING_WEIGHTS.composite, technical: 0.5 };
     expect(weightsEqualDefaults(custom, DEFAULT_SCORING_WEIGHTS.composite)).toBe(false);
+  });
+
+  // DP-I1 (reviews/2026-07-21-scoring-weights-direct-percent.md): GET
+  // /api/settings/scoring-weights returns whole percents (getWeightsForSettings)
+  // while DEFAULT_SCORING_WEIGHTS stays fractions — the comparison must be
+  // scale-agnostic or every default-weights user is wrongly flagged "custom".
+  it("returns true for a default-percent composite group compared against the fraction-scaled defaults", () => {
+    const defaultPercents = { intrinsicValue: 25, fundamental: 25, technical: 20, sentiment: 15, analyst: 15 };
+    expect(weightsEqualDefaults(defaultPercents, DEFAULT_SCORING_WEIGHTS.composite)).toBe(true);
+  });
+
+  it("returns true for a default-percent fundamental group compared against the fraction-scaled defaults", () => {
+    const defaultPercents = { valuation: 30, profitability: 30, growth: 20, financial: 15, dividend: 5 };
+    expect(weightsEqualDefaults(defaultPercents, DEFAULT_SCORING_WEIGHTS.fundamental)).toBe(true);
+  });
+
+  it("returns false for a genuinely custom percent composite group vs the fraction-scaled defaults", () => {
+    const customPercents = { intrinsicValue: 40, fundamental: 20, technical: 20, sentiment: 10, analyst: 10 };
+    expect(weightsEqualDefaults(customPercents, DEFAULT_SCORING_WEIGHTS.composite)).toBe(false);
+  });
+
+  it("returns false for a genuinely custom percent fundamental group vs the fraction-scaled defaults", () => {
+    const customPercents = { valuation: 50, profitability: 20, growth: 15, financial: 10, dividend: 5 };
+    expect(weightsEqualDefaults(customPercents, DEFAULT_SCORING_WEIGHTS.fundamental)).toBe(false);
+  });
+
+  it("is tolerant of floating-point dust from normalization, not exact-equality fragile", () => {
+    // A hand-rounded percent split whose proportions are the defaults' but
+    // carries harmless float noise after division — must still compare equal.
+    const noisy = {
+      intrinsicValue: 25.000000001,
+      fundamental: 24.999999999,
+      technical: 20,
+      sentiment: 15,
+      analyst: 15,
+    };
+    expect(weightsEqualDefaults(noisy, DEFAULT_SCORING_WEIGHTS.composite)).toBe(true);
   });
 });
 
@@ -238,6 +275,26 @@ describe("fractionsToPercents", () => {
     const normalized = { a: 2 / 8, b: 2 / 8, c: 1.6 / 8, d: 1.2 / 8, e: 1.2 / 8 };
     const result = fractionsToPercents(normalized);
     expect(Object.values(result).reduce((a, b) => a + b, 0)).toBe(100);
+  });
+
+  // DP-S1 (reviews/2026-07-21-scoring-weights-direct-percent.md): the
+  // negative-leftover trim branch is defensive-only for the real caller
+  // (getWeightsForSettings always passes an already-normalized group summing
+  // to ~1.0, so sum-of-floors can never exceed 100 there) but was previously
+  // untested directly. This hand-constructs a group whose ×100 floors sum to
+  // 101 (input sums to 1.055, above the ~1.0 the real caller guarantees) to
+  // drive the `leftover < 0` trim loop and lock in its behavior.
+  it("trims the smallest-remainder entry when sum-of-floors exceeds 100 (over-100 defensive branch)", () => {
+    const overSumming = { a: 0.209, b: 0.209, c: 0.209, d: 0.209, e: 0.219 };
+    // Sanity: floors are [20,20,20,20,21], summing to 101 (over 100) before repair.
+    const floors = Object.values(overSumming).map((v) => Math.floor(v * 100));
+    expect(floors.reduce((a, b) => a + b, 0)).toBe(101);
+
+    const result = fractionsToPercents(overSumming);
+    expect(Object.values(result).reduce((a, b) => a + b, 0)).toBe(100);
+    // The one-point excess is trimmed from a floor-101 bucket, landing back on
+    // an even split — deterministic given the smallest-remainder tie-break.
+    expect(result).toEqual({ a: 20, b: 20, c: 20, d: 20, e: 20 });
   });
 });
 

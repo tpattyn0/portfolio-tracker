@@ -396,6 +396,9 @@ runs after every task and must pass. Beyond it:
   the model. The Coding agent must surface this in its PR summary (mirroring ADR-19's
   "accepted-but-pending-deploy" handling) and must not mark the plan `implemented` on
   the strength of code alone.
+  **Update 2026-07-21: the owner has since run `prisma migrate deploy` — `prisma migrate
+  status` confirms "Database schema is up to date!". This open decision is resolved; the
+  migration is applied and the feature is live (see ADR-22 in DECISIONS.md).**
 
 ---
 

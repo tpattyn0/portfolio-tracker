@@ -163,14 +163,45 @@ export function weightedFundamentalTotal(breakdown: FundamentalBreakdown, weight
   return sum / weightSum;
 }
 
-/** Deep-equal comparison of a weight group against defaults — powers the "Your weighting" meta kicker. */
+/**
+ * Scale-invariant, epsilon-tolerant comparison of a weight group against
+ * defaults — powers the "Your weighting" meta kicker (`overview.tsx`,
+ * `fundamental-analysis.tsx`).
+ *
+ * As of ADR-22, `GET /api/settings/scoring-weights` returns whole percentages
+ * summing to 100 (`getWeightsForSettings`), while `DEFAULT_SCORING_WEIGHTS`
+ * stays fraction-scaled (the internal scoring scale) — so `weights` and
+ * `defaults` can legitimately arrive in different scales. Comparing them by
+ * exact `===` on raw numbers (the pre-ADR-22 behavior, safe only because both
+ * sides were fractions then) would treat every default-weights user's percent
+ * group `{25,25,20,15,15}` as "custom" vs. the fraction defaults
+ * `{0.25,...}` — this was DP-I1. Normalizing both sides to fractions (divide
+ * by each side's own group sum) before comparing makes the check
+ * scale-agnostic, matching the same scale-invariance the scoring math itself
+ * relies on (`normalizeWeights`). Floating-point division requires a small
+ * epsilon rather than exact equality.
+ */
 export function weightsEqualDefaults<K extends string>(
   weights: Record<K, number> | null | undefined,
-  defaults: Record<K, number>
+  defaults: Record<K, number>,
+  epsilon = 1e-9
 ): boolean {
   if (!weights) return true;
   const keys = Object.keys(defaults) as K[];
-  return keys.every((key) => weights[key] === defaults[key]);
+
+  const normalize = (group: Record<K, number>): Record<K, number> => {
+    const sum = keys.reduce((total, key) => total + (Number.isFinite(group[key]) ? group[key] : 0), 0);
+    const result = {} as Record<K, number>;
+    for (const key of keys) {
+      result[key] = sum > 0 && Number.isFinite(group[key]) ? group[key] / sum : 0;
+    }
+    return result;
+  };
+
+  const normalizedWeights = normalize(weights);
+  const normalizedDefaults = normalize(defaults);
+
+  return keys.every((key) => Math.abs(normalizedWeights[key] - normalizedDefaults[key]) <= epsilon);
 }
 
 /**
