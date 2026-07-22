@@ -2,7 +2,7 @@
 
 ## What this is
 
-A personal stock portfolio tracker: users log real buy/sell transactions, see live-priced portfolio performance, and research any stock (owned or not) using automated technical, fundamental, valuation, and news-sentiment analysis.
+**Meridian** — a personal stock portfolio tracker: users log real buy/sell transactions, see live-priced portfolio performance, and research any stock (owned or not) using automated technical, fundamental, valuation, and news-sentiment analysis. (Name meaning and rationale: `GTM.md` → Product name.)
 
 ## Who it's for
 

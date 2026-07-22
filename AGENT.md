@@ -1,4 +1,4 @@
-# AGENT.md — portfolio-tracker
+# AGENT.md — Meridian
 > Project-specific conventions and constraints. Generic guardrails are in `CLAUDE.md` — not here.
 
 ## Conventions
