@@ -23,7 +23,7 @@ Individual retail investors who manage their own portfolio and want research too
 - Live price sync for all positions.
 - Base display currency switch, with FX conversion.
 - Closed/partially-closed position history — win rate, average/median return, average holding days, ticker/name filter, CSV export. Computed on the fly via FIFO matching of transactions; nothing is persisted for this feature.
-- AI-generated daily portfolio insight (market summary, risks, opportunities, recommendations) via Gemini, cached once per user per day.
+- AI-generated daily portfolio insight (market summary, risks, opportunities, recommendations) via Gemini, cached once per user per day. Covers current holdings only — a fully-sold (closed) position is excluded from the prompt.
 
 **Research** (available for any symbol, owned or not)
 - Live quote and historical chart.

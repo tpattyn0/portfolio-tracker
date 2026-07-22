@@ -69,7 +69,7 @@ correct fix is filtering at the read site, exactly as the rest of the app alread
 
 ## Tasks
 
-1. [ ] Filter the insights route's position load to `quantity > 0` — in
+1. [x] Filter the insights route's position load to `quantity > 0` — in
    `app/api/insights/portfolio/route.ts`, add `where: { quantity: { gt: 0 } }` to the
    `positions` include (mirroring `app/api/portfolio/route.ts:19-22`). No other logic changes;
    the existing `positions.length === 0` branch now correctly triggers for a fully-exited
@@ -78,7 +78,7 @@ correct fix is filtering at the read site, exactly as the rest of the app alread
    `quantity: { gt: 0 }`; `positions.map(p => p.ticker)` (prompt line ~81) can no longer include
    a `quantity: 0` ticker.
 
-2. [ ] Add a regression test at `app/api/insights/portfolio/route.test.ts` following the existing
+2. [x] Add a regression test at `app/api/insights/portfolio/route.test.ts` following the existing
    route-test mocking pattern (`vi.mock("@/lib/prisma")`, `vi.mock("@/lib/utils/auth")`, as in
    `app/api/portfolio/positions/[ticker]/sell/route.test.ts` and
    `app/api/portfolio/route.test.ts`). Cover: (a) **happy path / core regression** — a portfolio
@@ -96,7 +96,7 @@ correct fix is filtering at the read site, exactly as the rest of the app alread
    — Acceptance: `npx vitest run app/api/insights/portfolio/route.test.ts` passes; the test fails
    if the `quantity: { gt: 0 }` filter is removed from the route.
 
-3. [ ] Documentation: add a one-line note to `PRODUCT.md`'s AI-generated daily insight bullet
+3. [x] Documentation: add a one-line note to `PRODUCT.md`'s AI-generated daily insight bullet
    (line 26) clarifying the note covers current holdings only, and add an `AGENT.md`
    known-fragile-surface entry recording that any read of `portfolio.positions` intended to
    represent "current holdings" must filter `quantity > 0` (fully-sold positions are retained as
