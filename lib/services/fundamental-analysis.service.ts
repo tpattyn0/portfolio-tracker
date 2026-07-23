@@ -107,7 +107,10 @@ export class FundamentalAnalysisService {
       // stale if its scoreDetails.scoringVersion is absent or lower than the
       // current SCORING_VERSION — independent of and ANDed with the 24h
       // recency gate below.
-      const cachedScoreDetails = cached?.scoreDetails as { scoringVersion?: number } | null | undefined;
+      const cachedScoreDetails =
+        cached?.scoreDetails && typeof cached.scoreDetails === 'object' && !Array.isArray(cached.scoreDetails)
+          ? (cached.scoreDetails as { scoringVersion?: number })
+          : null;
       const isCacheFresh = !!cached && (cachedScoreDetails?.scoringVersion ?? 0) >= SCORING_VERSION;
       const isWithin24Hours = cached && cached.lastUpdated > new Date(Date.now() - 24 * 60 * 60 * 1000);
 
