@@ -1,10 +1,10 @@
 # Review: TD-33 — hover-marker padded-domain alignment (`plotYFraction`)
 Date: 2026-07-23
-Status:
+Status: IMPLEMENTED — 2026-07-23
 
 ## Summary
 Findings: [0 BLOCKERs, 0 ISSUEs, 2 SUGGESTIONs, 1 QUESTION]
-Requires owner decision: TD33-Q1 (flat-series hover-marker convention change — confirm intended; low reachability)
+Requires owner decision: TD33-Q1 — RESOLVED 2026-07-23 (owner chose option A: accept the new midpoint convention, log `buildPath` as debt → TD-40)
 Ready for Coding agent: TD33-S1, TD33-S2
 
 Scope reviewed: `git diff main...HEAD` on `feature/td33-hover-marker-padded-domain`
@@ -320,3 +320,36 @@ appended to ADR-29's **Tradeoffs**, suggested wording:
 
 If the owner chooses option (b), the reconciliation of `buildPath`'s `|| 1` guard
 belongs in a TECH_DEBT row plus a Planner-scoped task, not a new ADR.
+
+
+## Resolution (2026-07-23)
+
+All three findings closed. Verified by the orchestrator against branch HEAD before stamping.
+
+- **TD33-Q1 — owner decision, option A (accept and document).** The flat-series divergence
+  is accepted as-is: on a zero-range series `buildPath`'s `|| 1` guard floors the line to the
+  plot bottom while `plotYFraction`'s explicit `range === 0` branch puts gridlines and the
+  marker at the midpoint. Accepted because (a) it is pre-existing — gridlines have used the
+  midpoint convention since `gridlineYs` landed 2026-07-20, and what this PR changed is only
+  that the *marker* switched to join them; and (b) the new behavior is the more defensible
+  one, since the marker now agrees with the y-axis labels the user is actually reading.
+  Reconciling `buildPath` is a change to the most load-bearing function in the module and
+  wants its own plan. Logged as **TD-40** with the zero-range convention decision, the
+  reachability note (`marginDomain` passes a zero range through unchanged), and the
+  ADR-11/dip-clipping regression coverage that any future refactor must re-run.
+- **TD33-S1 — fixed.** `DECISIONS.md` ADR-29 Confidence field corrected from "8 of the new
+  tests fail" to **6** (the count this review verified by performing the mutation directly).
+  `AGENT.md:42`'s `detail-price-chart.tsx` `hoverYFrac` citation corrected `:140-141` →
+  `:140-142`; verified the expression spans three lines at HEAD.
+- **TD33-S2 — fixed by narrowing the claim, not by refactoring.** ADR-29's "impossible by
+  construction" and AGENT.md's "all read one mapping" both overstated the result while
+  `buildPath` still inlines its own copy at `chart-path.ts:110`. Both now state the scope
+  accurately (marker, reference line, gridlines — not `buildPath`), name the differing
+  zero-range guards as the reason substitution is not mechanical, cite the 8,000-case
+  numerical agreement, and point at TD-40. AGENT.md additionally instructs any future change
+  to the formula to land in **both** places.
+
+**Verified at stamp time:** the `- 4` tooltip offsets remain byte-identical in both charts
+(`git diff main...HEAD` shows no change to those lines); no existing assertion in
+`chart-path.test.ts` was modified (the only deletions are the file header and the import line,
+extended to add `plotYFraction`); `npm run verify` green.
