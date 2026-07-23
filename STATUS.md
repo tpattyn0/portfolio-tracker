@@ -1,7 +1,10 @@
 # STATUS.md
 
 ## In progress
-_Nothing in flight._
+Orchestration: TD-33 — chart hover-marker padded-domain alignment
+Since: 2026-07-23
+Branch: plan/td33-hover-marker
+Next: Planner
 
 ## Blocked
 TD-01 — NEWS_API_KEY live + public in history; risk accepted per ADR-7, blocks production deploys only
