@@ -11,7 +11,17 @@ export async function GET() {
 
     const portfolio = await prisma.portfolio.findUnique({
       where: { userId: auth.userId },
-      include: { positions: true },
+      include: {
+        positions: {
+          where: {
+            quantity: {
+              gt: 0, // Only current holdings — a fully-sold position keeps its
+              // row at quantity 0 (never deleted, see ADR-18) and must not
+              // leak into the AI prompt as if still held.
+            },
+          },
+        },
+      },
     });
 
     // Check for existing insight today
