@@ -318,6 +318,21 @@ ISSUE (LCB-I2) — a doc-only line-citation shift caused mechanically by the
 LCB-S1 code insertion. It requires no owner decision and is a single-line edit to
 ADR-27's Evidence.
 
+## Manual verification (owner, 2026-07-23 — post-merge)
+
+The three manual checks the plan's `## Verification` section deferred to the
+owner (they need the app running against real data, which no agent session
+could do) were all run by the owner after PR #32 merged. **All three pass.**
+
+| Check | Result |
+|---|---|
+| **TD-12** — `/dashboard` daily insight and research-page news sentiment still generate | Pass. The Gemini factory consolidation is invisible to both call sites, as intended. |
+| **TD-34** — fundamentals page emits at most the one-line `safeQuoteSummary` drift warning, never the ~40-line `The following result did not validate with schema` block | Pass. `validation: { logErrors: false }` suppresses only the pre-throw dump; the ADR-15 catch/coerce/warn contract survives in practice, not just in the unit test. |
+| **TD-11** — one fresh fetch per previously-cached symbol, then cache hits, **with fundamental scores unchanged** | Pass. This was the regression-sensitive one: `earningsHistory` fed no computed metric, so an unchanged score is the correct outcome and a changed score would have indicated the modules-array edit removed something load-bearing. Scores held. |
+
+This closes the last open verification item for this batch. Nothing in the
+implementation is now unverified.
+
 ## Proposed DECISIONS.md entries
 
 None. ADR-27 as committed already covers both invariants in this batch (plus the
