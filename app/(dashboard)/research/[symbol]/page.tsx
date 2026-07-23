@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Loader2, Plus, Star } from "lucide-react";
+import { AlertCircle, Loader2, Plus, Star } from "lucide-react";
 import { Overview } from "@/components/overview";
 import { AddToWishlistModal } from "@/components/add-to-wishlist-modal";
 import { ComponentErrorBoundary } from "@/components/error-boundary";
@@ -59,31 +59,31 @@ type TabValue = (typeof ALL_TABS)[number]["value"];
 export default function ResearchStockPage() {
   const params = useParams();
   const symbol = params.symbol as string;
-  const [quote, setQuote] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabValue>("overview");
 
-  useEffect(() => {
-    if (symbol) {
-      fetchStockData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [symbol]);
-
-  const fetchStockData = async () => {
-    setLoading(true);
-    try {
-      const quoteRes = await fetch(`/api/market/quote/${symbol}`);
-      if (quoteRes.ok) {
-        const quoteData = await quoteRes.json();
-        setQuote(quoteData);
-      }
-    } catch (error) {
-      console.error("Error fetching stock data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Deliberately shares its queryKey (["quote", symbol]) with the identical
+  // query on portfolio/[ticker]/page.tsx:63-72 — both pages render the same
+  // header/stat card off the same endpoint (DESIGN.md: the two headers are
+  // header-for-header identical), so a shared cache entry is the intended
+  // cross-page cache hit, not a collision. Deliberately does NOT copy that
+  // sibling's `refetchInterval: 30000`: refetchInterval is a per-observer
+  // React Query v5 option, so this page adds no polling observer of its own
+  // — but because the cache entry is shared, a concurrently-mounted sibling's
+  // 30s poll refreshes it, and this page (subscribed to the same entry) will
+  // observe that update. Harmless on this read-and-analyze surface; just not
+  // an absolute "never updates" guarantee.
+  // See plans/2026-07-23-td08-td15-cleanup.md and DECISIONS.md ADR-28.
+  const quoteQ = useQuery({
+    queryKey: ["quote", symbol],
+    queryFn: async () => {
+      const res = await fetch(`/api/market/quote/${symbol}`);
+      if (!res.ok) throw new Error("Failed to fetch quote");
+      return res.json();
+    },
+    enabled: !!symbol,
+    staleTime: 5 * 60 * 1000,
+  });
+  const quote = quoteQ.data;
 
   // Ownership signal for the Overview tab's context-aware verdict labels
   // (MRD-Q1): reuses the same positions lookup the Transactions tab already
@@ -127,7 +127,7 @@ export default function ResearchStockPage() {
   // (PT-S1, reviews/2026-07-19-positions-tab.md).
   const effectiveTab = tabs.some((tab) => tab.value === activeTab) ? activeTab : "overview";
 
-  if (loading) {
+  if (quoteQ.isPending) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-mut" />
@@ -135,8 +135,12 @@ export default function ResearchStockPage() {
     );
   }
 
-  return (
-    <div>
+  // Company header — shared by both the error and resolved states below so a
+  // failed quote fetch never strands the user on a headerless page with no
+  // way back (mirrors portfolio/[ticker]/page.tsx's "Position not found"
+  // precedent of keeping a navigation affordance on a page-level dead-end).
+  const header = (
+    <>
       <Link href="/research" className="text-[10.5px] uppercase tracking-[0.12em] text-mut">
         ← The research desk
       </Link>
@@ -172,6 +176,24 @@ export default function ResearchStockPage() {
           </Link>
         </div>
       </div>
+    </>
+  );
+
+  if (quoteQ.isError) {
+    return (
+      <div>
+        {header}
+        <div className="flex h-32 items-center justify-center rounded-lg border border-border bg-card text-mut">
+          <AlertCircle className="mr-2 h-4 w-4" />
+          Unable to load quote data
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {header}
 
       {quote && (
         <div className="mb-5 grid grid-cols-4 rounded-lg border border-border bg-card">

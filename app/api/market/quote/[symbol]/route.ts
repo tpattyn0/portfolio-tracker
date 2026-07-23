@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { marketDataService } from "@/lib/services/market-data.service";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/utils/auth";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ symbol: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await getAuthenticatedUser();
+    if (auth.error) return auth.error;
 
     const { symbol } = await params;
     const quote = await marketDataService.getQuote(symbol);
