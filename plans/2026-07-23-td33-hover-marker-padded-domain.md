@@ -175,7 +175,7 @@ and AGENT.md:42 names it as TD-33 scope.
 
 ## Tasks
 
-1. [ ] **Add `plotYFraction()` to `lib/utils/chart-path.ts` and refactor `gridlineYs` onto it.**
+1. [x] **Add `plotYFraction()` to `lib/utils/chart-path.ts` and refactor `gridlineYs` onto it.**
    Signature `plotYFraction(value: number, domainMin: number, domainMax: number, height: number, padding = 8): number`,
    returning `(padding + (1 - (value - domainMin) / range) * (height - 2 * padding)) / height`.
    Degenerate cases must mirror `gridlineYs` exactly: when `domainMax === domainMin`
@@ -191,7 +191,7 @@ and AGENT.md:42 names it as TD-33 scope.
    pre-existing `gridlineYs` suite unmodified (its 6 tests are the regression guard
    that the refactor changed no gridline output), and `npx tsc --noEmit` is clean.
 
-2. [ ] **Add unit tests for `plotYFraction` in `lib/utils/chart-path.test.ts`.**
+2. [x] **Add unit tests for `plotYFraction` in `lib/utils/chart-path.test.ts`.**
    New `describe("plotYFraction")` block, covering:
    - *happy path / registration with `buildPath`:* for a series like `[10, 40, 25, 90, 5]`
      at `height=220, padding=8`, `plotYFraction(max, min, max, 220, 8) * 220` equals
@@ -219,7 +219,7 @@ and AGENT.md:42 names it as TD-33 scope.
    to the un-padded `1 - (v - domainMin) / range` makes the extremes and the
    `gridlineYs` cross-check tests fail (confirm locally, then restore).
 
-3. [ ] **Switch `components/portfolio-chart.tsx`'s hover marker onto the helper.**
+3. [x] **Switch `components/portfolio-chart.tsx`'s hover marker onto the helper.**
    Replace `:172-173` (`domainRange` + `hoverYFrac`) with
    `const hoverYFrac = hoverValue !== undefined ? plotYFraction(hoverValue, domainMin, domainMax, CHART_HEIGHT, CHART_PADDING) : 0;`
    and add `plotYFraction` to the existing `@/lib/utils/chart-path` import at `:6`.
@@ -234,7 +234,7 @@ and AGENT.md:42 names it as TD-33 scope.
    warning for this file, and the `-4` offset expression at `:259` is byte-identical
    to before (`git diff` shows no change on that line).
 
-4. [ ] **Switch `components/research/detail-price-chart.tsx`'s hover marker AND reference line onto the helper.**
+4. [x] **Switch `components/research/detail-price-chart.tsx`'s hover marker AND reference line onto the helper.**
    Replace `:133`'s `hoverYFrac` with the same `plotYFraction(hoverPoint.value,
    domainMin, domainMax, CHART_HEIGHT, CHART_PADDING)` form (guarded on `hoverPoint`,
    else `0`), and replace `:173-174` with
@@ -250,7 +250,7 @@ and AGENT.md:42 names it as TD-33 scope.
    warning for this file, and `grep -n "1 - (.* - domainMin)" components/` returns
    **no** hits across the repo (the naive mapping is gone from both charts).
 
-5. [ ] **Update the docs that describe this behaviour.**
+5. [x] **Update the docs that describe this behaviour.**
    - `AGENT.md` — rewrite the tail of the `gridlineYs()` fragile-surface entry
      (currently AGENT.md:42, the sentence beginning "this does **not** fully close
      TD-33…"): TD-33 is now closed; state that `plotYFraction` is the single
@@ -271,7 +271,11 @@ and AGENT.md:42 names it as TD-33 scope.
    Resolved table and (if referenced) as closed history in AGENT.md — no open-gap
    wording remains; `grep -n "ADR-29" DECISIONS.md` finds the new entry.
 
-6. [ ] **Manual verification pass (see `## Verification`) and close-out.**
+6. [!] **Manual verification pass (see `## Verification`) and close-out.** Blocked on the
+   owner — this repo has no component-render test seam (TD-38), so the peak/trough
+   hover-marker registration and gridline non-regression can only be confirmed by eye
+   against the running app; noted as outstanding in the PR body rather than claimed
+   as done.
    — **Acceptance:** both manual checks below performed and their observed results
    recorded in the PR body.
 
