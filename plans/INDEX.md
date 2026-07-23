@@ -2,6 +2,7 @@
 
 | Plan | Date | Status | Review |
 |------|------|--------|--------|
+| plans/2026-07-23-td-02-dev-prod-db-split.md | 2026-07-23 | planned | — |
 | plans/2026-07-21-scoring-picker-chips.md | 2026-07-21 | implemented | reviews/2026-07-21-scoring-picker-chips.md |
 | plans/2026-07-21-scoring-picker-collapsible-ux.md | 2026-07-21 | implemented | reviews/2026-07-21-scoring-picker-collapsible-ux.md |
 | plans/2026-07-21-scoring-style-descriptions-retune.md | 2026-07-21 | implemented | reviews/2026-07-21-scoring-style-descriptions-retune.md |
