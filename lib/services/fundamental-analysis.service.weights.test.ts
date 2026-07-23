@@ -32,7 +32,7 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-import { FundamentalAnalysisService } from "./fundamental-analysis.service";
+import { FundamentalAnalysisService, SCORING_VERSION } from "./fundamental-analysis.service";
 import { weightedFundamentalTotal, normalizeFundamentalWeights } from "@/lib/utils/scoring-weights";
 
 const CUSTOM_WEIGHTS = { valuation: 1, profitability: 0, growth: 0, financial: 0, dividend: 0 };
@@ -121,6 +121,13 @@ describe("fetchFundamentals — per-user fundamental reweight (24h cache-hit pat
       total: weightedFundamentalTotal(breakdown, DEFAULT_SCORING_WEIGHTS.fundamental),
       breakdown,
       interpretation: "cached",
+      // TD-11 (plans/2026-07-23-lib-cleanup-batch.md): the cache-freshness
+      // gate now also requires scoreDetails.scoringVersion === current
+      // SCORING_VERSION. Without this, the fixture's `lastUpdated: new
+      // Date()` alone is no longer enough to be treated as a fresh 24h-cache
+      // hit, and these tests would silently exercise the fresh-fetch path
+      // instead. `total`/`breakdown` assertions below are unchanged.
+      scoringVersion: SCORING_VERSION,
     },
   };
 

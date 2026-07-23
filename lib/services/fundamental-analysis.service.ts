@@ -66,6 +66,23 @@ interface FundamentalMetrics {
   };
 }
 
+/**
+ * TD-11 (plans/2026-07-23-lib-cleanup-batch.md): explicit cache-freshness
+ * version, replacing the hardcoded `latestMigrationDate` date literal. Bump
+ * this integer whenever extraction or scoring logic changes in a way that
+ * makes previously-cached rows wrong — every cached row whose
+ * `scoreDetails.scoringVersion` is absent or lower than this value is treated
+ * as stale and refetched, regardless of `lastUpdated`. Persisted inside the
+ * existing `scoreDetails` JSON column (no schema migration — see ADR-27).
+ *
+ * Starting at 2 (not 1): this same plan also dropped the never-consumed
+ * `earningsHistory` module from the fetch (TD-34b), changing what gets
+ * fetched. Bumping the version here is the mechanism that invalidates every
+ * row cached from the old modules payload — a deliberate one-time refetch
+ * per symbol, not a bug.
+ */
+export const SCORING_VERSION = 2;
+
 export class FundamentalAnalysisService {
   /**
    * `fundamentalWeights` (plans/2026-07-20-configurable-scoring-weights.md,
@@ -86,10 +103,12 @@ export class FundamentalAnalysisService {
         where: { symbol }
       });
 
-      // Force refresh for old data - check if cache is older than when we improved calculations
-      // Or if cache doesn't have forward PE/PEG calculated yet
-      const latestMigrationDate = new Date('2025-10-14'); // Date when we added forward PE and improved PEG
-      const isCacheFresh = cached && cached.lastUpdated > latestMigrationDate;
+      // Cache freshness gate 1/2: SCORING_VERSION (TD-11). A cached row is
+      // stale if its scoreDetails.scoringVersion is absent or lower than the
+      // current SCORING_VERSION — independent of and ANDed with the 24h
+      // recency gate below.
+      const cachedScoreDetails = cached?.scoreDetails as { scoringVersion?: number } | null | undefined;
+      const isCacheFresh = !!cached && (cachedScoreDetails?.scoringVersion ?? 0) >= SCORING_VERSION;
       const isWithin24Hours = cached && cached.lastUpdated > new Date(Date.now() - 24 * 60 * 60 * 1000);
 
 
@@ -107,7 +126,6 @@ export class FundamentalAnalysisService {
           'defaultKeyStatistics',
           'financialData',
           'cashflowStatementHistory',
-          'earningsHistory',
           'earningsTrend',
           'upgradeDowngradeHistory',
           'recommendationTrend'
@@ -542,6 +560,14 @@ export class FundamentalAnalysisService {
   }
 
   private async saveToDatabase(symbol: string, metrics: FundamentalMetrics) {
+    // TD-11: scoringVersion travels inside the existing scoreDetails JSON
+    // column (no schema migration — ADR-27). Additive key only; do not
+    // restructure `total`/`breakdown`/`interpretation`.
+    const scoreDetailsWithVersion = {
+      ...metrics.score,
+      scoringVersion: SCORING_VERSION,
+    } as unknown as Prisma.InputJsonValue;
+
     await prisma.fundamentalData.upsert({
       where: { symbol },
       update: {
@@ -572,7 +598,7 @@ export class FundamentalAnalysisService {
         payoutRatio: metrics.dividend.payoutRatio,
         dividendGrowth: metrics.dividend.growthRate,
         fundamentalScore: metrics.score.total,
-        scoreDetails: metrics.score as unknown as Prisma.InputJsonValue,
+        scoreDetails: scoreDetailsWithVersion,
         lastUpdated: new Date(),
       },
       create: {
@@ -604,7 +630,7 @@ export class FundamentalAnalysisService {
         payoutRatio: metrics.dividend.payoutRatio,
         dividendGrowth: metrics.dividend.growthRate,
         fundamentalScore: metrics.score.total,
-        scoreDetails: metrics.score as unknown as Prisma.InputJsonValue,
+        scoreDetails: scoreDetailsWithVersion,
       },
     });
   }

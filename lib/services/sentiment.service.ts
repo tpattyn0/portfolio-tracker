@@ -1,7 +1,7 @@
 // lib/services/sentiment.service.ts
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { prisma } from '@/lib/prisma';
-import { GEMINI_MODEL } from '@/lib/services/gemini';
+import { GEMINI_MODEL, createGeminiClient } from '@/lib/services/gemini';
 
 interface SentimentResult {
   sentiment: number;        // -1 to 1
@@ -16,10 +16,7 @@ export class SentimentAnalysisService {
   private genAI: GoogleGenerativeAI;
   
   constructor() {
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY is not configured');
-    }
-    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    this.genAI = createGeminiClient();
   }
   
   async analyzeSentiment(

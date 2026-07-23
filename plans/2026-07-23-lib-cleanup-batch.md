@@ -207,13 +207,13 @@ signal ADR-15 depends on.
 
 ## Tasks
 
-1. [ ] **TD-09 — delete the two dead env modules.** Delete `lib/env.ts` and
+1. [x] **TD-09 — delete the two dead env modules.** Delete `lib/env.ts` and
    `lib/utils/env.ts`. No replacement module. — Acceptance:
    `grep -rn "lib/env\|lib/utils/env\|from ['\"]\.\./env['\"]\|from ['\"]\./env['\"]" --include="*.ts" --include="*.tsx" app lib components hooks scripts`
    returns zero hits; `npm run verify` green (typecheck proves nothing referenced
    them). No new tests — deletion only, no function added or modified.
 
-2. [ ] **TD-12 — add `getGeminiApiKey` + `createGeminiClient` to
+2. [x] **TD-12 — add `getGeminiApiKey` + `createGeminiClient` to
    `lib/services/gemini.ts`.** Factory throws
    `'GEMINI_API_KEY is not configured'` (exact existing message) when the key is
    absent. — Acceptance: new `lib/services/gemini.test.ts` passes with (happy)
@@ -222,7 +222,7 @@ signal ADR-15 depends on.
    `@google/generative-ai`; save/restore `process.env.GEMINI_API_KEY` around each
    case.
 
-3. [ ] **TD-12 — rewire both call sites to the factory.**
+3. [x] **TD-12 — rewire both call sites to the factory.**
    `sentiment.service.ts:18-23` constructor → `createGeminiClient()`;
    `insights/portfolio/route.ts:57` → `getGeminiApiKey()`, `:77` →
    `createGeminiClient(geminiKey)`. Leave the route's placeholder early-return
@@ -235,14 +235,14 @@ signal ADR-15 depends on.
    `grep -rn "new GoogleGenerativeAI" --include="*.ts" app lib` returns exactly
    one hit, in `lib/services/gemini.ts`.
 
-4. [ ] **TD-34(b) — drop `'earningsHistory'` from the modules array**
+4. [x] **TD-34(b) — drop `'earningsHistory'` from the modules array**
    (`fundamental-analysis.service.ts:110`). Do not touch the other eight
    modules. — Acceptance: `grep -rn "earningsHistory" --include="*.ts" app lib`
    returns zero hits; `npm run verify` green;
    `lib/services/fundamental-analysis.service.test.ts` passes unmodified (it
    does not assert on the modules array — verified).
 
-5. [ ] **TD-11 — replace `latestMigrationDate` with `SCORING_VERSION`.** Add
+5. [x] **TD-11 — replace `latestMigrationDate` with `SCORING_VERSION`.** Add
    the exported constant (starting at `2`) with the bump-rule comment; write
    `scoringVersion` into the `scoreDetails` JSON in both the `update` and
    `create` branches of `saveToDatabase` (`:575`, `:607`); replace `isCacheFresh`
@@ -264,7 +264,7 @@ signal ADR-15 depends on.
    acceptable edit; what is not acceptable is changing its `total`/`breakdown`
    assertions).
 
-6. [ ] **TD-34(a) — pass `validation: { logErrors: false }`** to
+6. [x] **TD-34(a) — pass `validation: { logErrors: false }`** to
    `new YahooFinance(...)` in `lib/yahoo-finance.ts:12-14`, with a comment
    citing ADR-15 and the "not `validateResult: false`" boundary. — Acceptance:
    `lib/yahoo-finance.test.ts`'s four existing cases pass **unmodified** (they
@@ -275,7 +275,7 @@ signal ADR-15 depends on.
    constructor args, so capture the constructor argument in the mock to assert
    on it.
 
-7. [ ] **Docs.** — Acceptance: all of the following are true.
+7. [x] **Docs.** — Acceptance: all of the following are true.
    - `TECH_DEBT.md`: TD-09, TD-11, TD-12, TD-34 moved from Backlog to Resolved
      with today's date and this plan as "resolved by". New **TD-37** added to
      Backlog: "No centralized environment-variable validation — the two dead

@@ -4,7 +4,7 @@
 // to the retired `gemini-1.5-flash` model (404 on generateContent) or an
 // unnoticed change to the shared GEMINI_MODEL constant. No live Gemini
 // network calls — @google/generative-ai is mocked.
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const { getGenerativeModelMock, generateContentMock } = vi.hoisted(() => {
   // sentiment.service.ts constructs a module-scope singleton
@@ -84,5 +84,18 @@ describe("SentimentAnalysisService.analyzeSentiment", () => {
       keyFactors: [],
       impact: "low",
     });
+  });
+});
+
+describe("SentimentAnalysisService constructor — fragile-surface contract (AGENT.md)", () => {
+  const originalKey = process.env.GEMINI_API_KEY;
+
+  afterEach(() => {
+    process.env.GEMINI_API_KEY = originalKey;
+  });
+
+  it("still throws at construction (via the shared createGeminiClient factory) when GEMINI_API_KEY is unset", () => {
+    delete process.env.GEMINI_API_KEY;
+    expect(() => new SentimentAnalysisService()).toThrow("GEMINI_API_KEY is not configured");
   });
 });
