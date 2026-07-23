@@ -32,3 +32,4 @@
 | 2026-07-21-scoring-style-presets.md | 2026-07-21 | IMPLEMENTED — 2026-07-21 (0 BLOCKERs/ISSUEs; 9 composite / 6 fundamental style presets, balanced derived from defaults, client-side populate-only picker; SP-I1 loading-skeleton fixed iter 2, SP-S1 dispositioned to TD-36; 240/240) |
 | 2026-07-21-scoring-style-descriptions-retune.md | 2026-07-21 | IMPLEMENTED — 2026-07-21 (0 BLOCKERs; signal-diagnostic retune (zeros allowed, IV=0 for growth) + visible label+description picker + 9 rewritten blurbs; RTN-I1 doc drift resolved iter 2; weights sum-100 & match ADR-24 tables, zeros clean, Balanced derived; 254/254) |
 | 2026-07-23-td08-td15-cleanup.md | 2026-07-23 | IMPLEMENTED |
+| 2026-07-23-td33-hover-marker.md | 2026-07-23 | |
