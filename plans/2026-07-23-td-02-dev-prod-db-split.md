@@ -1,6 +1,12 @@
 # Plan: TD-02 — separate the dev database from production
 Date: 2026-07-23
 
+> **Deferred to launch by owner decision, 2026-07-23 — not abandoned.** This plan is complete, reviewed by the owner, and approved in substance; only its timing was deferred. Resume it as-written at launch preparation, before any production deploy. See TD-02 in `TECH_DEBT.md` for the reasoning and trigger, and the 2026-07-23 review note on ADR-6 in `DECISIONS.md`.
+>
+> Two points to re-verify on resumption, since both were true on 2026-07-23 and may not be at launch: (1) the production project ref asserted throughout is `tatrnjylbupusigiyuyf` — confirm against `.env` before committing it as `PRODUCTION_DB_REF`; (2) the plan assumes no deployed environment exists, which shapes the "existing DB becomes production" decision — if Meridian is deployed by then, revisit the Approach section rather than executing Tasks 1/5/9 as written.
+>
+> The guard (Tasks 2–4) was deliberately **not** taken early. With a single database the only ref present is the production ref, so the guard would block every `npm run dev` and need a standing opt-out flag — which hollows it out into a tripwire the owner steps over daily. Its value arrives with the second database.
+
 ## Problem
 
 Dev and production point at **the same Supabase database** (ADR-6, TD-02 severity High). This is verified, not assumed: `.env` and `.env.local` both carry connection strings for Supabase project ref `tatrnjylbupusigiyuyf` at `aws-0-eu-west-3.pooler.supabase.com` — same project, same database, differing only in pooler port (6543 transaction-mode for the app, 5432 session-mode for `prisma migrate`).
