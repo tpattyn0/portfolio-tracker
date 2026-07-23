@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/utils/auth";
 import { IntrinsicValueService } from "@/lib/services/intrinsic-value.service";
 import { checkRateLimit } from "@/lib/middleware/rate-limit";
 
@@ -9,10 +8,8 @@ export async function GET(
   { params }: { params: Promise<{ symbol: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await getAuthenticatedUser();
+    if (auth.error) return auth.error;
 
     const limited = checkRateLimit(request, "intrinsic-value", 30, 60 * 1000);
     if (limited) return limited;

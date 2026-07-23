@@ -2,7 +2,7 @@
 
 | Plan | Date | Status | Review |
 |------|------|--------|--------|
-| plans/2026-07-23-td08-td15-cleanup.md | 2026-07-23 | planned | — |
+| plans/2026-07-23-td08-td15-cleanup.md | 2026-07-23 | in review | — |
 | plans/2026-07-23-lib-cleanup-batch.md | 2026-07-23 | implemented | reviews/2026-07-23-lib-cleanup-batch.md |
 | plans/2026-07-23-td-02-dev-prod-db-split.md | 2026-07-23 | deferred (owner decision 2026-07-23 — resume at launch prep; see TD-02) | — |
 | plans/2026-07-21-scoring-picker-chips.md | 2026-07-21 | implemented | reviews/2026-07-21-scoring-picker-chips.md |
