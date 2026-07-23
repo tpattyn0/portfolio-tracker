@@ -36,7 +36,7 @@
 | `lib/auth.ts` | NextAuth config — credentials provider, JWT callbacks |
 | `lib/utils/auth.ts` | Shared route-handler auth helpers (`getAuthenticatedUser`, `getAuthenticatedUserWithPortfolio`) |
 | `lib/prisma.ts` | Prisma client singleton (cached on `globalThis` outside production) |
-| `lib/yahoo-finance.ts` | Shared `yahoo-finance2` client instance; also exports `safeQuoteSummary`, the single sanctioned `quoteSummary` chokepoint that tolerates Yahoo schema-validation drift (ADR-15) |
+| `lib/yahoo-finance.ts` | Shared `yahoo-finance2` client instance, constructed with `validation: { logErrors: false }` to suppress the library's own pre-throw console dump while keeping validation on (TD-34a, ADR-27); also exports `safeQuoteSummary`, the single sanctioned `quoteSummary` chokepoint that tolerates Yahoo schema-validation drift (ADR-15) |
 | `lib/middleware/rate-limit.ts` | Per-IP, per-scope in-memory rate limiter (`checkRateLimit`) |
 | `lib/services/technical-analysis.service.ts` | Core calc: technical indicators → signal/score (largest service, 732 lines) |
 | `lib/services/fundamental-analysis.service.ts` | Core calc: fundamentals extraction + scoring (638 lines) |
@@ -46,6 +46,7 @@
 | `lib/services/sentiment.service.ts` | Gemini-based article sentiment scoring + daily aggregation |
 | `lib/services/analyst-ratings.service.ts` | Analyst rating fetch + scoring |
 | `lib/services/exchange-rate.service.ts` | FX rate fetch/cache/convert |
+| `lib/services/gemini.ts` | Shared Gemini config — `GEMINI_MODEL` constant, plus `getGeminiApiKey()`/`createGeminiClient()`, the single sanctioned place `new GoogleGenerativeAI(...)` is constructed (TD-12, ADR-27). Consumed by `sentiment.service.ts` and `app/api/insights/portfolio/route.ts`, whose differing missing-key behavior is preserved at each call site |
 | `components/error-boundary.tsx` | `ErrorBoundary` (full-page, currently unused) and `ComponentErrorBoundary` (section-level, used on dashboard, position-detail, and research-detail pages) |
 | `components/research/*` | Shared Meridian research-detail primitives (ADR-11): `headline-score-card.tsx`, `score-figure.tsx` (`ScoreFigure`/`VerdictStamp`), `subscore-band.tsx`, `graded-metric-row.tsx`, `detail-price-chart.tsx`, `transactions-tab.tsx`. Consumed by `overview.tsx`, `technical-analysis.tsx`, `fundamental-analysis.tsx`, `analyst-ratings.tsx`, `intrinsic-value.tsx`, `news-feed.tsx`. As of `plans/2026-07-19-positions-tab.md` (ADR-18), `transactions-tab.tsx` (rendering the tab now labeled "Positions") is also consumed directly by `app/(dashboard)/portfolio/[ticker]/page.tsx`, not just `research/[symbol]/page.tsx` — it is the single shared body for both routes' position-detail tab. The legacy `components/transaction-history.tsx` (a stock-shadcn `Card`/`Table`/`Badge` pattern) is deleted; it has no remaining importer. |
 | `lib/utils/score-band.ts` | Pure score/metric-grade banding helpers (`scoreBandClass`, `gradingDotClass`, `metricGrade`) shared across the research-detail tabs — presentational only, never changes scoring math |

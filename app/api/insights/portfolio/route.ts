@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/utils/auth';
 import { prisma } from '@/lib/prisma';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { GEMINI_MODEL } from '@/lib/services/gemini';
+import { GEMINI_MODEL, getGeminiApiKey, createGeminiClient } from '@/lib/services/gemini';
 
 export async function GET() {
   try {
@@ -54,7 +53,7 @@ export async function GET() {
       });
     }
 
-    const geminiKey = process.env.GEMINI_API_KEY;
+    const geminiKey = getGeminiApiKey();
 
     // AUD-10: don't persist the "not configured" placeholder as today's cached
     // insight — a single request made before the key is set would otherwise
@@ -74,7 +73,7 @@ export async function GET() {
     }
 
     try {
-      const genAI = new GoogleGenerativeAI(geminiKey);
+      const genAI = createGeminiClient(geminiKey);
       // AUD-07: this was the only Gemini call site with a nested-fallback
       // try/catch. `getGenerativeModel` never throws on an unrecognized model
       // name (it only fails at `generateContent` time), so the fallback

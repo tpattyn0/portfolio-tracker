@@ -11,10 +11,22 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  */
 
 const quoteSummaryMock = vi.fn();
+// TD-34a: capture the constructor argument so tests can assert on the
+// options passed to `new YahooFinance(...)` — the bare class previously
+// ignored its constructor args entirely. A plain array (not a `vi.fn()`
+// mock) survives `vi.clearAllMocks()` in `beforeEach`, since the shared
+// client is constructed exactly once, at module scope, on first import —
+// before any test's `beforeEach` runs.
+const { capturedConstructorArgs } = vi.hoisted(() => ({
+  capturedConstructorArgs: [] as unknown[][],
+}));
 
 vi.mock("yahoo-finance2", () => ({
   default: class {
     quoteSummary = quoteSummaryMock;
+    constructor(...args: unknown[]) {
+      capturedConstructorArgs.push(args);
+    }
   },
 }));
 
@@ -86,5 +98,23 @@ describe("safeQuoteSummary", () => {
     const result = await safeQuoteSummary("AAPL", { modules: ["price"] });
     expect(result).toBe(ok);
     expect(warnSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("shared yahooFinance client construction (TD-34a)", () => {
+  it("constructs the shared client with validation: { logErrors: false }, alongside suppressNotices", async () => {
+    // The module builds its shared client once, at module scope, on first
+    // import — importing it again (module already loaded from earlier tests
+    // in this file) does not re-invoke the constructor, so this asserts on
+    // whatever call already happened rather than forcing a fresh one.
+    await import("./yahoo-finance");
+
+    expect(capturedConstructorArgs.length).toBeGreaterThan(0);
+    const optionsArg = capturedConstructorArgs[0][0] as {
+      suppressNotices?: string[];
+      validation?: { logErrors?: boolean };
+    };
+    expect(optionsArg.validation).toEqual({ logErrors: false });
+    expect(optionsArg.suppressNotices).toEqual(["yahooSurvey", "ripHistorical"]);
   });
 });

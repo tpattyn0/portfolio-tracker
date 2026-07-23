@@ -9,8 +9,28 @@ interface QuoteSummaryQueryOptions {
 
 // Single shared instance of yahoo-finance2 v3
 // v3 requires instantiation with `new` (unlike v2 which used a default export)
+//
+// TD-34a (plans/2026-07-23-lib-cleanup-batch.md, ADR-27): `validation.logErrors:
+// false` suppresses ONLY yahoo-finance2's own ~40-line pre-throw console dump
+// ("The following result did not validate with schema..."). Validation itself
+// stays ON — FailedYahooValidationError is still thrown, and safeQuoteSummary's
+// catch/coerce/one-line-console.warn contract (ADR-15) below is fully
+// retained. Verified against the installed yahoo-finance2@3.13.0 source: the
+// dump is gated by `if (options.logErrors === true)`
+// (esm/src/lib/validateAndCoerceTypes.js:183) and sits BEFORE the throw
+// (:214), which is outside that gate. The library's option merge is a nested
+// merge (esm/src/lib/options/options.js mergeObjects), so this overrides only
+// the `logErrors` key and leaves the runtime default
+// `allowAdditionalProps: true` intact.
+//
+// Do NOT "upgrade" this to `validateResult: false` — that is the blanket
+// alternative ADR-15 explicitly rejected because it silences the drift signal
+// safeQuoteSummary's warn depends on. This flag only quiets the library's own
+// redundant console output; it does not change what is caught, coerced, or
+// logged by this codebase.
 const yahooFinance = new YahooFinance({
   suppressNotices: ["yahooSurvey", "ripHistorical"],
+  validation: { logErrors: false },
 });
 
 export default yahooFinance;
