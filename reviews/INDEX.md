@@ -2,6 +2,7 @@
 
 | Review | Date | Status |
 |--------|------|--------|
+| 2026-07-23-lib-cleanup-batch.md | 2026-07-23 | |
 | 2026-07-22-morning-note-active-positions-only.md | 2026-07-22 | IMPLEMENTED — 2026-07-22 (0 BLOCKERs/ISSUEs/QUESTIONs; 1 optional SUGGESTION MRN-S1; quantity>0 filter mirrors portfolio route, regression test genuinely fails without filter, empty-portfolio branch correct, docs accurate; verify 257/257) |
 | 2026-07-21-scoring-picker-chips.md | 2026-07-21 | IMPLEMENTED — 2026-07-21 (0 BLOCKERs; inline name-chip picker + accessible Radix hover/focus tooltip, ADR-26; a11y contract verified (no title attr, asChild wraps button, aria-describedby/Escape native, section-local TooltipProvider, providers.tsx untouched); disclosure/ChevronDown removed clean; populate-only no-active-state + scoring/API/gate untouched; skeleton parity; popover tokens both themes; PCH-I1 plan-INDEX advanced, PCH-S1 optional; 254/254) |
 | 2026-07-21-scoring-picker-collapsible-ux.md | 2026-07-21 | IMPLEMENTED — 2026-07-21 (0 BLOCKERs/ISSUEs; collapsible <details> style picker closed-by-default, weight inputs above the fold, populate-only + ADR-23/24 no-active-state preserved, skeleton parity; SUG-1 chevron aria-hidden applied; input order/status-line unchanged per OD-1/Designer; 254/254) |
