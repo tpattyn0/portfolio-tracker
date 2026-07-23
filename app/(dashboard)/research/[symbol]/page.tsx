@@ -62,13 +62,16 @@ export default function ResearchStockPage() {
   const [activeTab, setActiveTab] = useState<TabValue>("overview");
 
   // Deliberately shares its queryKey (["quote", symbol]) with the identical
-  // query on portfolio/[ticker]/page.tsx:64-72 — both pages render the same
+  // query on portfolio/[ticker]/page.tsx:63-72 — both pages render the same
   // header/stat card off the same endpoint (DESIGN.md: the two headers are
   // header-for-header identical), so a shared cache entry is the intended
   // cross-page cache hit, not a collision. Deliberately does NOT copy that
   // sibling's `refetchInterval: 30000`: refetchInterval is a per-observer
-  // React Query v5 option, and this is a read-and-analyze surface, not a
-  // live-position monitor — the sibling keeps its own poll for live P/L.
+  // React Query v5 option, so this page adds no polling observer of its own
+  // — but because the cache entry is shared, a concurrently-mounted sibling's
+  // 30s poll refreshes it, and this page (subscribed to the same entry) will
+  // observe that update. Harmless on this read-and-analyze surface; just not
+  // an absolute "never updates" guarantee.
   // See plans/2026-07-23-td08-td15-cleanup.md and DECISIONS.md ADR-28.
   const quoteQ = useQuery({
     queryKey: ["quote", symbol],
