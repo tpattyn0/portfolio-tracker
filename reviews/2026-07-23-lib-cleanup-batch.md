@@ -1,6 +1,6 @@
 # Review: batched `lib/` cleanup — TD-09, TD-12, TD-11, TD-34
 Date: 2026-07-23
-Status:
+Status: IMPLEMENTED — 2026-07-23
 
 ## Summary
 Findings: [0 BLOCKERs, 1 ISSUE, 2 SUGGESTIONs, 0 QUESTIONs]
@@ -203,6 +203,15 @@ replace, in the `lib/services/fundamental-analysis.service.ts` group:
 and the `:84`, `gemini.ts`, `sentiment.service.ts`, `yahoo-finance.ts`, and
 `route.ts:56,76` citations as they are — all of those still resolve. No code
 change.
+
+**Resolution (2026-07-23, orchestrator):** applied as recommended. All six
+citations were re-verified against branch HEAD before editing — `:114`
+(`isCacheFresh`, the `>=` check), `:119` (the ANDed `if`), `:569`
+(`scoreDetailsWithVersion` construction), `:604`/`:636` (both `saveToDatabase`
+branches writing `scoreDetails: scoreDetailsWithVersion`), `:126-135` (modules
+array bounds). The parenthetical descriptions and the untouched citation groups
+were left as-is, and no code changed. `:110-114` also picked up "structural
+narrowing" in its description to reflect what the LCB-S1 fix added there.
 
 ## Iteration 2 — verification pass
 
