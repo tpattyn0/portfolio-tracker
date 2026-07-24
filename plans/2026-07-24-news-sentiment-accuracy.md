@@ -417,7 +417,7 @@ TD-DTL-TONE MoM delta.
    query construction for a ≤3-char symbol, a longer symbol, and a suffixed
    European symbol (`BTLS.BR`).
 
-7. [ ] **Batch the Gemini call with a `responseSchema`** (`sentiment.service.ts`).
+7. [x] **Batch the Gemini call with a `responseSchema`** (`sentiment.service.ts`).
    Add `analyzeSentimentBatch(articles)`: **one** `generateContent` request
    containing N articles each tagged with a string id (`art_0`, `art_1`, …), with
    `generationConfig: { responseMimeType: 'application/json', temperature: 0.1,
@@ -452,7 +452,7 @@ TD-DTL-TONE MoM delta.
    mock `analyzeAndUpdateArticle` and assert `toHaveBeenCalledTimes(3)` plus
    interleaved start/end ordering — both become meaningless under batching).
 
-8. [ ] **Add a Gemini model fallback chain** (`lib/services/gemini.ts`). Replace
+8. [x] **Add a Gemini model fallback chain** (`lib/services/gemini.ts`). Replace
    the single `GEMINI_MODEL` constant with an ordered `GEMINI_MODELS` list tried in
    sequence, falling through on a failed request (as `Compass/src/lib/news/gemini.ts:7-46`
    does) and logging which model served. Keep `GEMINI_MODEL` exported as the first
@@ -476,7 +476,7 @@ TD-DTL-TONE MoM delta.
    `GEMINI_MODEL` still equals the chain's first entry. Manual: confirm each model
    in the committed chain actually responds with the project key before merging.
 
-9. [ ] **Stop silent-neutral masking** (`sentiment.service.ts:75-85`). The catch
+9. [x] **Stop silent-neutral masking** (`sentiment.service.ts:75-85`). The catch
    must surface failure rather than return a well-formed neutral: return an
    explicit failure result, and have `analyzeAndUpdateArticle` / the batch path
    leave `sentiment` as `null` on failure instead of persisting `0`. Log once per
@@ -488,7 +488,7 @@ TD-DTL-TONE MoM delta.
    Update the existing `sentiment.service.test.ts` case at L72-87, which currently
    asserts the silent-neutral return being removed here.
 
-10. [ ] **Add calibration anchors and a selectivity rule to the prompt**
+10. [x] **Add calibration anchors and a selectivity rule to the prompt**
     (`sentiment.service.ts:30-54`), carried into the batch prompt from Task 7.
     Two additions:
     - **Calibration anchors.** State explicitly what the scale means, with anchored

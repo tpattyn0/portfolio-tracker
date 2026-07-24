@@ -40,6 +40,14 @@ const RSS_FETCH_TIMEOUT_MS = 4000;
 /** Minimum cleaned-title length to be considered real news, not a junk placeholder. */
 const MIN_JUNK_TITLE_LENGTH = 8;
 
+/**
+ * Plan Task 7: the maximum number of unanalyzed articles submitted to a
+ * single batched Gemini sentiment call per getAnalyzedNewsForSymbol
+ * invocation — replaces the old Promise.all fan-out capped at 3 individual
+ * requests.
+ */
+export const MAX_ANALYZE_PER_PASS = 10;
+
 interface NewsArticleData {
   title: string;
   summary?: string;
@@ -396,7 +404,7 @@ export class NewsAggregationService {
       const unanalyzedArticles = articles.filter((a) => a.sentiment === null);
 
       if (unanalyzedArticles.length > 0) {
-        const articlesToAnalyze = unanalyzedArticles.slice(0, 3);
+        const articlesToAnalyze = unanalyzedArticles.slice(0, MAX_ANALYZE_PER_PASS);
 
         // Lazy import avoids a hard module-scope dependency on
         // GEMINI_API_KEY for every caller of news.service.ts (see AGENT.md
@@ -404,20 +412,51 @@ export class NewsAggregationService {
         // key is unset).
         const { sentimentService } = await import('./sentiment.service');
 
-        // Previously a sequential `for…await` loop — each article's Gemini
-        // round-trip is independent, so a wishlist of N items serialized up
-        // to N×3 calls back-to-back. Bounded to the same up-to-3-articles
-        // batch, now run concurrently (plan Task 5); a single article's
-        // failure is still caught and logged without affecting the others.
-        await Promise.all(
-          articlesToAnalyze.map(async (article) => {
-            try {
-              await sentimentService.analyzeAndUpdateArticle(article.id);
-            } catch (error) {
-              console.error(`Failed to analyze article ${article.id}:`, error);
-            }
-          })
+        // Plan Task 7: a single batched Gemini call for up to
+        // MAX_ANALYZE_PER_PASS articles, replacing the old Promise.all
+        // fan-out of up-to-3 individual requests. Plan Task 9: a failed
+        // batch (every model in the chain failed, or the response could not
+        // be parsed) leaves every article unanalyzed — never writes a
+        // fabricated neutral sentiment.
+        const batchResult = await sentimentService.analyzeSentimentBatch(
+          articlesToAnalyze.map((article) => ({
+            id: article.id,
+            title: article.title,
+            content: article.summary || article.content,
+            symbol: article.symbols[0],
+          }))
         );
+
+        if (batchResult.ok) {
+          await Promise.all(
+            articlesToAnalyze.map(async (article) => {
+              const result = batchResult.results.get(article.id);
+              // An article whose id is absent from the response (or the
+              // whole batch failed) stays null (unanalyzed) — never
+              // defaulted to neutral (plan Task 7/9, ADR-31).
+              if (!result) return;
+              try {
+                await prisma.newsArticle.update({
+                  where: { id: article.id },
+                  data: {
+                    sentiment: result.sentiment,
+                    sentimentLabel: result.sentimentLabel,
+                    confidence: result.confidence,
+                    impact: result.impact,
+                    aiSummary: result.aiSummary,
+                    keyPoints: result.keyFactors,
+                  },
+                });
+              } catch (error) {
+                console.error(`Failed to persist sentiment for article ${article.id}:`, error);
+              }
+            })
+          );
+        } else {
+          console.error(
+            `Batch sentiment analysis failed for symbol ${symbol} (${articlesToAnalyze.length} articles) — leaving them unanalyzed.`
+          );
+        }
 
         articles = await prisma.newsArticle.findMany({
           where: whereClause,

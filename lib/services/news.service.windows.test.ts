@@ -15,13 +15,17 @@ vi.mock("@/lib/prisma", () => ({
     newsArticle: {
       findMany: (...args: unknown[]) => findManyMock(...args),
       upsert: vi.fn(),
+      update: vi.fn(),
     },
   },
 }));
 
 vi.mock("./sentiment.service", () => ({
   sentimentService: {
-    analyzeAndUpdateArticle: vi.fn().mockResolvedValue(undefined),
+    analyzeSentimentBatch: vi.fn().mockResolvedValue({
+      ok: true,
+      results: new Map([["a1", { sentiment: 0.2, sentimentLabel: "neutral", confidence: 0.6, keyFactors: [], impact: "low" }]]),
+    }),
   },
 }));
 
