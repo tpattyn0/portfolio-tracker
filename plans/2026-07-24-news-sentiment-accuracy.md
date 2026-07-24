@@ -278,7 +278,7 @@ TD-DTL-TONE MoM delta.
 
 ## Tasks
 
-0. [ ] **Remove NewsAPI entirely.** Delete `fetchNewsAPI` (`news.service.ts:184-246`),
+0. [x] **Remove NewsAPI entirely.** Delete `fetchNewsAPI` (`news.service.ts:184-246`),
    its call site (L50-55), and the `NEWS_API_KEY` read. Remove `NEWS_API_KEY` from
    `.env.example`. Then handle the debt knock-ons, precisely and without
    overclaiming (see `## The TD-01 / ADR-7 / TD-28 knock-on` below for the exact
@@ -292,7 +292,7 @@ TD-DTL-TONE MoM delta.
    `.env.example`. `npm run verify` passes (the secret scan must still pass —
    confirm the fingerprints still match).
 
-1. [ ] **Delete the dead unrelated-ticker penalty** (`news.service.ts:134-142`).
+1. [x] **Delete the dead unrelated-ticker penalty** (`news.service.ts:134-142`).
    Remove the block outright rather than "fixing" it against the original-case
    title — reintroducing a live penalty would change every score at once, in the
    same change that retunes thresholds, making both untestable. —
@@ -300,7 +300,7 @@ TD-DTL-TONE MoM delta.
    (e.g. "GOOGL vs MSFT and AMZN") scores identically before and after; `grep -n
    "unrelatedTickers" lib/services/news.service.ts` returns nothing.
 
-2. [ ] **Fix the refresh latch** (`news.service.ts:330`). Replace the `< 2` guard
+2. [x] **Fix the refresh latch** (`news.service.ts:330`). Replace the `< 2` guard
    with a staleness-aware condition: refresh when the DB has fewer than a target
    number of in-window articles **or** when the newest in-window article is older
    than a short freshness TTL. The existing 5-minute `node-cache` in
@@ -321,14 +321,14 @@ TD-DTL-TONE MoM delta.
    articles asserts it is **not**. Both assert the 5-min cache still short-circuits
    a second immediate call.
 
-3. [ ] **Reconcile the three time windows.** Export `NEWS_WINDOW_DAYS = 30` and
+3. [x] **Reconcile the three time windows.** Export `NEWS_WINDOW_DAYS = 30` and
    apply the same `publishedAt >= now - NEWS_WINDOW_DAYS` filter to all three
    queries (L318-328, L340-347, L381-388), so the two refetches stop returning
    unbounded-age articles. —
    Acceptance: a unit test asserts all three `findMany` calls receive an identical
    `publishedAt.gte`; the UI's existing "last 30 days" caption is now accurate.
 
-4. [ ] **Wire up deduplication.** Call the existing `deduplicateNews()` in
+4. [x] **Wire up deduplication.** Call the existing `deduplicateNews()` in
    `fetchNewsForSymbol` on the merged Yahoo + RSS array, **before** relevance
    scoring and before the cap, so duplicates cannot consume slots. Fix its `seen`
    set, which currently mixes normalized-title keys and raw URLs in one set — use
@@ -342,7 +342,7 @@ TD-DTL-TONE MoM delta.
    survives, and that the post-dedup count is what the cap is applied to. Measured
    baseline: **7 near-dupes in a single live RSS feed**.
 
-5. [ ] **Rewrite relevance scoring** (`calculateRelevance`, L94-147) — only now
+5. [x] **Rewrite relevance scoring** (`calculateRelevance`, L94-147) — only now
    that Tasks 0-4 have removed the confounds. Extract to a pure, exported,
    unit-testable helper (`lib/utils/news-relevance.ts`): token derivation
    (corporate-suffix stripping using Compass's `CORP_SUFFIX` regex from
@@ -368,7 +368,7 @@ TD-DTL-TONE MoM delta.
    confirms `0.4`/`0.5` relevance literals appear nowhere outside the constant's
    definition.
 
-6. [ ] **Add the Google News RSS source** (replaces the old "raise the NewsAPI
+6. [x] **Add the Google News RSS source** (replaces the old "raise the NewsAPI
    pageSize" task, which is moot). Add `fetchGoogleNewsRSS(symbol, companyName)` to
    `news.service.ts`, ported from `Compass/src/lib/news/rss.ts:85-173` with the
    Meridian-specific changes below. Fetch with native `fetch` + `AbortController`

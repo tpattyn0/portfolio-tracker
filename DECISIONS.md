@@ -49,7 +49,7 @@
 - **Tradeoffs:** Anyone reading the public repo can spend this repo's NewsAPI quota, and the key cannot be revoked, so the exposure runs until a fresh key replaces it. Accepted because the blast radius is confined to a free-tier news quota: the key grants no access to our data, our users, or any account of value. This is explicitly *not* the reasoning that applied to `NEXTAUTH_SECRET`, which could forge sessions for any user and was rotated on that basis.
 - **Condition (this is what makes the decision valid):** the app is not deployed. Going to production changes the calculus — a live app makes quota exhaustion a user-visible outage rather than a private annoyance. TD-01 therefore carries a blocking precondition: obtain a fresh NewsAPI key before any production deploy.
 - **Supersedes:** the 2026-07-16 acceptance of ONB-01, which was made on the incorrect belief that the repo was a local-only clone. This one is made with the public exposure confirmed.
-- **Status:** accepted-but-flagged
+- **Status:** superseded by ADR-33
 - **Confidence:** High (on the reasoning; the condition is the thing to watch — a decision conditional on "we won't deploy" silently expires the moment someone deploys)
 
 ## ADR-8 — Meridian tokens replace the shadcn HSL-triple values in place; drop the `hsl()` wrapper
@@ -220,3 +220,121 @@
 - **Tradeoffs:** adds a fifth export to `chart-path.ts` and one more indirection inside `gridlineYs` (which previously inlined the formula), in exchange for making marker/gridline/reference-line drift impossible by construction rather than by matching comments. **Scope correction (TD33-S2, owner-accepted 2026-07-23):** this claim covers the marker, reference line, and gridlines — it does **not** yet cover `buildPath`, which still inlines its own copy of the same formula at `chart-path.ts:110`. `buildPath` needs a pixel `y` per point and uses a different zero-range guard (`|| 1`, which floors a flat series to the plot bottom) than `plotYFraction`'s explicit `range === 0` midpoint branch, so substituting it is a real refactor with a behavior decision attached, not a mechanical swap. The two copies agree numerically for every non-degenerate series (verified across 8,000 randomized cases over four `(height, padding)` geometries, max delta 2.84e-14); the residual is structural, not behavioral, and is tracked as **TD-40**. Rejected alternative: calling `gridlineYs(min, max, h, p, [v])[0]` at each site — no new export, but allocates an array per hover/RAF frame on the app's hottest render path and reads as a misuse of a tick-positioning helper. Also rejected: returning SVG pixels and dividing by height at the CSS call sites (the pattern the existing gridline *labels* use) — a round-trip through pixels for a value never needed in pixels. The reference-line fix (no live caller today — TD-DTL-SR, no support/resistance levels computed) is included anyway because it was a second copy of the same wrong formula in the same file, named explicitly in scope by the prior AGENT.md TD-33 entry.
 - **Status:** accepted
 - **Confidence:** High — the mapping is unit-tested against `buildPath`'s own vertex pixels and cross-checked against `gridlineYs`, including a deliberate revert-and-confirm-failure check during implementation (reverting the helper body to the un-padded formula makes 6 of the new tests fail, confirming they are not midpoint-only coverage); the pixel-level visual result is confirmable only by eye (TD-38: no component-render test seam) and is left to the owner's manual check per the PR body.
+
+## ADR-30 — Relevance scoring is token-based with word-boundary matching, on one shared threshold
+- **Decision:** Replace `news.service.ts`'s literal-substring relevance scoring with a
+  pure, exported helper (`lib/utils/news-relevance.ts`) that derives match tokens by
+  stripping corporate suffixes from the company name, matches on word boundaries, and
+  normalizes share-class ticker variants (GOOG↔GOOGL). A single exported `MIN_RELEVANCE`,
+  compared with `>=`, governs both the ingest filter and every DB read.
+- **Evidence:** `lib/utils/news-relevance.ts`; `lib/services/news.service.ts` ingest
+  filter and all three `findMany` relevance filters.
+- **Tradeoffs:** Token matching is more permissive than substring matching and will admit
+  some market-context articles that only mention the company in passing; accepted, because
+  the measured alternative discards the articles that explain a -7% day. The dead uppercase
+  penalty is removed rather than repaired, so no compensating precision mechanism remains —
+  precision now rests entirely on the token/threshold pair. That bet is larger under ADR-34's
+  RSS source, which measured 4 off-topic items per 100, than it was under the prior source
+  set; this filter is now the only guard against scoring another company's news.
+- **Status:** accepted
+- **Confidence:** High
+
+## ADR-31 — Sentiment analysis is one batched Gemini call constrained by responseSchema; failures persist as null, never neutral
+- **Decision:** Replace the per-article Gemini fan-out (capped at 3) with a single
+  `analyzeSentimentBatch` request whose `generationConfig` sets
+  `responseMimeType: 'application/json'`, `temperature: 0.1`, and an explicit
+  `responseSchema` (built with the SDK's `SchemaType` enum). Articles are tagged with string
+  ids (`art_0`, …) and results matched back by id, not array position. An article absent
+  from the response, or any parse/request failure, leaves `sentiment` as `null` (pending) —
+  the prior silent `sentiment: 0, confidence: 0.5` fallback is removed. Compass's
+  bracket-counting `extractValidJsonArray` is kept as a parse fallback.
+- **Evidence:** `lib/services/sentiment.service.ts`; `lib/services/news.service.ts` analysis
+  block. SDK support verified against
+  `node_modules/@google/generative-ai/dist/generative-ai.d.ts`: `GenerationConfig.responseMimeType`
+  (L691), `.responseSchema` (L697), `ResponseSchema = Schema` (L1204), `SchemaType` enum (L1252).
+- **Tradeoffs:** `responseSchema` makes the response shape an API-enforced contract rather
+  than a prompt request, which removes the hand-rolled index-echo and reordering defenses an
+  earlier draft of this decision required. It costs a hard dependency on the schema feature
+  being supported by every model in the ADR-32 chain — verified per model before commit. One
+  batch remains a single point of failure for N articles where the fan-out degraded
+  per-article; mitigated by ADR-32's model chain and by leaving unanalysed articles `null`
+  (already excluded from the aggregate and rendered "PENDING"), which is strictly more honest
+  than the fabricated neutral it replaces.
+- **Status:** accepted
+- **Confidence:** High — raised from the earlier draft's Medium: the schema removes the
+  parse-shape risk, and ADR-32 removes the single-model risk that drove the original rating.
+
+## ADR-32 — Gemini calls try an ordered model chain instead of one pinned model
+- **Decision:** `lib/services/gemini.ts` exports an ordered `GEMINI_MODELS` chain, tried in
+  sequence until one succeeds. `GEMINI_MODEL` remains exported as the chain's first entry so
+  existing consumers and tests are unaffected. The chain leads with the currently
+  live-verified `gemini-2.5-flash`; Compass's list is deliberately not copied, because it
+  includes `gemini-1.5-flash` — the exact model Google retired out from under this project
+  in 2026 (`plans/2026-07-20-gemini-model-update.md`).
+- **Evidence:** `lib/services/gemini.ts` (`GEMINI_MODELS`, `GEMINI_MODEL` as chain head);
+  pattern ported from `Compass/src/lib/news/gemini.ts:1-46`.
+- **Tradeoffs:** A failing primary now costs extra latency (a failed round-trip before the
+  fallback) instead of failing fast, and outputs can differ subtly between models, so a
+  score may shift depending on which model served it. Accepted: this project has already
+  been broken once by a single pinned model being retired, and a silently degraded score is
+  preferable to a whole tab returning nothing. Every model in the chain must be
+  live-verified before commit — an unverified fallback is worse than none.
+- **Status:** accepted
+- **Confidence:** High
+
+## ADR-33 — NewsAPI is removed; ADR-7's non-deployment condition no longer gates production
+- **Decision:** Supersedes ADR-7. `NEWS_API_KEY` and all NewsAPI code are removed from the
+  application. The leaked key remains live and publicly readable in git history (commits
+  `2a6c4c1a`, `3855042e`) and is still not revocable — removing the consumer does **not**
+  unpublish or revoke it. What changes is that nothing in the app can spend the quota, so
+  ADR-7's validity condition ("this app is not in production") no longer carries any weight:
+  a deploy cannot be affected by exhaustion of a quota the app never calls. TD-01 is
+  therefore downgraded (Medium → Low) and its blocking precondition on production deploys is
+  lifted, but TD-01 is **not closed** — the real remediation is deleting the newsapi.org
+  account.
+- **Evidence:** `lib/services/news.service.ts` (sole consumer, removed by this plan — ADR-7's
+  own Evidence line and `git grep NEWS_API_KEY` both confirm sole-consumer status);
+  `.env.example` (entry removed); `TECH_DEBT.md` TD-01 (amended); `.gitleaks.toml`
+  `newsapi-key` rule (deliberately retained — the secret is still in history, and deleting a
+  detector is not fixing a leak).
+- **Tradeoffs:** The residual exposure is a public, unrevocable key on an unused free-tier
+  account — an annoyance rather than a risk to data, users, or availability. `secret-history`
+  CI stays `continue-on-error` because gitleaks matches shapes in history and cannot know a
+  value is unused, so it will keep reporting this finding; tightening that gate still
+  requires a history scrub or a fingerprint-suppressed history-scoped ignore file (TD-28).
+- **Status:** accepted
+- **Confidence:** High
+
+## ADR-34 — Google News RSS replaces NewsAPI as the volume source, parsed with cheerio
+- **Decision:** The news source set becomes **Yahoo Finance `search()` (precision) + Google
+  News RSS (volume)**. NewsAPI is removed rather than demoted. RSS is fetched keylessly via
+  native `fetch` + `AbortController` and parsed with **`cheerio` in `xmlMode: true`** — already
+  a dependency of this repo (`package.json`, actively maintained) with zero prior call
+  sites. `rss-parser` (the reference implementation's choice) is deliberately **not** added:
+  it was last published April 2023 and pulls in `xml2js`, and adding a stale dependency chain
+  is unjustified when an installed, maintained parser handles the feed. Publisher name comes
+  from each item's `<source>` element and the matching `" - " + source` suffix is stripped
+  from the title.
+- **Rationale (live-probed 2026-07-24, one keyless request):** NewsAPI's free tier is delayed
+  **24 hours**, which makes it structurally incapable of explaining a same-day selloff
+  regardless of tuning. The RSS feed returned **100 items**, `200 application/xml`, carrying
+  the exact capex-selloff coverage the pipeline missed (CNBC, Investopedia, Barron's,
+  MarketWatch, Yahoo Finance) from publishers NewsAPI's free tier does not serve. Parse
+  contract verified on the live response: 100/100 items carry `<source>`; 100/100 titles end
+  in exactly `" - " + source`; **0** contain a second `" - "` (so suffix stripping cannot
+  truncate a headline).
+- **Evidence:** `lib/services/news.service.ts` (`fetchNewsAPI` removed, `fetchGoogleNewsRSS`
+  added); `lib/services/__fixtures__/google-news-googl.xml` (captured live response backing
+  the parser tests).
+- **Tradeoffs:** Three, all accepted. (1) **Lower precision** — 4 of 100 probe items were
+  about a different company, so ADR-30's relevance filter becomes load-bearing rather than
+  a safety net. (2) **Dirty data** — the probe reproduced a literal `META_TITLE_QUOTE`
+  placeholder title, requiring a junk-title guard; assume more such artifacts exist. (3)
+  **Unversioned, undocumented, unsupported feed** — Google can change or withdraw it without
+  notice; mitigated by defensive parsing, a hard timeout, and returning `[]` on any failure
+  so Yahoo alone still serves the tab. A further consequence: RSS `<link>` values are Google
+  redirect URLs, never publisher URLs, so cross-source dedup must key on normalized title
+  (URL dedup can never match across the two sources) and `NewsArticle.url` stores the
+  redirect for RSS rows.
+- **Status:** accepted
+- **Confidence:** High
