@@ -530,7 +530,7 @@ TD-DTL-TONE MoM delta.
     sites (news-feed, overview, wishlist) all produce the identical score for
     identical input.
 
-12. [ ] **Make the card honest about its sample** (`components/news-feed.tsx`).
+12. [x] **Make the card honest about its sample** (`components/news-feed.tsx`).
     Drive the meta kicker and caption off the **analysed** count rather than
     `news.length` (L106, L113), and surface a thin-sample state when analysed
     count is below `MIN_CONFIDENT_SAMPLE`. Use existing `DESIGN.md` tokens and the

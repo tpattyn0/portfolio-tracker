@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { AlertCircle } from "lucide-react";
 import { HeadlineScoreCard } from "@/components/research/headline-score-card";
-import { calibratedSentimentToScore, dampenForSample, round1 } from "@/lib/utils/research-scores";
+import { MIN_CONFIDENT_SAMPLE, calibratedSentimentToScore, dampenForSample, round1 } from "@/lib/utils/research-scores";
 import { cn } from "@/lib/utils";
 
 interface NewsArticle {
@@ -52,10 +52,10 @@ export function NewsFeed({ symbol, companyName, articles: propArticles }: NewsFe
   const allNews = propArticles || fetchedArticles || [];
   const news = allNews.filter((a) => (a.relevanceScore ?? 1) >= 0.5);
 
-  const { score, positivePct, neutralPct, negativePct } = useMemo(() => {
+  const { score, positivePct, neutralPct, negativePct, analysedCount } = useMemo(() => {
     const analyzed = news.filter((a) => a.sentiment !== null && a.sentiment !== undefined);
     if (analyzed.length === 0) {
-      return { score: 5, positivePct: 0, neutralPct: 0, negativePct: 0 };
+      return { score: 5, positivePct: 0, neutralPct: 0, negativePct: 0, analysedCount: 0 };
     }
 
     let weighted = 0;
@@ -89,11 +89,21 @@ export function NewsFeed({ symbol, companyName, articles: propArticles }: NewsFe
       positivePct: Math.round((positive / analyzed.length) * 100),
       neutralPct: Math.round((neutral / analyzed.length) * 100),
       negativePct: Math.round((negative / analyzed.length) * 100),
+      analysedCount: analyzed.length,
     };
   }, [news]);
 
+  // Thin-sample honesty (plans/2026-07-24-news-sentiment-accuracy.md, Task 12,
+  // DESIGN.md "Thin-sample honesty"). The WARMING/STEADY/COOLING word is
+  // derived from the already-damped `score` — no separate thin-sample
+  // vocabulary, so a damped thin-sample score in the 4-7 band already reads
+  // "Steady," which is the honest word for it. `trendBanded` is forced false
+  // on a thin sample regardless of what the damped score's band would
+  // otherwise imply — the kicker's bold `--up` color is reserved for "this is
+  // a well-founded reading," which a thin sample is not, by definition.
+  const isThinSample = analysedCount > 0 && analysedCount < MIN_CONFIDENT_SAMPLE;
   const trendKicker = score >= 7 ? "Warming" : score >= 4 ? "Steady" : "Cooling";
-  const trendBanded = score >= 7;
+  const trendBanded = score >= 7 && !isThinSample;
 
   if (isLoading && !propArticles) {
     return (
@@ -107,14 +117,16 @@ export function NewsFeed({ symbol, companyName, articles: propArticles }: NewsFe
     <div className="space-y-5">
       <HeadlineScoreCard
         kicker="News & sentiment"
-        metaKicker={`${news.length} articles analysed · last 30 days`}
+        metaKicker={`${analysedCount} articles analysed · last 30 days`}
         score={score}
         verdictKicker={trendKicker}
         verdictKickerBanded={trendBanded}
         summary={
-          news.length === 0
+          analysedCount === 0
             ? `No recent news coverage found for ${symbol}.`
-            : `Sentiment reflects ${news.length} analysed articles, weighted by relevance and market impact.`
+            : isThinSample
+              ? `Sentiment reflects only ${analysedCount} analysed article${analysedCount === 1 ? "" : "s"} — too few for a confident reading. Score shown is weighted toward neutral.`
+              : `Sentiment reflects ${analysedCount} analysed articles, weighted by relevance and market impact.`
         }
       >
         <div className="grid grid-cols-3 pt-5">
