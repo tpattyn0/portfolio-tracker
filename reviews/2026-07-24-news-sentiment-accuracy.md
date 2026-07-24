@@ -2,8 +2,19 @@
 Date: 2026-07-24
 Status:
 
-Branch: `feature/news-sentiment-accuracy` @ `39a6910f` · PR https://github.com/tpattyn0/meridian/pull/36
+Branch: `feature/news-sentiment-accuracy` · PR https://github.com/tpattyn0/meridian/pull/36
 Plan: `plans/2026-07-24-news-sentiment-accuracy.md` (all 14 tasks, 0-13)
+
+**This file covers two review iterations.** Iteration 1 (below) reviewed `main...39a6910f`.
+Iteration 2 (`## Iteration 2` at the bottom) reviewed the fix pass, `3a108f29..41c9efd9`.
+Iteration 1's findings are retained verbatim as the record of what was raised; their
+resolution status is recorded in Iteration 2.
+
+---
+
+# Iteration 1
+
+Branch HEAD reviewed: `39a6910f`
 Diff reviewed: `git diff main...HEAD` — 33 files, +3087 / -416
 
 **Security-pass note.** The `security-review` skill diffs the *working tree against HEAD*. This
@@ -287,3 +298,236 @@ changes ADR-30's and Task 11's stated contract from convention to structure):
 - **Status:** proposed
 - **Confidence:** High
 ```
+
+---
+
+# Iteration 2
+
+Date: 2026-07-24
+Branch HEAD reviewed: `41c9efd9`
+Diff reviewed: `git diff 3a108f29..HEAD` — 12 files, +339 / -136 (the fix pass, commit `c7d501cc`,
+plus the orchestrator's `STATUS.md` bump `41c9efd9`)
+
+**Security-pass note (unchanged rationale).** The `security-review` skill diffs the *working tree
+against HEAD*; this branch is fully committed, so that diff is empty and the skill has no
+meaningful input. Per CLAUDE.md's Reviewer Step 1 carve-out the skill was skipped and the security
+pass run manually against `3a108f29..HEAD` instead — see "Security pass" below.
+
+## Summary
+Findings: 0 BLOCKERs, 1 ISSUE, 0 SUGGESTIONs, 1 QUESTION (carried forward)
+Requires owner decision: NSA-Q1 (carried forward from iteration 1, deliberately not acted on)
+Ready for Coding agent: NSA2-I1
+
+Verification run live this session: `npm run verify` — **pass** (typecheck ok · lint ok ·
+**363/363 tests** · gitleaks `no leaks found`). Working tree clean at review time
+(`git status --porcelain` empty); branch pushed and level with `origin/feature/news-sentiment-accuracy`.
+
+**Overall judgement: the fix pass is correct and the two ISSUEs are genuinely closed.** NSA-I1's
+shared-helper extraction is structurally sound, and NSA-I2's rewritten test was verified to
+actually fail — I reproduced three independent mutations in a throwaway git worktree and each one
+broke the suite (detail below). The one new finding is a documentation miss, not a code defect:
+`ARCHITECTURE.md`'s key-files row still describes the pre-fix two-function pipeline and never
+mentions `computeSentimentScore`, while `AGENT.md`, `DECISIONS.md` (ADR-35), and `TECH_DEBT.md`
+were all correctly updated.
+
+## Iteration-1 findings — resolution status
+
+| ID | Status | Verified how |
+|----|--------|--------------|
+| NSA-I1 | **Resolved** | `computeSentimentScore(articles)` added at `lib/utils/research-scores.ts:135`; all three sites call it (`news-feed.tsx:69`, `overview.tsx:148`, `wishlist.service.ts:371`). `rg` over `*.ts`/`*.tsx` finds **zero** remaining `sentiment ?? 0` coercions outside the helper (where it is a no-op after the null filter) and zero remaining relevance-threshold literals outside `MIN_RELEVANCE`'s definition — the plan's Task 5 acceptance criterion now actually holds. |
+| NSA-I2 | **Resolved** | Mutation-tested, three ways — see "NSA-I2: independently verified the test can fail" below. |
+| NSA-S1 | **Resolved** | Both conditionally-guarded cases in `research-scores.thin-sample-ui.test.ts:33-53` now assert the band unconditionally (`expect(state.score).toBeGreaterThanOrEqual(7)` / the explicit `[4, 7)` pair) *before* asserting the guarded behavior, so neither case can silently vacate. |
+| NSA-S2 | **Resolved** | `news-relevance.test.ts:75-91` adds the off-topic-with-RSS-self-tag case, passing `symbols: [symbol]` — the exact shape `fetchGoogleNewsRSS` emits — for both probe headlines, asserting `< MIN_RELEVANCE`. This is the shape iteration 1 noted was untested. |
+| NSA-S3 | **Resolved** | `shareClassRoot` → `stripExchangeSuffix` (`news-relevance.ts:88-93`), both call sites in `tickerCreditsSymbol` updated, docstring corrected to state that share-class-letter handling is `isTrailingClassVariant`'s job. Body unchanged — no behavior change, as intended. |
+| NSA-Q1 | **Still open** | Deliberately not acted on; still requires the owner's decision. Restated below. |
+
+## What was verified clean in iteration 2 (audited, no finding raised)
+
+- **The `relevanceScore >= 0.5` deletion is sound — I traced every path, as asked.** The fix pass
+  deleted `news-feed.tsx`'s client-side re-filter outright rather than repointing it at
+  `MIN_RELEVANCE`, on the reasoning that the server already filters everything the component can
+  see. That reasoning holds against the code:
+  - `NewsFeed` has exactly two mount points (`rg "NewsFeed"`): `research/[symbol]/page.tsx:283`,
+    which passes **no** `articles` prop and so uses the component's own `useQuery` against
+    `/api/news/[symbol]`; and `portfolio/[ticker]/page.tsx:354`, which passes
+    `articles={newsArticles}`.
+  - That `newsArticles` (`portfolio/[ticker]/page.tsx:75-97`) is itself a `useQuery` against
+    `/api/news/${ticker}` — the same route. So `propArticles` is not an independent supply path;
+    it is the same server data hoisted a level for the page's own sentiment display.
+  - `app/api/news/[symbol]/route.ts` has a single code path and returns
+    `newsService.getAnalyzedNewsForSymbol(...)` unmodified — no alternate branch, no passthrough
+    of an unfiltered set.
+  - `getAnalyzedNewsForSymbol` (`news.service.ts:350-396`) reads through one `whereClause`
+    containing `relevanceScore: { gte: MIN_RELEVANCE }`, used for **both** its initial
+    `findMany` (line 363) and the post-refresh re-`findMany` (line 391); the refresh path
+    additionally re-filters fresh articles at line 385 before persisting. Every return is
+    `articles` derived from that clause, or `[]`.
+  So no path can deliver an article below `MIN_RELEVANCE` to this component, and the deleted
+  filter could only ever have disagreed with the server. Deletion was the right call, not a
+  shortcut. (Articles now surfacing in the `[0.4, 0.5)` band are the *intended* effect of Task 5,
+  not a regression.)
+- **The null-sentiment rule is genuinely applied in one place, with no caller re-introducing a
+  coercion.** The filter lives only at `research-scores.ts:136`. `rg` for `sentiment ?? 0` returns
+  one hit — line 149, inside the helper, after the filter, where it is unreachable-as-a-coercion
+  and serves only to satisfy the optional type. Neither `overview.tsx` nor `wishlist.service.ts`
+  retains any local `?? 0`, local `analysedCount` computation, or local filter.
+- **The retained `articles.length === 0 → 5` guards are consistent, not divergent.** Both
+  `overview.tsx:141` and `wishlist.service.ts:363` keep an early return of `5` for an empty array.
+  The helper independently returns `score: 5` when `analyzed.length === 0`, so these are redundant
+  rather than a second behavior — empty input and all-null input both yield 5 at all three sites.
+- **`news-feed.tsx`'s percentage denominators are unchanged in effect.** The old code divided by
+  `analyzed.length`; the new code divides by `positiveCount + neutralCount + negativeCount`. Each
+  analysed article increments exactly one bucket in the helper's loop, so the two are identical by
+  construction. No display regression.
+- **The `useMemo` wrapper on `news` is correct and necessary.** `const news = useMemo(() =>
+  propArticles || fetchedArticles || [], [propArticles, fetchedArticles])` (`news-feed.tsx:61`)
+  gives the `[]` fallback a stable identity, which the downstream `useMemo(..., [news])` depends
+  on; without it the score memo would recompute every render on the no-articles path. `useMemo` is
+  imported at line 3. The comment explains the reasoning accurately.
+- **Test count 365 → 363 is fully accounted for by the tautology collapse — no tests were
+  dropped.** The old `research-scores.cross-site.test.ts` was a single `it.each` over **6** cases
+  (`git show 3a108f29:...`); the rewrite has **3** `it` blocks. NSA-S2 added **1** case to
+  `news-relevance.test.ts`. 365 − 6 + 3 + 1 = **363**, matching the live run exactly.
+  `git diff --diff-filter=D` confirms **no** test file was deleted, and the only three test files
+  touched are the ones the fix pass reports.
+- **Task 0's security constraints are undisturbed by the fix pass.** `git diff 3a108f29..HEAD
+  --stat` over `.gitleaks.toml`, `.gitleaks-local/`, `.env`, `.env.local`, and
+  `.github/workflows/verify.yml` is **empty** — all five untouched in iteration 2. Re-confirmed
+  live at HEAD: the `newsapi-key` rule is still present (`.gitleaks.toml:20-23`),
+  `continue-on-error: true` is still on the `secret-history` job
+  (`.github/workflows/verify.yml:134`), `.env`/`.env*.local`/`scratch/` are still gitignored
+  (`.gitignore:21-25,59,62`), and `git ls-files` shows only `.env.example` tracked. The local
+  secret scan passes (`no leaks found`).
+- **`ADR-35` matches what shipped.** It is `Status: accepted` (correctly upgraded from the
+  `proposed` iteration 1 drafted) with real evidence paths, all of which resolve to code that
+  exists. Its description of the null-exclusion rule and the removed `0.5` literal matches the
+  implementation exactly — no overclaiming.
+- **`AGENT.md` fragile-surface entry 5 was rewritten accurately**, including the explicit
+  "do not regress the rewritten test back to that shape" instruction — the compounding-the-learning
+  step done properly.
+
+## NSA-I2: independently verified the test can fail
+
+Iteration 1's substance was that a tautological test is worse than none, so I did not take the
+fix pass's "I reverted it and saw 2/3 fail" report on trust. I checked out branch HEAD into a
+throwaway `git worktree` under the scratch directory (no tracked file in this repo was modified at
+any point) and ran three separate mutations against `research-scores.cross-site.test.ts`:
+
+1. **Revert the NSA-I1 null-exclusion rule** — changed the helper's
+   `articles.filter((a) => a.sentiment !== null && ...)` to `articles`. Result: **1 failed, 2
+   passed**, failing at line 146 with `expected 4 to be 2` on `analysedCount`. The test catches
+   the exact regression it exists for.
+2. **Break the shared-symbol linkage from a component** — aliased news-feed's import to
+   `computeSentimentScore as localComputeSentimentScore` and updated the call, simulating a
+   component reverting to its own copy. Result: **1 failed**, at line 48's
+   `expect(newsFeedSource).toMatch(/computeSentimentScore\(/)`. The grep-based structural
+   assertion is doing real work, not just matching the import line.
+3. **Diverge the wishlist delegate** — changed `wishlist.service.ts`'s one-line delegate to
+   round the shared score to the nearest 0.5. Result: **2 failed** (both the direct-parity test
+   at line 89 and the divergence-shapes test at line 153). The private-method binding really does
+   exercise the live call site.
+
+All three mutations were reverted and the worktree removed; `git status --porcelain` is empty.
+I also ran the file with `GEMINI_API_KEY` and `DATABASE_URL` unset — it passes, so the
+module-scope `wishlistService` import has not introduced a hidden environment dependency into the
+suite (the lazy `sentiment.service` import in `news.service.ts` holds).
+
+The one honest limitation, which the test file itself states: assertions 1 and 2 for
+`news-feed.tsx`/`overview.tsx` are **source-text greps**, not executions, because TD-38 leaves the
+repo with no component-render seam. A component could import and call the symbol while doing
+something wrong with the result and the test would not notice. That is a real residual gap, but it
+is correctly attributed to TD-38 and disclosed in the file's docstring — and it is strictly
+stronger than iteration 1's version, which asserted nothing at all. Not raising it as a new
+finding.
+
+## Security pass (manual, `3a108f29..HEAD`)
+
+Scanned every added line in the range for the standing categories — unauthenticated endpoints,
+credentials at rest, overly broad permissions, injection surfaces, destructive ops without gates:
+
+- **No route, middleware, or auth-guard file is in the diff.** No endpoint was added, and no
+  existing endpoint's guard was touched.
+- **No new `process.env` read, no new `fetch`, no new `prisma.*` call, no `exec`/`eval`/
+  `child_process`/`dangerouslySetInnerHTML`** anywhere in the added lines.
+- **The only new I/O in the entire range is `fs.readFileSync` at
+  `research-scores.cross-site.test.ts:41,44`**, reading two fixed in-repo source paths resolved
+  from `import.meta.url`. No user input reaches it, no path is interpolated, and it is test-only:
+  `vitest.config.ts` scopes tests to `**/*.test.ts`, and nothing in `app/` or `components/`
+  imports a test file, so it is not reachable from the Next.js bundle.
+- **No destructive operation.** The diff adds one pure function and removes duplicated pure logic;
+  the only persistence-adjacent file, `wishlist.service.ts`, had a private read-only computation
+  replaced by a delegate.
+- **No secrets.** gitleaks passes at HEAD; nothing in the diff resembles a credential.
+
+No security findings in iteration 2.
+
+## Findings
+
+### NSA2-I1 — ISSUE
+**File:** `ARCHITECTURE.md:56`
+
+**Problem:** `ARCHITECTURE.md`'s key-files row for `lib/utils/research-scores.ts` still describes
+the pre-fix design and was not updated by the fix pass. It reads:
+
+> As of `plans/2026-07-24-news-sentiment-accuracy.md` (Task 11) also exports
+> `calibratedSentimentToScore` (…) and `dampenForSample`/`MIN_CONFIDENT_SAMPLE` (…) — the
+> calibrated News & sentiment scoring pipeline shared by `news-feed.tsx`, `overview.tsx`, and
+> `wishlist.service.ts`.
+
+That sentence is now the *iteration-1* architecture. It never mentions `computeSentimentScore`,
+which is the module's new primary export and the actual thing the three call sites consume; it
+describes the three sites as sharing two low-level primitives, which is precisely the
+by-convention arrangement ADR-35 replaced because it failed. A reader consulting
+`ARCHITECTURE.md` to find the sentiment-scoring entry point is pointed at the two functions they
+should now be calling *through* the helper, not directly — the exact mistake ADR-35 and
+`AGENT.md`'s fragile-surface entry 5 both explicitly warn against ("do not reimplement this inline
+at a fourth call site").
+
+`grep -rn "computeSentimentScore" *.md` confirms the miss is isolated: `AGENT.md:60`,
+`DECISIONS.md:344,355`, and `TECH_DEBT.md:64-65` all name it. `ARCHITECTURE.md` is the only
+required doc that does not, and per CLAUDE.md's hard limits it must reflect implemented reality.
+Severity is ISSUE rather than SUGGESTION because this is a documented-decision-versus-doc
+contradiction on a surface `AGENT.md` designates as fragile, not a stylistic gap.
+
+**Recommendation:** Update the `lib/utils/research-scores.ts` row in `ARCHITECTURE.md:56` to lead
+with `computeSentimentScore(articles)` as the shared News & sentiment entry point (citing ADR-35),
+state that `news-feed.tsx`, `overview.tsx`, and `wishlist.service.ts` call it directly rather than
+composing the primitives themselves, note the `sentiment === null` exclusion rule, and demote
+`calibratedSentimentToScore`/`dampenForSample`/`MIN_CONFIDENT_SAMPLE` to internals of that helper
+that remain exported for tests. Doc-only; no code change and no re-verification needed beyond
+`npm run verify`.
+
+---
+
+### NSA-Q1 — QUESTION (carried forward from iteration 1, still open)
+**File:** `lib/services/news.service.ts:35, 49` (`MAX_ARTICLES_PER_FETCH = 20`,
+`MAX_ANALYZE_PER_PASS = 10`)
+
+**Status:** unchanged and deliberately not acted on by the fix pass — correct, since it is a
+QUESTION requiring the owner's decision, not an actionable finding. Neither constant was modified
+in `3a108f29..HEAD`.
+
+**One update from iteration 2 worth noting before the owner decides.** Iteration 1 framed the
+consequence of the analysis backlog partly as "nulls counted as `0` by Overview/wishlist would
+drag the composite toward neutral on the best-covered symbols." NSA-I1's fix removes that
+drift entirely — `sentiment: null` is now excluded from the weighted average everywhere, so a
+growing pending backlog no longer distorts any score. What remains is the narrower, benign
+consequence: on a heavily-covered symbol each refresh can add up to `MAX_ARTICLES_PER_FETCH` (20)
+articles while only `MAX_ANALYZE_PER_PASS` (10) are analysed per pass, so a pool of PENDING rows
+can accumulate and be visible in the article list without ever affecting the headline score. The
+decision is therefore now purely about analysis throughput and Gemini batch size, not about score
+correctness — a smaller call than it was at iteration 1.
+
+**Recommendation (unchanged):** owner decides between (a) accepting this as the expected tuning
+pass and merging, adjusting after seeing live output, or (b) tuning now — e.g.
+`MAX_ANALYZE_PER_PASS >= MAX_ARTICLES_PER_FETCH` so a fetch's output is fully analysable in one
+pass, at the cost of a larger single Gemini batch. The plan's manual-verification checklist (the
+GOOGL end-to-end case, the `.BR` ticker, the two-loads-6-minutes-apart latch check, the
+known-negative symbol sanity check) has still not been run in either review session and remains
+the natural place to settle it.
+
+## Proposed DECISIONS.md entries (iteration 2)
+
+None. ADR-35 was added by the fix pass, is `Status: accepted`, and its evidence paths all resolve
+to code that exists at HEAD — it accurately records the decision iteration 1 proposed. No new
+ADRs are required from this iteration; NSA2-I1 is a documentation correction, not a decision.
