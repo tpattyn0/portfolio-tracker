@@ -4,7 +4,7 @@
 Orchestration: news & sentiment — retrieval coverage + scoring accuracy
 Since: 2026-07-24
 Plan: plans/2026-07-24-news-sentiment-accuracy.md
-Designer: running (Task 12 — thin-sample state)
+Coding agent: running (14 tasks — NewsAPI removal, RSS source, batch sentiment, score damping)
 
 ## Blocked
 TD-01 — NEWS_API_KEY live + public in history; risk accepted per ADR-7, blocks production deploys only
