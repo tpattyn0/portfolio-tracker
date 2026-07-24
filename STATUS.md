@@ -4,7 +4,7 @@
 Orchestration: news & sentiment — retrieval coverage + scoring accuracy
 Since: 2026-07-24
 Plan: plans/2026-07-24-news-sentiment-accuracy.md
-Next: awaiting owner plan approval (Designer stage required — plan touches UI)
+Designer: running (Task 12 — thin-sample state)
 
 ## Blocked
 TD-01 — NEWS_API_KEY live + public in history; risk accepted per ADR-7, blocks production deploys only
