@@ -5,7 +5,13 @@ import { useQuery } from "@tanstack/react-query";
 import { DetailPriceChart } from "@/components/research/detail-price-chart";
 import { HeadlineScoreCard } from "@/components/research/headline-score-card";
 import { SubscoreBand } from "@/components/research/subscore-band";
-import { round1, sentimentToScore, upsideToScore, verdictLabel } from "@/lib/utils/research-scores";
+import {
+  calibratedSentimentToScore,
+  dampenForSample,
+  round1,
+  upsideToScore,
+  verdictLabel,
+} from "@/lib/utils/research-scores";
 import {
   DEFAULT_SCORING_WEIGHTS,
   normalizeCompositeWeights,
@@ -147,7 +153,13 @@ export function Overview({ symbol, name, currentPrice, context = "portfolio", cu
       totalW += weight;
     }
     const avg = totalW > 0 ? weighted / totalW : 0;
-    return round1(sentimentToScore(avg));
+    // Calibrated, sample-damped map (plans/2026-07-24-news-sentiment-accuracy.md,
+    // Task 11) — must stay identical to news-feed.tsx's/wishlist.service.ts's
+    // maps for the same weighted-average sentiment + analysed count, so the
+    // composite's sentiment dimension cannot silently diverge from the News
+    // tab's own headline score.
+    const analysedCount = articles.filter((a) => a.sentiment !== null && a.sentiment !== undefined).length;
+    return round1(dampenForSample(calibratedSentimentToScore(avg), analysedCount));
   }, [newsQ.data, newsQ.isError]);
 
   // Composite score, user-weighted (plans/2026-07-20-configurable-scoring-weights.md,

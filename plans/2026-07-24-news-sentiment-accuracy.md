@@ -513,7 +513,7 @@ TD-DTL-TONE MoM delta.
     validation is the manual check below — the unit test only guards against silent
     prompt loss.
 
-11. [ ] **Calibrate the 0-10 map and damp thin samples.** In
+11. [x] **Calibrate the 0-10 map and damp thin samples.** In
     `lib/utils/research-scores.ts`, add a non-linear `sentimentToScore` replacement
     and a `dampenForSample(score, analysedCount)` helper shrinking toward 5.0 below
     `MIN_CONFIDENT_SAMPLE = 5`. **`sentimentToScore` itself must keep its current

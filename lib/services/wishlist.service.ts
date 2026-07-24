@@ -7,6 +7,7 @@ import { IntrinsicValueService } from './intrinsic-value.service';
 import yahooFinance from '@/lib/yahoo-finance';
 import { getWeights } from './scoring-preferences.service';
 import { normalizeCompositeWeights, weightedCompositeTotal } from '@/lib/utils/scoring-weights';
+import { calibratedSentimentToScore, dampenForSample } from '@/lib/utils/research-scores';
 
 export interface WishlistItemWithScores {
   id: string;
@@ -349,12 +350,6 @@ export class WishlistService {
     return itemsWithScores;
   }
 
-  private sentimentToScore(sent: number | null | undefined): number {
-    const s = typeof sent === "number" ? sent : 0; // -1..1
-    const score = (s + 1) * 5; // 0..10
-    return Math.max(0, Math.min(10, score));
-  }
-
   private upsideToScore(upsidePercent: number | null | undefined): number {
     if (upsidePercent === null || upsidePercent === undefined) return 5;
     const min = -25;
@@ -382,7 +377,11 @@ export class WishlistService {
     }
 
     const avg = totalW > 0 ? weighted / totalW : 0;
-    return Math.round(this.sentimentToScore(avg) * 10) / 10;
+    // Calibrated, sample-damped map (plans/2026-07-24-news-sentiment-accuracy.md,
+    // Task 11) — must stay identical to news-feed.tsx's/overview.tsx's maps
+    // for the same weighted-average sentiment + analysed count.
+    const analysedCount = articles.filter((a) => a.sentiment !== null && a.sentiment !== undefined).length;
+    return Math.round(dampenForSample(calibratedSentimentToScore(avg), analysedCount) * 10) / 10;
   }
 
   async syncWishlistPrices(userId: string) {

@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { AlertCircle } from "lucide-react";
 import { HeadlineScoreCard } from "@/components/research/headline-score-card";
-import { round1, sentimentToScore } from "@/lib/utils/research-scores";
+import { calibratedSentimentToScore, dampenForSample, round1 } from "@/lib/utils/research-scores";
 import { cn } from "@/lib/utils";
 
 interface NewsArticle {
@@ -80,8 +80,12 @@ export function NewsFeed({ symbol, companyName, articles: propArticles }: NewsFe
     }
 
     const avg = totalW > 0 ? weighted / totalW : 0;
+    // Calibrated, sample-damped map (plans/2026-07-24-news-sentiment-accuracy.md,
+    // Task 11) — must stay identical to overview.tsx's/wishlist.service.ts's
+    // maps for the same weighted-average sentiment + analysed count, so the
+    // News tab and the Overview composite cannot silently disagree.
     return {
-      score: round1(sentimentToScore(avg)),
+      score: round1(dampenForSample(calibratedSentimentToScore(avg), analyzed.length)),
       positivePct: Math.round((positive / analyzed.length) * 100),
       neutralPct: Math.round((neutral / analyzed.length) * 100),
       negativePct: Math.round((negative / analyzed.length) * 100),
