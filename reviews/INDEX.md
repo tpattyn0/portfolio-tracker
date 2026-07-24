@@ -2,6 +2,7 @@
 
 | Review | Date | Status |
 |--------|------|--------|
+| 2026-07-24-news-sentiment-accuracy.md | 2026-07-24 | IMPLEMENTED — 2026-07-24 (2 iterations; iter-1 NSA-I1 three-call-site score desync + NSA-I2 tautological cross-site test, both fixed via shared `computeSentimentScore` (ADR-35); iter-2 NSA2-I1 ARCHITECTURE.md drift fixed; NSA-Q1 analyse-cap tuning left open for owner; verify 363/363) |
 | 2026-07-23-lib-cleanup-batch.md | 2026-07-23 | IMPLEMENTED |
 | 2026-07-22-morning-note-active-positions-only.md | 2026-07-22 | IMPLEMENTED — 2026-07-22 (0 BLOCKERs/ISSUEs/QUESTIONs; 1 optional SUGGESTION MRN-S1; quantity>0 filter mirrors portfolio route, regression test genuinely fails without filter, empty-portfolio branch correct, docs accurate; verify 257/257) |
 | 2026-07-21-scoring-picker-chips.md | 2026-07-21 | IMPLEMENTED — 2026-07-21 (0 BLOCKERs; inline name-chip picker + accessible Radix hover/focus tooltip, ADR-26; a11y contract verified (no title attr, asChild wraps button, aria-describedby/Escape native, section-local TooltipProvider, providers.tsx untouched); disclosure/ChevronDown removed clean; populate-only no-active-state + scoring/API/gate untouched; skeleton parity; popover tokens both themes; PCH-I1 plan-INDEX advanced, PCH-S1 optional; 254/254) |
@@ -33,3 +34,4 @@
 | 2026-07-21-scoring-style-descriptions-retune.md | 2026-07-21 | IMPLEMENTED — 2026-07-21 (0 BLOCKERs; signal-diagnostic retune (zeros allowed, IV=0 for growth) + visible label+description picker + 9 rewritten blurbs; RTN-I1 doc drift resolved iter 2; weights sum-100 & match ADR-24 tables, zeros clean, Balanced derived; 254/254) |
 | 2026-07-23-td08-td15-cleanup.md | 2026-07-23 | IMPLEMENTED |
 | 2026-07-23-td33-hover-marker.md | 2026-07-23 | IMPLEMENTED — 2026-07-23 (0 BLOCKERs/ISSUEs; TD33-Q1 owner-accepted option A → flat-series divergence logged as TD-40; TD33-S1/S2 doc fixes applied; math re-derived over 8,000 cases, mutation-verified) |
+| 2026-07-24-news-sentiment-accuracy.md | 2026-07-24 | Iter 2 reviewed — 0 BLOCKERs; iter-1 NSA-I1/I2/S1/S2/S3 all resolved (shared `computeSentimentScore` helper, ADR-35; cross-site test mutation-verified 3 ways), 1 new ISSUE (NSA2-I1 ARCHITECTURE.md drift), NSA-Q1 cap tuning still awaiting owner; 363/363 |
