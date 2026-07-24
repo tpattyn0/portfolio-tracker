@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAreaPath, buildPath, CHART_DOMAIN_MARGIN, gridlineYs, marginDomain } from "./chart-path";
+import { buildAreaPath, buildPath, CHART_DOMAIN_MARGIN, gridlineYs, marginDomain, plotYFraction } from "./chart-path";
 import type { ChartPoint } from "./chart-path";
 
 describe("buildPath", () => {
@@ -117,6 +117,86 @@ describe("gridlineYs", () => {
     const withDefault = gridlineYs(0, 100, 220, undefined, [100]);
     const explicit = gridlineYs(0, 100, 220, 8, [100]);
     expect(withDefault).toEqual(explicit);
+  });
+});
+
+describe("plotYFraction", () => {
+  // Series [10, 40, 25, 90, 5], height=220, padding=8 — mirrors the
+  // gridlineYs "matches buildPath's own y" test above, so the plot area
+  // spans y=8..212.
+  const min = 5;
+  const max = 90;
+  const height = 220;
+  const padding = 8;
+
+  it("registers with buildPath's own vertex pixels at the series max and min (happy path)", () => {
+    // At the series max, buildPath plots y = padding (8); at the series min,
+    // y = height - padding (212). plotYFraction * height must match exactly.
+    expect(plotYFraction(max, min, max, height, padding) * height).toBeCloseTo(padding, 5);
+    expect(plotYFraction(min, min, max, height, padding) * height).toBeCloseTo(height - padding, 5);
+  });
+
+  it("cross-checks against gridlineYs for several values (marker/gridline drift is impossible by construction)", () => {
+    const a = 0;
+    const b = 100;
+    const h = 220;
+    const p = 8;
+    for (const v of [0, 25, 50, 73, 100]) {
+      const viaFraction = plotYFraction(v, a, b, h, p) * h;
+      const viaGridlines = gridlineYs(a, b, h, p, [v])[0];
+      expect(viaFraction).toBeCloseTo(viaGridlines, 10);
+    }
+  });
+
+  it("is NOT the naive un-padded fraction at the extremes (the regression this closes)", () => {
+    // The naive `1 - (v - min) / range` formula maps the series max to
+    // fraction 0 and the series min to fraction 1 — omitting the padding
+    // term entirely. The corrected helper must NOT do that: at the max, the
+    // fraction is padding/height (8/220 ~= 0.0364), not 0; at the min, it is
+    // (height-padding)/height (212/220 ~= 0.9636), not 1. A test asserting
+    // only the midpoint would pass against the buggy formula too, since the
+    // two agree exactly at f=0.5 — hence asserting at the extremes here.
+    const maxFrac = plotYFraction(max, min, max, height, padding);
+    const minFrac = plotYFraction(min, min, max, height, padding);
+    expect(maxFrac).toBeCloseTo(padding / height, 5);
+    expect(maxFrac).not.toBeCloseTo(0, 3);
+    expect(minFrac).toBeCloseTo((height - padding) / height, 5);
+    expect(minFrac).not.toBeCloseTo(1, 3);
+  });
+
+  it("maps the midline value to exactly 0.5 (guards an off-by-padding in the other direction)", () => {
+    const mid = (min + max) / 2;
+    expect(plotYFraction(mid, min, max, height, padding)).toBeCloseTo(0.5, 10);
+  });
+
+  it("handles a flat series (domainMax === domainMin) without NaN/Infinity, matching gridlineYs", () => {
+    const flatValue = 50;
+    const frac = plotYFraction(flatValue, flatValue, flatValue, height, padding);
+    expect(Number.isFinite(frac)).toBe(true);
+    const expectedMid = (padding + (height - 2 * padding) / 2) / height;
+    expect(frac).toBeCloseTo(expectedMid, 10);
+    // Matches gridlineYs's flat-series behavior for the same inputs.
+    const viaGridlines = gridlineYs(flatValue, flatValue, height, padding, [flatValue])[0];
+    expect(frac * height).toBeCloseTo(viaGridlines, 10);
+  });
+
+  it("is not hardcoded to the hero chart's 220-tall geometry (the detail chart's 190-tall case)", () => {
+    const detailHeight = 190;
+    const detailPadding = 8;
+    expect(plotYFraction(max, min, max, detailHeight, detailPadding) * detailHeight).toBeCloseTo(
+      detailPadding,
+      5
+    );
+    expect(plotYFraction(min, min, max, detailHeight, detailPadding) * detailHeight).toBeCloseTo(
+      detailHeight - detailPadding,
+      5
+    );
+  });
+
+  it("defaults padding to 8 when omitted (mirrors gridlineYs's default-padding test)", () => {
+    const withDefault = plotYFraction(37, min, max, height);
+    const explicit = plotYFraction(37, min, max, height, 8);
+    expect(withDefault).toBeCloseTo(explicit, 10);
   });
 });
 

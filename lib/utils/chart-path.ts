@@ -143,13 +143,57 @@ export function buildAreaPath(linePath: string, width: number, height: number): 
 }
 
 /**
+ * Maps a single value onto its vertical position — expressed as a **fraction
+ * of chart height** — on the same padded domain `buildPath` plots into:
+ * `y(v) = padding + (1 - (v - domainMin) / (domainMax - domainMin)) *
+ * (height - 2 * padding)`, divided by `height`. This is the single place the
+ * padded-domain value->y mapping lives; `gridlineYs` below is a thin wrapper
+ * over it, and both charts' hover markers plus `DetailPriceChart`'s reference
+ * lines call it directly (ADR-29) rather than recomputing the mapping inline.
+ *
+ * A fraction (not a pixel/SVG-unit value) is returned because callers are
+ * split between CSS-percent HTML overlays (`frac * 100`) and SVG user units
+ * (`frac * height`) — multiply by whichever your call site needs.
+ *
+ * `domainMin`/`domainMax` must be the same domain bounds passed to
+ * `buildPath` for the same series (typically the series' own min/max, or the
+ * margined domain from `marginDomain` if the caller uses domain margining) —
+ * passing a different domain here would reintroduce the exact class of
+ * marker/line mismatch this helper exists to prevent.
+ *
+ * Degenerate case handled explicitly: `domainMax === domainMin` (flat
+ * series) -> the vertical midpoint fraction (`(padding + (height - 2*padding)
+ * / 2) / height`), matching `gridlineYs`'/`buildPath`'s own flat-series
+ * behavior (all points collapse to one y). Deliberately not a `|| 1` range
+ * guard — an explicit zero-range branch, mirroring `gridlineYs` exactly, so
+ * the two can never diverge on this case.
+ */
+export function plotYFraction(
+  value: number,
+  domainMin: number,
+  domainMax: number,
+  height: number,
+  padding = 8
+): number {
+  const range = domainMax - domainMin;
+  const mid = padding + (height - 2 * padding) / 2;
+
+  if (range === 0) {
+    return mid / height;
+  }
+
+  return (padding + (1 - (value - domainMin) / range) * (height - 2 * padding)) / height;
+}
+
+/**
  * Maps each tick value onto the y-pixel it would occupy if plotted by
- * `buildPath`'s own padded domain — i.e. `y(v) = padding + (1 - (v - yMin) /
- * (yMax - yMin)) * (height - 2 * padding)`. Used to position gridlines and
- * their labels so they land exactly where the plotted series' own values
- * fall, instead of at a fixed fraction of the viewBox
+ * `buildPath`'s own padded domain. Used to position gridlines and their
+ * labels so they land exactly where the plotted series' own values fall,
+ * instead of at a fixed fraction of the viewBox
  * (`plans/2026-07-20-small-visual-fixes.md`, Issue 4 — closes the bug where a
- * spiky series' max/min rendered outside the labelled gridline band).
+ * spiky series' max/min rendered outside the labelled gridline band). A thin
+ * wrapper over `plotYFraction` (ADR-29) — the padded-domain formula itself
+ * lives in exactly one place.
  *
  * `yMin`/`yMax` must be the same domain bounds passed to `buildPath` for the
  * same series (typically the series' own min/max) — passing a different
@@ -169,12 +213,5 @@ export function gridlineYs(
   padding = 8,
   ticks: number[] = []
 ): number[] {
-  const range = yMax - yMin;
-  const mid = padding + (height - 2 * padding) / 2;
-
-  if (range === 0) {
-    return ticks.map(() => mid);
-  }
-
-  return ticks.map((v) => padding + (1 - (v - yMin) / range) * (height - 2 * padding));
+  return ticks.map((v) => plotYFraction(v, yMin, yMax, height, padding) * height);
 }

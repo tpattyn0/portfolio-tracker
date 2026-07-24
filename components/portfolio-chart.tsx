@@ -3,7 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { buildAreaPath, buildPath, CHART_DOMAIN_MARGIN, gridlineYs, marginDomain } from "@/lib/utils/chart-path";
+import {
+  buildAreaPath,
+  buildPath,
+  CHART_DOMAIN_MARGIN,
+  gridlineYs,
+  marginDomain,
+  plotYFraction,
+} from "@/lib/utils/chart-path";
 import { niceYTicks } from "@/lib/utils/chart-ticks";
 import { formatCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
@@ -168,9 +175,12 @@ export function PortfolioChart({ positions, baseCurrency = "EUR", exchangeRatesU
   const hoverXFrac = hoverIndex !== null && animatedValues.length > 1 ? hoverIndex / (animatedValues.length - 1) : 0;
   // Same margined domain as the line/gridlines above, so the hover marker
   // stays registered with the drawn curve (including inside the dip's new
-  // headroom) rather than the pre-margin [yMin, yMax] fraction.
-  const domainRange = domainMax - domainMin || 1;
-  const hoverYFrac = hoverValue !== undefined ? 1 - (hoverValue - domainMin) / domainRange : 0;
+  // headroom) rather than the pre-margin [yMin, yMax] fraction. The padding
+  // term (previously omitted here — TD-33) now comes from the shared
+  // plotYFraction helper, so the marker, gridlines, and the plotted line all
+  // read one padded-domain mapping (ADR-29).
+  const hoverYFrac =
+    hoverValue !== undefined ? plotYFraction(hoverValue, domainMin, domainMax, CHART_HEIGHT, CHART_PADDING) : 0;
 
   return (
     <div>

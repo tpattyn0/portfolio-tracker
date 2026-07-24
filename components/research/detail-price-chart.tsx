@@ -3,7 +3,14 @@
 import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { buildAreaPath, buildPath, CHART_DOMAIN_MARGIN, gridlineYs, marginDomain } from "@/lib/utils/chart-path";
+import {
+  buildAreaPath,
+  buildPath,
+  CHART_DOMAIN_MARGIN,
+  gridlineYs,
+  marginDomain,
+  plotYFraction,
+} from "@/lib/utils/chart-path";
 import { niceYTicks } from "@/lib/utils/chart-ticks";
 import { formatCurrency } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
@@ -122,15 +129,17 @@ export function DetailPriceChart({ symbol, period, currency, referenceLines, cla
   }
 
   const hoverPoint = hoverIndex !== null ? points[hoverIndex] : null;
-  // Shared y-domain denominator for both the hover marker and reference lines
-  // (MRD-S2) — named for what it represents (the plotted value range), not
-  // which feature reads it first. Uses the same margined domain as
-  // buildPath/gridlineYs (plans/2026-07-20-perf-graph-dip-clipping-fix.md) so
-  // the hover marker and any reference line stay registered with the drawn
-  // curve, including inside the dip's new headroom.
-  const valueRange = domainMax - domainMin || 1;
+  // Both the hover marker and reference lines below share the same margined
+  // domain as buildPath/gridlineYs
+  // (plans/2026-07-20-perf-graph-dip-clipping-fix.md) so they stay registered
+  // with the drawn curve, including inside the dip's new headroom. The
+  // padding term (previously omitted here — TD-33) now comes from the shared
+  // plotYFraction helper (ADR-29), so the marker, reference lines, gridlines,
+  // and the plotted line all read one padded-domain mapping.
   const hoverXFrac = hoverIndex !== null && points.length > 1 ? hoverIndex / (points.length - 1) : 0;
-  const hoverYFrac = hoverPoint ? 1 - (hoverPoint.value - domainMin) / valueRange : 0;
+  const hoverYFrac = hoverPoint
+    ? plotYFraction(hoverPoint.value, domainMin, domainMax, CHART_HEIGHT, CHART_PADDING)
+    : 0;
 
   return (
     <div className={className}>
@@ -166,12 +175,11 @@ export function DetailPriceChart({ symbol, period, currency, referenceLines, cla
               // series) still renders at the plot's true data edge instead of
               // being clipped off the visible SVG area (MRD-S2) — a level at
               // the true min should land exactly on the line's min vertex,
-              // not out in the margin headroom. The denominator (`valueRange`)
-              // is the margined domain, matching how buildPath positions that
-              // same min vertex, so the two stay registered.
+              // not out in the margin headroom. plotYFraction's domain args
+              // are the margined domain, matching how buildPath positions
+              // that same min vertex, so the two stay registered.
               const clampedValue = Math.max(min, Math.min(max, ref.value));
-              const yFrac = 1 - (clampedValue - domainMin) / valueRange;
-              const y = yFrac * CHART_HEIGHT;
+              const y = plotYFraction(clampedValue, domainMin, domainMax, CHART_HEIGHT, CHART_PADDING) * CHART_HEIGHT;
               return (
                 <line
                   key={ref.label}
