@@ -1,6 +1,6 @@
 # Review: News & sentiment — retrieval coverage and scoring accuracy
 Date: 2026-07-24
-Status:
+Status: IMPLEMENTED — 2026-07-24
 
 Branch: `feature/news-sentiment-accuracy` · PR https://github.com/tpattyn0/meridian/pull/36
 Plan: `plans/2026-07-24-news-sentiment-accuracy.md` (all 14 tasks, 0-13)

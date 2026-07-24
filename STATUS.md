@@ -1,12 +1,8 @@
 # STATUS.md
 
 ## In progress
-Orchestration: news & sentiment — retrieval coverage + scoring accuracy
-Since: 2026-07-24
-Plan: plans/2026-07-24-news-sentiment-accuracy.md
-Branch: feature/news-sentiment-accuracy
-PR: https://github.com/tpattyn0/meridian/pull/36
-Reviewer: running (iteration 2)
+Plan: plans/2026-07-24-news-sentiment-accuracy.md — implemented, awaiting owner merge of PR #36
+Open: NSA-Q1 (analyse-cap tuning) — reviews/2026-07-24-news-sentiment-accuracy.md
 
 ## Blocked
 TD-01 — NEWS_API_KEY public in history; deploy-blocking condition lifted on this branch (ADR-33), pending merge
