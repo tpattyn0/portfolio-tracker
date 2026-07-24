@@ -88,6 +88,84 @@ export function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
+/** Minimal article shape the three News & sentiment call sites share. */
+export interface SentimentScoreInput {
+  sentiment?: number | null;
+  impact?: string | null;
+  relevanceScore?: number | null;
+}
+
+export interface SentimentScoreResult {
+  /** Calibrated, sample-damped 0-10 headline score, rounded to 1dp. */
+  score: number;
+  /** Count of articles with a non-null `sentiment` — the weighted-average population. */
+  analysedCount: number;
+  positiveCount: number;
+  neutralCount: number;
+  negativeCount: number;
+}
+
+/**
+ * Single shared implementation of the News & sentiment headline score —
+ * relevance-filtered-and-impact-weighted average sentiment, piped through
+ * `calibratedSentimentToScore` + `dampenForSample` (plan Task 11 / review
+ * NSA-I1, NSA-I2, `plans/2026-07-24-news-sentiment-accuracy.md`).
+ *
+ * Consumed by `components/news-feed.tsx`, `components/overview.tsx`
+ * (composite sentiment dimension), and `lib/services/wishlist.service.ts`
+ * (`calculateSentimentScore`) — this replaces three independently
+ * maintained copies of the same expression that were kept in sync only by
+ * convention (and a tautological test, NSA-I2). Do not reimplement this
+ * inline at a fourth call site — import and call this function.
+ *
+ * Population rule (NSA-I1, deliberate): articles with `sentiment === null`
+ * (unanalysed/pending) are EXCLUDED from the weighted average at all three
+ * sites. A pending article is not neutral news — coercing it to `0` (the
+ * pre-fix overview/wishlist behavior) pulled the composite toward neutral
+ * as the pending backlog grew (Task 9 made `null` routinely reachable via
+ * batch sentiment analysis leaving unanalysed articles unscored). This
+ * matches `analysedCount`, which always counts the same population passed
+ * through `dampenForSample`.
+ *
+ * The caller is responsible for any relevance pre-filter on `articles`
+ * before calling this (the shared `MIN_RELEVANCE` server-side filter
+ * already applies to everything `getAnalyzedNewsForSymbol` returns, so no
+ * caller needs a second client-side relevance filter — see NSA-I1).
+ */
+export function computeSentimentScore(articles: SentimentScoreInput[]): SentimentScoreResult {
+  const analyzed = articles.filter((a) => a.sentiment !== null && a.sentiment !== undefined);
+
+  if (analyzed.length === 0) {
+    return { score: 5, analysedCount: 0, positiveCount: 0, neutralCount: 0, negativeCount: 0 };
+  }
+
+  let weighted = 0;
+  let totalW = 0;
+  let positiveCount = 0;
+  let neutralCount = 0;
+  let negativeCount = 0;
+
+  for (const a of analyzed) {
+    const s = a.sentiment ?? 0;
+    let w = 1;
+    if (a.impact === "high") w = 3;
+    else if (a.impact === "medium") w = 2;
+    const rel = a.relevanceScore ?? 0.5;
+    const weight = w * rel;
+    weighted += s * weight;
+    totalW += weight;
+
+    if (s > 0.2) positiveCount++;
+    else if (s < -0.2) negativeCount++;
+    else neutralCount++;
+  }
+
+  const avg = totalW > 0 ? weighted / totalW : 0;
+  const score = round1(dampenForSample(calibratedSentimentToScore(avg), analyzed.length));
+
+  return { score, analysedCount: analyzed.length, positiveCount, neutralCount, negativeCount };
+}
+
 /**
  * Composite-score verdict label, context-aware (MRD-Q1): "portfolio" context
  * (the symbol is held) uses position-management wording; "wishlist" context

@@ -7,7 +7,7 @@ import { IntrinsicValueService } from './intrinsic-value.service';
 import yahooFinance from '@/lib/yahoo-finance';
 import { getWeights } from './scoring-preferences.service';
 import { normalizeCompositeWeights, weightedCompositeTotal } from '@/lib/utils/scoring-weights';
-import { calibratedSentimentToScore, dampenForSample } from '@/lib/utils/research-scores';
+import { computeSentimentScore } from '@/lib/utils/research-scores';
 
 export interface WishlistItemWithScores {
   id: string;
@@ -362,26 +362,13 @@ export class WishlistService {
   private calculateSentimentScore(articles: Array<{ sentiment?: number | null; impact?: string | null; relevanceScore?: number | null }>): number {
     if (!Array.isArray(articles) || articles.length === 0) return 5;
 
-    let weighted = 0;
-    let totalW = 0;
-
-    for (const a of articles) {
-      const s = a.sentiment ?? 0;
-      let w = 1;
-      if (a.impact === "high") w = 3;
-      else if (a.impact === "medium") w = 2;
-      const rel = a.relevanceScore ?? 0.5;
-      const weight = w * rel;
-      weighted += s * weight;
-      totalW += weight;
-    }
-
-    const avg = totalW > 0 ? weighted / totalW : 0;
-    // Calibrated, sample-damped map (plans/2026-07-24-news-sentiment-accuracy.md,
-    // Task 11) — must stay identical to news-feed.tsx's/overview.tsx's maps
-    // for the same weighted-average sentiment + analysed count.
-    const analysedCount = articles.filter((a) => a.sentiment !== null && a.sentiment !== undefined).length;
-    return Math.round(dampenForSample(calibratedSentimentToScore(avg), analysedCount) * 10) / 10;
+    // Shared News & sentiment score derivation (plans/2026-07-24-news-sentiment-accuracy.md,
+    // Task 11; review NSA-I1/NSA-I2) — identical function call at all three
+    // call sites (news-feed.tsx, overview.tsx, this method) so the wishlist
+    // sentiment score cannot silently diverge from the other two. See
+    // `computeSentimentScore`'s docstring for the null-sentiment exclusion
+    // rule.
+    return computeSentimentScore(articles).score;
   }
 
   async syncWishlistPrices(userId: string) {

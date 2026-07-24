@@ -80,18 +80,17 @@ function matchesWordBoundary(text: string, token: string): boolean {
 }
 
 /**
- * Known dual-class share shapes: a trailing class letter (e.g. `GOOGL` vs
- * `GOOG`) is stripped for comparison, conservatively — only when the
- * candidate differs from the requested symbol by exactly a trailing class
- * character on an otherwise-identical root.
+ * Strips a trailing exchange suffix (e.g. `.BR`, `.L`) for comparison —
+ * NOT the dual-class share-letter handling (NSA-S3 correction: this
+ * function's name/behaviour previously disagreed with a docstring claiming
+ * it stripped "a single trailing letter"; it only ever stripped a
+ * `.`-prefixed exchange suffix via `/\.[A-Z]+$/`). Share-class letter
+ * normalization (GOOG <-> GOOGL) is `isTrailingClassVariant`'s job, below —
+ * this function only removes the leading-dot exchange-code part so two
+ * tickers on different exchange suffixes can still compare their roots.
  */
-function shareClassRoot(sym: string): string {
-  const upper = sym.trim().toUpperCase();
-  // Strip a single trailing letter if the remainder is at least 2 chars —
-  // conservative: GOOGL -> GOOG's root is "GOOG" itself (no strip needed,
-  // matched directly); this handles the reverse (GOOGL -> GOOG) by comparing
-  // roots symmetrically in tickerCreditsSymbol below.
-  return upper.replace(/\.[A-Z]+$/, '');
+function stripExchangeSuffix(sym: string): string {
+  return sym.trim().toUpperCase().replace(/\.[A-Z]+$/, '');
 }
 
 /**
@@ -105,8 +104,8 @@ function shareClassRoot(sym: string): string {
 const KNOWN_CLASS_LETTERS = new Set(["A", "B", "C", "K", "L"]);
 
 export function tickerCreditsSymbol(candidateTicker: string, requestedSymbol: string): boolean {
-  const a = shareClassRoot(candidateTicker);
-  const b = shareClassRoot(requestedSymbol);
+  const a = stripExchangeSuffix(candidateTicker);
+  const b = stripExchangeSuffix(requestedSymbol);
   if (a === b) return true;
 
   const isTrailingClassVariant = (longer: string, shorter: string) =>

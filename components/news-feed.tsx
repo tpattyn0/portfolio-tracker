@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { AlertCircle } from "lucide-react";
 import { HeadlineScoreCard } from "@/components/research/headline-score-card";
-import { MIN_CONFIDENT_SAMPLE, calibratedSentimentToScore, dampenForSample, round1 } from "@/lib/utils/research-scores";
+import { MIN_CONFIDENT_SAMPLE, computeSentimentScore } from "@/lib/utils/research-scores";
 import { cn } from "@/lib/utils";
 
 interface NewsArticle {
@@ -49,47 +49,31 @@ export function NewsFeed({ symbol, companyName, articles: propArticles }: NewsFe
     refetchInterval: 5 * 60 * 1000,
   });
 
-  const allNews = propArticles || fetchedArticles || [];
-  const news = allNews.filter((a) => (a.relevanceScore ?? 1) >= 0.5);
+  // No client-side relevance re-filter here (removed NSA-I1): the server
+  // already filters every article this component can see to
+  // `relevanceScore >= MIN_RELEVANCE` (`news.service.ts`'s
+  // `getAnalyzedNewsForSymbol`, the sole source for both the `/api/news/[symbol]`
+  // route this component queries and `propArticles` callers), so a second,
+  // differently-tuned client-side threshold can only ever disagree with the
+  // server, never usefully narrow it further. Memoized (not just `||`-chained)
+  // so the `[]` fallback is a stable reference across renders, matching what
+  // the `useMemo` below expects of its `[news]` dependency.
+  const news = useMemo(() => propArticles || fetchedArticles || [], [propArticles, fetchedArticles]);
 
+  // Shared News & sentiment score derivation (plans/2026-07-24-news-sentiment-accuracy.md,
+  // Task 11; review NSA-I1/NSA-I2) — identical function call at all three
+  // call sites (this component, overview.tsx, wishlist.service.ts) so they
+  // cannot silently diverge. See `computeSentimentScore`'s docstring for the
+  // null-sentiment exclusion rule.
   const { score, positivePct, neutralPct, negativePct, analysedCount } = useMemo(() => {
-    const analyzed = news.filter((a) => a.sentiment !== null && a.sentiment !== undefined);
-    if (analyzed.length === 0) {
-      return { score: 5, positivePct: 0, neutralPct: 0, negativePct: 0, analysedCount: 0 };
-    }
-
-    let weighted = 0;
-    let totalW = 0;
-    let positive = 0;
-    let neutral = 0;
-    let negative = 0;
-
-    for (const a of analyzed) {
-      const s = a.sentiment ?? 0;
-      let w = 1;
-      if (a.impact === "high") w = 3;
-      else if (a.impact === "medium") w = 2;
-      const rel = a.relevanceScore ?? 0.5;
-      const weight = w * rel;
-      weighted += s * weight;
-      totalW += weight;
-
-      if (s > 0.2) positive++;
-      else if (s < -0.2) negative++;
-      else neutral++;
-    }
-
-    const avg = totalW > 0 ? weighted / totalW : 0;
-    // Calibrated, sample-damped map (plans/2026-07-24-news-sentiment-accuracy.md,
-    // Task 11) — must stay identical to overview.tsx's/wishlist.service.ts's
-    // maps for the same weighted-average sentiment + analysed count, so the
-    // News tab and the Overview composite cannot silently disagree.
+    const result = computeSentimentScore(news);
+    const total = result.positiveCount + result.neutralCount + result.negativeCount;
     return {
-      score: round1(dampenForSample(calibratedSentimentToScore(avg), analyzed.length)),
-      positivePct: Math.round((positive / analyzed.length) * 100),
-      neutralPct: Math.round((neutral / analyzed.length) * 100),
-      negativePct: Math.round((negative / analyzed.length) * 100),
-      analysedCount: analyzed.length,
+      score: result.score,
+      positivePct: total > 0 ? Math.round((result.positiveCount / total) * 100) : 0,
+      neutralPct: total > 0 ? Math.round((result.neutralCount / total) * 100) : 0,
+      negativePct: total > 0 ? Math.round((result.negativeCount / total) * 100) : 0,
+      analysedCount: result.analysedCount,
     };
   }, [news]);
 

@@ -33,19 +33,24 @@ describe("News & sentiment thin-sample UI decision values (Task 12)", () => {
   it("thin sample forces verdictKickerBanded false even if the damped score still clears 7 (a small unanimous-extreme sample)", () => {
     // 4 articles (below MIN_CONFIDENT_SAMPLE=5) all at sentiment +1.0 —
     // calibratedSentimentToScore(1.0) = 10, dampenForSample(10, 4) is still
-    // high, potentially >= 7.
+    // high, potentially >= 7. Assert the branch this case is meant to
+    // exercise unconditionally (NSA-S1): if the damping math ever changes so
+    // this score no longer clears 7, this assertion fails loudly instead of
+    // silently vacating (the guard the old `if` form allowed).
     const state = computeCardState(1.0, 4);
     expect(state.isThinSample).toBe(true);
-    if (state.score >= 7) {
-      expect(state.trendBanded).toBe(false);
-    }
+    expect(state.score).toBeGreaterThanOrEqual(7);
+    expect(state.trendBanded).toBe(false);
   });
 
   it("a thin sample's trend word is never 'Warming' when damped into the 4-7 band — 'Steady' is the honest word", () => {
+    // Asserted unconditionally (NSA-S1): if the damping math ever moves this
+    // case's score outside [4, 7), this assertion fails loudly instead of
+    // silently vacating.
     const state = computeCardState(0.92, 2);
-    if (state.score >= 4 && state.score < 7) {
-      expect(state.trendKicker).toBe("Steady");
-    }
+    expect(state.score).toBeGreaterThanOrEqual(4);
+    expect(state.score).toBeLessThan(7);
+    expect(state.trendKicker).toBe("Steady");
   });
 
   it("healthy sample (>= MIN_CONFIDENT_SAMPLE): trendBanded follows the score band exactly, no thin-sample override", () => {

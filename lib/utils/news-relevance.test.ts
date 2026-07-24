@@ -72,6 +72,24 @@ describe("scoreRelevance — live-measured GOOGL/Alphabet cases (plan Task 5 acc
     }
   });
 
+  it("scores real off-topic RSS headlines below MIN_RELEVANCE even carrying the RSS fetcher's self-tag (NSA-S2)", () => {
+    // fetchGoogleNewsRSS sets `symbols: [symbol]` on every item it creates
+    // (the requested symbol, self-asserted, not derived from the article) —
+    // this is the exact shape RSS items actually have, unlike the untagged
+    // cases above. The margin protecting MIN_RELEVANCE here is thin (an
+    // off-topic RSS item scores exactly 0.3, one notch below 0.4) — this
+    // test pins it so a future change to MIN_RELEVANCE or the symbols bonus
+    // can't silently admit every off-topic RSS item.
+    const offTopic = [
+      "Why Micron Stock Popped Today",
+      "Intel Stock Jumps as Earnings Blow Past Expectations Amid Booming AI Demand",
+    ];
+    for (const title of offTopic) {
+      const score = scoreRelevance({ title, symbols: [symbol] }, symbol, companyName);
+      expect(score).toBeLessThan(MIN_RELEVANCE);
+    }
+  });
+
   it("a GOOG-tagged article credits a GOOGL request via the symbols array (adds the symbols bonus)", () => {
     const withoutTag = scoreRelevance({ title: "Market wrap: tech megacaps mixed" }, symbol, companyName);
     const withGoogTag = scoreRelevance(

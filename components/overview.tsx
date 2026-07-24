@@ -6,8 +6,7 @@ import { DetailPriceChart } from "@/components/research/detail-price-chart";
 import { HeadlineScoreCard } from "@/components/research/headline-score-card";
 import { SubscoreBand } from "@/components/research/subscore-band";
 import {
-  calibratedSentimentToScore,
-  dampenForSample,
+  computeSentimentScore,
   round1,
   upsideToScore,
   verdictLabel,
@@ -140,26 +139,13 @@ export function Overview({ symbol, name, currentPrice, context = "portfolio", cu
     if (newsQ.isError) return null;
     const articles = (newsQ.data || []) as Array<{ sentiment: number | null; impact?: string | null; relevanceScore?: number | null }>;
     if (!Array.isArray(articles) || articles.length === 0) return 5;
-    // Weighted average like SentimentScore component
-    let weighted = 0;
-    let totalW = 0;
-    for (const a of articles) {
-      const s = a.sentiment ?? 0;
-      let w = 1;
-      if (a.impact === "high") w = 3; else if (a.impact === "medium") w = 2;
-      const rel = a.relevanceScore ?? 0.5;
-      const weight = w * rel;
-      weighted += s * weight;
-      totalW += weight;
-    }
-    const avg = totalW > 0 ? weighted / totalW : 0;
-    // Calibrated, sample-damped map (plans/2026-07-24-news-sentiment-accuracy.md,
-    // Task 11) — must stay identical to news-feed.tsx's/wishlist.service.ts's
-    // maps for the same weighted-average sentiment + analysed count, so the
+    // Shared News & sentiment score derivation (plans/2026-07-24-news-sentiment-accuracy.md,
+    // Task 11; review NSA-I1/NSA-I2) — identical function call at all three
+    // call sites (news-feed.tsx, this component, wishlist.service.ts) so the
     // composite's sentiment dimension cannot silently diverge from the News
-    // tab's own headline score.
-    const analysedCount = articles.filter((a) => a.sentiment !== null && a.sentiment !== undefined).length;
-    return round1(dampenForSample(calibratedSentimentToScore(avg), analysedCount));
+    // tab's own headline score. See `computeSentimentScore`'s docstring for
+    // the null-sentiment exclusion rule.
+    return computeSentimentScore(articles).score;
   }, [newsQ.data, newsQ.isError]);
 
   // Composite score, user-weighted (plans/2026-07-20-configurable-scoring-weights.md,

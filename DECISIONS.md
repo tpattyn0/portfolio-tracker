@@ -338,3 +338,28 @@
   redirect for RSS rows.
 - **Status:** accepted
 - **Confidence:** High
+
+## ADR-35 — The News & sentiment headline score is computed by one shared helper, not three mirrored call sites
+- **Decision:** The weighted-average-sentiment → calibrated map → sample-damping pipeline is
+  extracted into a single exported helper, `computeSentimentScore(articles)`, in
+  `lib/utils/research-scores.ts`, consumed unchanged by `components/news-feed.tsx`,
+  `components/overview.tsx`, and `lib/services/wishlist.service.ts` (the latter's
+  `calculateSentimentScore` is now a one-line delegate). The three sites no longer each own a
+  copy of the article-filtering, weighting, and counting logic — only the shared helper does.
+  Articles with `sentiment === null` are excluded from the weighted average at all three sites
+  (previously news-feed excluded them while overview/wishlist coerced them to 0 — a pending
+  article is not neutral news, and Task 9 made `null` a routinely reachable state). Relevance
+  filtering uses only the server-side `MIN_RELEVANCE` filter already applied by
+  `getAnalyzedNewsForSymbol`; the last hardcoded `0.5` literal (`news-feed.tsx:53`) is removed
+  rather than replaced with a second, redundant client-side check.
+- **Evidence:** `lib/utils/research-scores.ts` (`computeSentimentScore`); `components/news-feed.tsx`,
+  `components/overview.tsx`, `lib/services/wishlist.service.ts` (all three call it directly);
+  `lib/utils/research-scores.cross-site.test.ts` (rewritten to exercise the real call sites
+  instead of asserting a pure function is deterministic against itself).
+- **Tradeoffs:** Task 11 originally tried to keep the three in sync by convention plus a
+  consistency test; the test was tautological (review finding NSA-I2) and the sites diverged by
+  up to 1.2 points in measured cases (NSA-I1). Structural sharing costs a slightly less flexible
+  per-site computation — accepted, because the divergence it prevents is user-visible on a single
+  page (the News tab headline versus the Overview composite's sentiment dimension).
+- **Status:** accepted
+- **Confidence:** High
