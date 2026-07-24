@@ -541,7 +541,7 @@ TD-DTL-TONE MoM delta.
     the meta-kicker count matches the number actually feeding the score. **Visible
     UI change — Designer stage applies.**
 
-13. [ ] **Update docs.** `TECH_DEBT.md`: amend TD-01 and TD-28 per the knock-on
+13. [x] **Update docs.** `TECH_DEBT.md`: amend TD-01 and TD-28 per the knock-on
     section below; add a Backlog entry for the remaining `calculateDailySentiment` /
     `SentimentHistory` path (impact-only weighting, and the fact that nothing
     currently reads the history route) if still unaddressed. `ARCHITECTURE.md`:

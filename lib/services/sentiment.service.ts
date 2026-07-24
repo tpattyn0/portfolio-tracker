@@ -194,7 +194,7 @@ export class SentimentAnalysisService {
           }
         }
 
-        console.log(`[Gemini] Model ${modelName} served the batch sentiment request (${articles.length} articles).`);
+        console.warn(`[Gemini] Model ${modelName} served the batch sentiment request (${articles.length} articles).`);
         return { ok: true, results };
       } catch (error) {
         console.warn(
