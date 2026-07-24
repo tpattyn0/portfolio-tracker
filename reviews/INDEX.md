@@ -33,3 +33,4 @@
 | 2026-07-21-scoring-style-descriptions-retune.md | 2026-07-21 | IMPLEMENTED — 2026-07-21 (0 BLOCKERs; signal-diagnostic retune (zeros allowed, IV=0 for growth) + visible label+description picker + 9 rewritten blurbs; RTN-I1 doc drift resolved iter 2; weights sum-100 & match ADR-24 tables, zeros clean, Balanced derived; 254/254) |
 | 2026-07-23-td08-td15-cleanup.md | 2026-07-23 | IMPLEMENTED |
 | 2026-07-23-td33-hover-marker.md | 2026-07-23 | IMPLEMENTED — 2026-07-23 (0 BLOCKERs/ISSUEs; TD33-Q1 owner-accepted option A → flat-series divergence logged as TD-40; TD33-S1/S2 doc fixes applied; math re-derived over 8,000 cases, mutation-verified) |
+| 2026-07-24-news-sentiment-accuracy.md | 2026-07-24 | 0 BLOCKERs; 2 ISSUEs (NSA-I1 cross-call-site score desync, NSA-I2 tautological consistency test), 3 SUGGESTIONs, 1 QUESTION (NSA-Q1 cap tuning) |
